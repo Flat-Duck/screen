@@ -1,0 +1,64 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+/**
+ * One row per event/error/crash reported by a device. Error-specific columns are nullable and only
+ * populated when kind != 'event' — they're 1:1 with the row, not a separate has-many relation.
+ */
+class TelemetryEvent extends Model
+{
+    /** @use HasFactory<\Database\Factories\TelemetryEventFactory> */
+    use HasFactory;
+
+    public const KIND_EVENT = 'event';
+
+    public const KIND_ERROR = 'error';
+
+    public const KIND_FATAL_CRASH = 'fatal_crash';
+
+    public const KINDS = [self::KIND_EVENT, self::KIND_ERROR, self::KIND_FATAL_CRASH];
+
+    protected $fillable = [
+        'device_id',
+        'event_uuid',
+        'kind',
+        'name',
+        'occurred_at',
+        'received_at',
+        'extras',
+        'breadcrumbs',
+        'error_tag',
+        'exception_class',
+        'error_message',
+        'stack_trace',
+        'thread_name',
+        'is_fatal',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'occurred_at' => 'datetime',
+            'received_at' => 'datetime',
+            'extras' => 'array',
+            'breadcrumbs' => 'array',
+            'is_fatal' => 'boolean',
+        ];
+    }
+
+    public function device(): BelongsTo
+    {
+        return $this->belongsTo(Device::class);
+    }
+
+    public function scopeCrashes(Builder $query): Builder
+    {
+        return $query->where('kind', '!=', self::KIND_EVENT);
+    }
+}

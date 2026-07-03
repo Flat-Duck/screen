@@ -1,0 +1,111 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\RegisterDeviceRequest;
+use App\Http\Requests\StoreTelemetryEventsRequest;
+use App\Models\Device;
+use App\Models\TelemetryEvent;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+
+class TelemetryController extends Controller
+{
+    /** Max stack trace length stored — payload hygiene, matches the Android-side plan's own callout. */
+    private const MAX_STACK_TRACE_LENGTH = 4000;
+
+    /**
+     * First-run enrollment: creates (or re-registers) a Device and issues it a fresh Sanctum
+     * token. No prior auth is possible here — this is how a device gets one in the first place.
+     */
+    public function register(RegisterDeviceRequest $request): JsonResponse
+    {
+        $validated = $request->validated();
+
+        $device = Device::firstOrNew(['device_uuid' => $validated['device_id']]);
+        $isNewDevice = ! $device->exists;
+
+        $device->fill([
+            'manufacturer' => $validated['manufacturer'] ?? null,
+            'brand' => $validated['brand'] ?? null,
+            'model' => $validated['model'] ?? null,
+            'os_name' => $validated['os_name'] ?? 'Android',
+            'os_version' => $validated['os_version'] ?? null,
+            'sdk_int' => $validated['sdk_int'] ?? null,
+            'app_version_name' => $validated['app_version_name'] ?? null,
+            'app_version_code' => $validated['app_version_code'] ?? null,
+            'last_seen_at' => now(),
+        ]);
+        if ($isNewDevice) {
+            $device->first_seen_at = now();
+        }
+        $device->save();
+
+        // Sanctum tokens are hashed at rest and never retrievable again after creation, so
+        // re-registering (e.g. app data cleared, or a fresh install with the same device_uuid
+        // somehow) always revokes whatever existed before and mints a new one.
+        $device->tokens()->delete();
+        $token = $device->createToken('android-device')->plainTextToken;
+
+        return response()->json([
+            'device_id' => $device->id,
+            'token' => $token,
+        ], $isNewDevice ? 201 : 200);
+    }
+
+    /**
+     * Ingests one batch of events/errors/crashes from the already-authenticated device (via
+     * auth:sanctum — the device_id in the payload body is informational only, never trusted for
+     * identity). Idempotent on event_uuid: a resent batch after an ambiguous network failure
+     * inserts nothing twice.
+     */
+    public function events(StoreTelemetryEventsRequest $request): JsonResponse
+    {
+        /** @var Device $device */
+        $device = $request->user();
+        $validated = $request->validated();
+
+        $device->forceFill([
+            'app_version_name' => $validated['device']['app_version_name'] ?? $device->app_version_name,
+            'app_version_code' => $validated['device']['app_version_code'] ?? $device->app_version_code,
+            'last_seen_at' => now(),
+        ])->save();
+
+        $acceptedEventIds = DB::transaction(function () use ($validated, $device) {
+            $accepted = [];
+
+            foreach ($validated['events'] as $eventData) {
+                $error = $eventData['error'] ?? null;
+
+                $event = TelemetryEvent::firstOrCreate(
+                    ['event_uuid' => $eventData['event_id']],
+                    [
+                        'device_id' => $device->id,
+                        'kind' => $eventData['kind'],
+                        'name' => $eventData['name'],
+                        'occurred_at' => $eventData['occurred_at'],
+                        'received_at' => now(),
+                        'extras' => $eventData['extras'] ?? [],
+                        'breadcrumbs' => $eventData['breadcrumbs'] ?? [],
+                        'error_tag' => $error['tag'] ?? null,
+                        'exception_class' => $error['exception_class'] ?? null,
+                        'error_message' => $error['message'] ?? null,
+                        'stack_trace' => isset($error['stack_trace'])
+                            ? Str::limit($error['stack_trace'], self::MAX_STACK_TRACE_LENGTH, '')
+                            : null,
+                        'thread_name' => $error['thread_name'] ?? null,
+                        'is_fatal' => $error['is_fatal'] ?? null,
+                    ]
+                );
+
+                $accepted[] = $event->event_uuid;
+            }
+
+            return $accepted;
+        });
+
+        return response()->json(['accepted_event_ids' => $acceptedEventIds]);
+    }
+}
