@@ -1,0 +1,967 @@
+{
+  "info": {
+    "_postman_id": "8f2a4c1e-6b3d-4e2a-9c7f-1a2b3c4d5e6f",
+    "name": "Screenshot Social API",
+    "description": "Mobile-first API for the screenshot-sharing social platform.\n\n## Versioning strategy\nEach API version lives in its own top-level folder (`v1`, later `v2`, ...) with the version hardcoded into each request's path (e.g. `/v1/posts`). Existing versions are never modified once shipped.\n\nWhen v2 starts: duplicate the `v1` folder (right-click -> Duplicate), rename it to `v2`, then use Postman's collection-wide Find & Replace to swap `/v1/` -> `/v2/` inside the duplicated folder only. This keeps v1 and v2 requests runnable side by side in the same collection, matching how the API itself will serve both `/api/v1/...` and `/api/v2/...` concurrently.\n\n## Running this collection\nRequests are ordered so you can hit \"Run collection\" top to bottom:\n1. Register (sets `{{token}}` / `{{user_id}}` for Alice)\n2. Register (Second User) (sets `{{token_b}}` / `{{user_b_id}}` for Bob)\n3. Create Post is sent as Bob so there's something in Alice's feed once she follows him\n4. Everything else chains off `{{post_id}}` / `{{comment_id}}`, captured automatically by each request's Tests script\n\nSet the `base_url` collection variable to point at your environment (defaults to this project's local ServBay host).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://telm.test/api", "type": "string" },
+    { "key": "token", "value": "", "type": "string" },
+    { "key": "token_b", "value": "", "type": "string" },
+    { "key": "user_id", "value": "", "type": "string" },
+    { "key": "user_b_id", "value": "", "type": "string" },
+    { "key": "post_id", "value": "", "type": "string" },
+    { "key": "comment_id", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "v1",
+      "description": "Current stable API version.",
+      "item": [
+        {
+          "name": "Auth",
+          "item": [
+            {
+              "name": "Register",
+              "request": {
+                "auth": { "type": "noauth" },
+                "method": "POST",
+                "header": [
+                  { "key": "Accept", "value": "application/json" },
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Alice Smith\",\n  \"username\": \"alice\",\n  \"email\": \"alice@example.com\",\n  \"password\": \"password123!\",\n  \"password_confirmation\": \"password123!\",\n  \"device_name\": \"Alice's Phone\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{base_url}}/v1/auth/register",
+                  "host": ["{{base_url}}"],
+                  "path": ["v1", "auth", "register"]
+                },
+                "description": "Creates a user and issues a Sanctum token. Rate limited to 5 requests/min."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 201) {",
+                      "    const json = pm.response.json();",
+                      "    pm.collectionVariables.set('token', json.token);",
+                      "    pm.collectionVariables.set('user_id', json.user.id);",
+                      "}",
+                      "pm.test('Status is 201', () => pm.response.to.have.status(201));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "201 Created",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      { "key": "Accept", "value": "application/json" },
+                      { "key": "Content-Type", "value": "application/json" }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/v1/auth/register",
+                      "host": ["{{base_url}}"],
+                      "path": ["v1", "auth", "register"]
+                    }
+                  },
+                  "status": "Created",
+                  "code": 201,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"user\": {\n    \"id\": 1,\n    \"username\": \"alice\",\n    \"name\": \"Alice Smith\",\n    \"bio\": null,\n    \"avatar_url\": null,\n    \"posts_count\": 0,\n    \"followers_count\": 0,\n    \"following_count\": 0,\n    \"created_at\": \"2026-07-05T20:14:23.000000Z\"\n  },\n  \"token\": \"1|AbCdEfGhIjKlMnOpQrStUvWxYz0123456789abcdefghij\"\n}"
+                },
+                {
+                  "name": "422 Unprocessable Entity (duplicate username)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      { "key": "Accept", "value": "application/json" },
+                      { "key": "Content-Type", "value": "application/json" }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/v1/auth/register",
+                      "host": ["{{base_url}}"],
+                      "path": ["v1", "auth", "register"]
+                    }
+                  },
+                  "status": "Unprocessable Entity",
+                  "code": 422,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"message\": \"The username has already been taken.\",\n  \"errors\": {\n    \"username\": [\"The username has already been taken.\"]\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Register (Second User)",
+              "request": {
+                "auth": { "type": "noauth" },
+                "method": "POST",
+                "header": [
+                  { "key": "Accept", "value": "application/json" },
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Bob Jones\",\n  \"username\": \"bob\",\n  \"email\": \"bob@example.com\",\n  \"password\": \"password123!\",\n  \"password_confirmation\": \"password123!\",\n  \"device_name\": \"Bob's Phone\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{base_url}}/v1/auth/register",
+                  "host": ["{{base_url}}"],
+                  "path": ["v1", "auth", "register"]
+                },
+                "description": "A second account so Follow/Feed can be demonstrated against a real relationship."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 201) {",
+                      "    const json = pm.response.json();",
+                      "    pm.collectionVariables.set('token_b', json.token);",
+                      "    pm.collectionVariables.set('user_b_id', json.user.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "201 Created",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [{ "key": "Accept", "value": "application/json" }],
+                    "url": {
+                      "raw": "{{base_url}}/v1/auth/register",
+                      "host": ["{{base_url}}"],
+                      "path": ["v1", "auth", "register"]
+                    }
+                  },
+                  "status": "Created",
+                  "code": 201,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"user\": {\n    \"id\": 2,\n    \"username\": \"bob\",\n    \"name\": \"Bob Jones\",\n    \"bio\": null,\n    \"avatar_url\": null,\n    \"posts_count\": 0,\n    \"followers_count\": 0,\n    \"following_count\": 0,\n    \"created_at\": \"2026-07-05T20:14:29.000000Z\"\n  },\n  \"token\": \"2|BcDeFgHiJkLmNoPqRsTuVwXyZ0123456789abcdefghijk\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "Login",
+              "request": {
+                "auth": { "type": "noauth" },
+                "method": "POST",
+                "header": [
+                  { "key": "Accept", "value": "application/json" },
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"login\": \"alice\",\n  \"password\": \"password123!\",\n  \"device_name\": \"Alice's Phone\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{base_url}}/v1/auth/login",
+                  "host": ["{{base_url}}"],
+                  "path": ["v1", "auth", "login"]
+                },
+                "description": "`login` matches against email OR username. Rate limited to 10 requests/min. Issues a new token (does not revoke existing ones)."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "    const json = pm.response.json();",
+                      "    pm.collectionVariables.set('token', json.token);",
+                      "    pm.collectionVariables.set('user_id', json.user.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [{ "key": "Accept", "value": "application/json" }],
+                    "url": {
+                      "raw": "{{base_url}}/v1/auth/login",
+                      "host": ["{{base_url}}"],
+                      "path": ["v1", "auth", "login"]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"user\": {\n    \"id\": 1,\n    \"username\": \"alice\",\n    \"name\": \"Alice Smith\",\n    \"bio\": null,\n    \"avatar_url\": null,\n    \"posts_count\": 0,\n    \"followers_count\": 1,\n    \"following_count\": 1,\n    \"created_at\": \"2026-07-05T20:14:23.000000Z\"\n  },\n  \"token\": \"3|CdEfGhIjKlMnOpQrStUvWxYz0123456789abcdefghijkl\"\n}"
+                },
+                {
+                  "name": "422 Unprocessable Entity (bad credentials)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [{ "key": "Accept", "value": "application/json" }],
+                    "url": {
+                      "raw": "{{base_url}}/v1/auth/login",
+                      "host": ["{{base_url}}"],
+                      "path": ["v1", "auth", "login"]
+                    }
+                  },
+                  "status": "Unprocessable Entity",
+                  "code": 422,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"message\": \"These credentials do not match our records.\",\n  \"errors\": {\n    \"login\": [\"These credentials do not match our records.\"]\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Logout",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+                "method": "POST",
+                "header": [{ "key": "Accept", "value": "application/json" }],
+                "url": {
+                  "raw": "{{base_url}}/v1/auth/logout",
+                  "host": ["{{base_url}}"],
+                  "path": ["v1", "auth", "logout"]
+                },
+                "description": "Revokes only the token used on this request — other devices/sessions for the same user stay logged in."
+              },
+              "response": [
+                {
+                  "name": "204 No Content",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [{ "key": "Accept", "value": "application/json" }],
+                    "url": {
+                      "raw": "{{base_url}}/v1/auth/logout",
+                      "host": ["{{base_url}}"],
+                      "path": ["v1", "auth", "logout"]
+                    }
+                  },
+                  "status": "No Content",
+                  "code": 204,
+                  "_postman_previewlanguage": "json",
+                  "header": [],
+                  "body": ""
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Profile",
+          "item": [
+            {
+              "name": "Update Profile",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+                "method": "PATCH",
+                "header": [{ "key": "Accept", "value": "application/json" }],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    { "key": "bio", "value": "Screenshot enthusiast 📸", "type": "text" },
+                    { "key": "avatar", "type": "file", "src": [] }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/v1/profile",
+                  "host": ["{{base_url}}"],
+                  "path": ["v1", "profile"]
+                },
+                "description": "Both fields optional. Uploading a new avatar deletes the previous file from disk. Rate limited to 20 requests/min."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "PATCH",
+                    "header": [{ "key": "Accept", "value": "application/json" }],
+                    "url": {
+                      "raw": "{{base_url}}/v1/profile",
+                      "host": ["{{base_url}}"],
+                      "path": ["v1", "profile"]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"data\": {\n    \"id\": 1,\n    \"username\": \"alice\",\n    \"name\": \"Alice Smith\",\n    \"bio\": \"Screenshot enthusiast 📸\",\n    \"avatar_url\": \"http://telm.test/storage/avatars/1/6f1c2a3b-....jpg\",\n    \"posts_count\": 0,\n    \"followers_count\": 1,\n    \"following_count\": 1,\n    \"created_at\": \"2026-07-05T20:14:23.000000Z\"\n  }\n}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Users",
+          "item": [
+            {
+              "name": "Get Profile",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+                "method": "GET",
+                "header": [{ "key": "Accept", "value": "application/json" }],
+                "url": {
+                  "raw": "{{base_url}}/v1/users/{{user_b_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["v1", "users", "{{user_b_id}}"]
+                },
+                "description": "Public profile. `is_following` reflects whether the authenticated caller follows this user (omitted when viewing your own profile)."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [{ "key": "Accept", "value": "application/json" }],
+                    "url": {
+                      "raw": "{{base_url}}/v1/users/2",
+                      "host": ["{{base_url}}"],
+                      "path": ["v1", "users", "2"]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"data\": {\n    \"id\": 2,\n    \"username\": \"bob\",\n    \"name\": \"Bob Jones\",\n    \"bio\": null,\n    \"avatar_url\": null,\n    \"posts_count\": 1,\n    \"followers_count\": 1,\n    \"following_count\": 0,\n    \"is_following\": true,\n    \"created_at\": \"2026-07-05T20:14:29.000000Z\"\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Get User Posts",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+                "method": "GET",
+                "header": [{ "key": "Accept", "value": "application/json" }],
+                "url": {
+                  "raw": "{{base_url}}/v1/users/{{user_b_id}}/posts",
+                  "host": ["{{base_url}}"],
+                  "path": ["v1", "users", "{{user_b_id}}", "posts"],
+                  "query": [{ "key": "cursor", "value": "", "disabled": true }]
+                },
+                "description": "Cursor-paginated. Pass the `cursor` query param from `meta.next_cursor` to fetch the next page."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [{ "key": "Accept", "value": "application/json" }],
+                    "url": {
+                      "raw": "{{base_url}}/v1/users/2/posts",
+                      "host": ["{{base_url}}"],
+                      "path": ["v1", "users", "2", "posts"]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"caption\": \"Found a weird bug\",\n      \"status\": \"ready\",\n      \"user\": { \"id\": 2, \"username\": \"bob\", \"name\": \"Bob Jones\", \"avatar_url\": null },\n      \"media\": [\n        {\n          \"id\": 1,\n          \"position\": 0,\n          \"url\": \"http://telm.test/storage/posts/1/c3ce41ef-....-thumb.webp\",\n          \"original_url\": \"http://telm.test/storage/posts/1/c3ce41ef-....jpg\",\n          \"width\": 1080,\n          \"height\": 1920,\n          \"status\": \"ready\"\n        }\n      ],\n      \"likes_count\": 1,\n      \"comments_count\": 1,\n      \"is_liked\": true,\n      \"created_at\": \"2026-07-05T20:15:05.000000Z\"\n    }\n  ],\n  \"links\": {\n    \"first\": null,\n    \"last\": null,\n    \"prev\": null,\n    \"next\": null\n  },\n  \"meta\": {\n    \"path\": \"http://telm.test/api/v1/users/2/posts\",\n    \"per_page\": 12,\n    \"next_cursor\": null,\n    \"prev_cursor\": null\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Follow User",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+                "method": "POST",
+                "header": [{ "key": "Accept", "value": "application/json" }],
+                "url": {
+                  "raw": "{{base_url}}/v1/users/{{user_b_id}}/follow",
+                  "host": ["{{base_url}}"],
+                  "path": ["v1", "users", "{{user_b_id}}", "follow"]
+                },
+                "description": "Idempotent — following an already-followed user is a no-op. Rate limited to 30 requests/min."
+              },
+              "response": [
+                {
+                  "name": "204 No Content",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [{ "key": "Accept", "value": "application/json" }],
+                    "url": {
+                      "raw": "{{base_url}}/v1/users/2/follow",
+                      "host": ["{{base_url}}"],
+                      "path": ["v1", "users", "2", "follow"]
+                    }
+                  },
+                  "status": "No Content",
+                  "code": 204,
+                  "_postman_previewlanguage": "json",
+                  "header": [],
+                  "body": ""
+                },
+                {
+                  "name": "422 Unprocessable Entity (self-follow)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [{ "key": "Accept", "value": "application/json" }],
+                    "url": {
+                      "raw": "{{base_url}}/v1/users/1/follow",
+                      "host": ["{{base_url}}"],
+                      "path": ["v1", "users", "1", "follow"]
+                    }
+                  },
+                  "status": "Unprocessable Entity",
+                  "code": 422,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"message\": \"You cannot follow yourself.\",\n  \"errors\": {\n    \"user\": [\"You cannot follow yourself.\"]\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Unfollow User",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+                "method": "DELETE",
+                "header": [{ "key": "Accept", "value": "application/json" }],
+                "url": {
+                  "raw": "{{base_url}}/v1/users/{{user_b_id}}/follow",
+                  "host": ["{{base_url}}"],
+                  "path": ["v1", "users", "{{user_b_id}}", "follow"]
+                },
+                "description": "Idempotent — unfollowing a user you don't follow is a no-op."
+              },
+              "response": [
+                {
+                  "name": "204 No Content",
+                  "originalRequest": {
+                    "method": "DELETE",
+                    "header": [{ "key": "Accept", "value": "application/json" }],
+                    "url": {
+                      "raw": "{{base_url}}/v1/users/2/follow",
+                      "host": ["{{base_url}}"],
+                      "path": ["v1", "users", "2", "follow"]
+                    }
+                  },
+                  "status": "No Content",
+                  "code": 204,
+                  "_postman_previewlanguage": "json",
+                  "header": [],
+                  "body": ""
+                }
+              ]
+            },
+            {
+              "name": "Get Followers",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+                "method": "GET",
+                "header": [{ "key": "Accept", "value": "application/json" }],
+                "url": {
+                  "raw": "{{base_url}}/v1/users/{{user_b_id}}/followers",
+                  "host": ["{{base_url}}"],
+                  "path": ["v1", "users", "{{user_b_id}}", "followers"]
+                },
+                "description": "Cursor-paginated list of users following this user."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [{ "key": "Accept", "value": "application/json" }],
+                    "url": {
+                      "raw": "{{base_url}}/v1/users/2/followers",
+                      "host": ["{{base_url}}"],
+                      "path": ["v1", "users", "2", "followers"]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"data\": [\n    { \"id\": 1, \"username\": \"alice\", \"name\": \"Alice Smith\", \"avatar_url\": null }\n  ],\n  \"links\": { \"first\": null, \"last\": null, \"prev\": null, \"next\": null },\n  \"meta\": {\n    \"path\": \"http://telm.test/api/v1/users/2/followers\",\n    \"per_page\": 20,\n    \"next_cursor\": null,\n    \"prev_cursor\": null\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Get Following",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+                "method": "GET",
+                "header": [{ "key": "Accept", "value": "application/json" }],
+                "url": {
+                  "raw": "{{base_url}}/v1/users/{{user_id}}/following",
+                  "host": ["{{base_url}}"],
+                  "path": ["v1", "users", "{{user_id}}", "following"]
+                },
+                "description": "Cursor-paginated list of users this user follows."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [{ "key": "Accept", "value": "application/json" }],
+                    "url": {
+                      "raw": "{{base_url}}/v1/users/1/following",
+                      "host": ["{{base_url}}"],
+                      "path": ["v1", "users", "1", "following"]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"data\": [\n    { \"id\": 2, \"username\": \"bob\", \"name\": \"Bob Jones\", \"avatar_url\": null }\n  ],\n  \"links\": { \"first\": null, \"last\": null, \"prev\": null, \"next\": null },\n  \"meta\": {\n    \"path\": \"http://telm.test/api/v1/users/1/following\",\n    \"per_page\": 20,\n    \"next_cursor\": null,\n    \"prev_cursor\": null\n  }\n}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Feed",
+          "item": [
+            {
+              "name": "Get Feed",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+                "method": "GET",
+                "header": [{ "key": "Accept", "value": "application/json" }],
+                "url": {
+                  "raw": "{{base_url}}/v1/feed",
+                  "host": ["{{base_url}}"],
+                  "path": ["v1", "feed"],
+                  "query": [{ "key": "cursor", "value": "", "disabled": true }]
+                },
+                "description": "Reverse-chronological posts from accounts you follow. Excludes your own posts. Cursor-paginated — pass `meta.next_cursor` back as the `cursor` query param for the next page."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [{ "key": "Accept", "value": "application/json" }],
+                    "url": {
+                      "raw": "{{base_url}}/v1/feed",
+                      "host": ["{{base_url}}"],
+                      "path": ["v1", "feed"]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"caption\": \"Found a weird bug\",\n      \"status\": \"ready\",\n      \"user\": { \"id\": 2, \"username\": \"bob\", \"name\": \"Bob Jones\", \"avatar_url\": null },\n      \"media\": [\n        {\n          \"id\": 1,\n          \"position\": 0,\n          \"url\": \"http://telm.test/storage/posts/1/c3ce41ef-....-thumb.webp\",\n          \"original_url\": \"http://telm.test/storage/posts/1/c3ce41ef-....jpg\",\n          \"width\": 1080,\n          \"height\": 1920,\n          \"status\": \"ready\"\n        }\n      ],\n      \"likes_count\": 0,\n      \"comments_count\": 0,\n      \"is_liked\": false,\n      \"created_at\": \"2026-07-05T20:15:05.000000Z\"\n    }\n  ],\n  \"links\": {\n    \"first\": null,\n    \"last\": null,\n    \"prev\": null,\n    \"next\": \"http://telm.test/api/v1/feed?cursor=eyJpZCI6MSwiX3BvaW50c1RvTmV4dEl0ZW1zIjpmYWxzZX0\"\n  },\n  \"meta\": {\n    \"path\": \"http://telm.test/api/v1/feed\",\n    \"per_page\": 15,\n    \"next_cursor\": \"eyJpZCI6MSwiX3BvaW50c1RvTmV4dEl0ZW1zIjpmYWxzZX0\",\n    \"prev_cursor\": null\n  }\n}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Posts",
+          "item": [
+            {
+              "name": "Create Post",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_b}}", "type": "string" }] },
+                "method": "POST",
+                "header": [{ "key": "Accept", "value": "application/json" }],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    { "key": "caption", "value": "Found a weird bug", "type": "text" },
+                    { "key": "images[]", "type": "file", "src": [] },
+                    { "key": "images[]", "type": "file", "src": [] }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/v1/posts",
+                  "host": ["{{base_url}}"],
+                  "path": ["v1", "posts"]
+                },
+                "description": "Sent as Bob so Alice has something to see once she follows him. 1–10 images, each mime jpeg/png/webp, ≤ 10MB, min 200x200. The post is visible immediately with `original_url`; `status` flips to `ready` (and `url` switches to the generated thumbnail) once the queue processes each image. Rate limited to 10 requests/min."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 201) {",
+                      "    pm.collectionVariables.set('post_id', pm.response.json().data.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "201 Created (thumbnail still processing)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [{ "key": "Accept", "value": "application/json" }],
+                    "url": {
+                      "raw": "{{base_url}}/v1/posts",
+                      "host": ["{{base_url}}"],
+                      "path": ["v1", "posts"]
+                    }
+                  },
+                  "status": "Created",
+                  "code": 201,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"data\": {\n    \"id\": 1,\n    \"caption\": \"Found a weird bug\",\n    \"status\": \"processing\",\n    \"user\": { \"id\": 2, \"username\": \"bob\", \"name\": \"Bob Jones\", \"avatar_url\": null },\n    \"media\": [\n      {\n        \"id\": 1,\n        \"position\": 0,\n        \"url\": \"http://telm.test/storage/posts/1/c3ce41ef-....jpg\",\n        \"original_url\": \"http://telm.test/storage/posts/1/c3ce41ef-....jpg\",\n        \"width\": 1080,\n        \"height\": 1920,\n        \"status\": \"pending\"\n      },\n      {\n        \"id\": 2,\n        \"position\": 1,\n        \"url\": \"http://telm.test/storage/posts/1/d78e23d2-....jpg\",\n        \"original_url\": \"http://telm.test/storage/posts/1/d78e23d2-....jpg\",\n        \"width\": 1080,\n        \"height\": 1920,\n        \"status\": \"pending\"\n      }\n    ],\n    \"likes_count\": 0,\n    \"comments_count\": 0,\n    \"is_liked\": false,\n    \"created_at\": \"2026-07-05T20:15:05.000000Z\"\n  }\n}"
+                },
+                {
+                  "name": "422 Unprocessable Entity (too many images)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [{ "key": "Accept", "value": "application/json" }],
+                    "url": {
+                      "raw": "{{base_url}}/v1/posts",
+                      "host": ["{{base_url}}"],
+                      "path": ["v1", "posts"]
+                    }
+                  },
+                  "status": "Unprocessable Entity",
+                  "code": 422,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"message\": \"The images field must not have more than 10 items.\",\n  \"errors\": {\n    \"images\": [\"The images field must not have more than 10 items.\"]\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Get Post",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+                "method": "GET",
+                "header": [{ "key": "Accept", "value": "application/json" }],
+                "url": {
+                  "raw": "{{base_url}}/v1/posts/{{post_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["v1", "posts", "{{post_id}}"]
+                },
+                "description": "Poll this after Create Post — once the queue worker runs, `status` becomes `ready` and each media's `url` switches from the original to its generated thumbnail."
+              },
+              "response": [
+                {
+                  "name": "200 OK (ready, after like + comment)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [{ "key": "Accept", "value": "application/json" }],
+                    "url": {
+                      "raw": "{{base_url}}/v1/posts/1",
+                      "host": ["{{base_url}}"],
+                      "path": ["v1", "posts", "1"]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"data\": {\n    \"id\": 1,\n    \"caption\": \"Found a weird bug\",\n    \"status\": \"ready\",\n    \"user\": { \"id\": 2, \"username\": \"bob\", \"name\": \"Bob Jones\", \"avatar_url\": null },\n    \"media\": [\n      {\n        \"id\": 1,\n        \"position\": 0,\n        \"url\": \"http://telm.test/storage/posts/1/c3ce41ef-....-thumb.webp\",\n        \"original_url\": \"http://telm.test/storage/posts/1/c3ce41ef-....jpg\",\n        \"width\": 1080,\n        \"height\": 1920,\n        \"status\": \"ready\"\n      },\n      {\n        \"id\": 2,\n        \"position\": 1,\n        \"url\": \"http://telm.test/storage/posts/1/d78e23d2-....-thumb.webp\",\n        \"original_url\": \"http://telm.test/storage/posts/1/d78e23d2-....jpg\",\n        \"width\": 1080,\n        \"height\": 1920,\n        \"status\": \"ready\"\n      }\n    ],\n    \"likes_count\": 1,\n    \"comments_count\": 1,\n    \"is_liked\": true,\n    \"created_at\": \"2026-07-05T20:15:05.000000Z\"\n  }\n}"
+                },
+                {
+                  "name": "404 Not Found",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [{ "key": "Accept", "value": "application/json" }],
+                    "url": {
+                      "raw": "{{base_url}}/v1/posts/999999",
+                      "host": ["{{base_url}}"],
+                      "path": ["v1", "posts", "999999"]
+                    }
+                  },
+                  "status": "Not Found",
+                  "code": 404,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"message\": \"No query results for model [App\\\\Models\\\\Post] 999999\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "Delete Post",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token_b}}", "type": "string" }] },
+                "method": "DELETE",
+                "header": [{ "key": "Accept", "value": "application/json" }],
+                "url": {
+                  "raw": "{{base_url}}/v1/posts/{{post_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["v1", "posts", "{{post_id}}"]
+                },
+                "description": "Only the post's author may delete it. Deletes the post's media files from disk. Run this last, as it removes `{{post_id}}` used by earlier requests."
+              },
+              "response": [
+                {
+                  "name": "204 No Content",
+                  "originalRequest": {
+                    "method": "DELETE",
+                    "header": [{ "key": "Accept", "value": "application/json" }],
+                    "url": {
+                      "raw": "{{base_url}}/v1/posts/1",
+                      "host": ["{{base_url}}"],
+                      "path": ["v1", "posts", "1"]
+                    }
+                  },
+                  "status": "No Content",
+                  "code": 204,
+                  "_postman_previewlanguage": "json",
+                  "header": [],
+                  "body": ""
+                },
+                {
+                  "name": "403 Forbidden (not the owner)",
+                  "originalRequest": {
+                    "method": "DELETE",
+                    "header": [{ "key": "Accept", "value": "application/json" }],
+                    "url": {
+                      "raw": "{{base_url}}/v1/posts/1",
+                      "host": ["{{base_url}}"],
+                      "path": ["v1", "posts", "1"]
+                    }
+                  },
+                  "status": "Forbidden",
+                  "code": 403,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"message\": \"This action is unauthorized.\"\n}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Likes",
+          "item": [
+            {
+              "name": "Like Post",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+                "method": "POST",
+                "header": [{ "key": "Accept", "value": "application/json" }],
+                "url": {
+                  "raw": "{{base_url}}/v1/posts/{{post_id}}/like",
+                  "host": ["{{base_url}}"],
+                  "path": ["v1", "posts", "{{post_id}}", "like"]
+                },
+                "description": "Idempotent — liking an already-liked post just returns the current count."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [{ "key": "Accept", "value": "application/json" }],
+                    "url": {
+                      "raw": "{{base_url}}/v1/posts/1/like",
+                      "host": ["{{base_url}}"],
+                      "path": ["v1", "posts", "1", "like"]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"likes_count\": 1\n}"
+                }
+              ]
+            },
+            {
+              "name": "Unlike Post",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+                "method": "DELETE",
+                "header": [{ "key": "Accept", "value": "application/json" }],
+                "url": {
+                  "raw": "{{base_url}}/v1/posts/{{post_id}}/like",
+                  "host": ["{{base_url}}"],
+                  "path": ["v1", "posts", "{{post_id}}", "like"]
+                },
+                "description": "Idempotent — unliking a post you haven't liked just returns the current count."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "DELETE",
+                    "header": [{ "key": "Accept", "value": "application/json" }],
+                    "url": {
+                      "raw": "{{base_url}}/v1/posts/1/like",
+                      "host": ["{{base_url}}"],
+                      "path": ["v1", "posts", "1", "like"]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"likes_count\": 0\n}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Comments",
+          "item": [
+            {
+              "name": "List Comments",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+                "method": "GET",
+                "header": [{ "key": "Accept", "value": "application/json" }],
+                "url": {
+                  "raw": "{{base_url}}/v1/posts/{{post_id}}/comments",
+                  "host": ["{{base_url}}"],
+                  "path": ["v1", "posts", "{{post_id}}", "comments"],
+                  "query": [{ "key": "cursor", "value": "", "disabled": true }]
+                },
+                "description": "Cursor-paginated, oldest first."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [{ "key": "Accept", "value": "application/json" }],
+                    "url": {
+                      "raw": "{{base_url}}/v1/posts/1/comments",
+                      "host": ["{{base_url}}"],
+                      "path": ["v1", "posts", "1", "comments"]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"body\": \"lol classic NPE\",\n      \"user\": { \"id\": 1, \"username\": \"alice\", \"name\": \"Alice Smith\", \"avatar_url\": null },\n      \"created_at\": \"2026-07-05T20:16:35.000000Z\"\n    }\n  ],\n  \"links\": { \"first\": null, \"last\": null, \"prev\": null, \"next\": null },\n  \"meta\": {\n    \"path\": \"http://telm.test/api/v1/posts/1/comments\",\n    \"per_page\": 20,\n    \"next_cursor\": null,\n    \"prev_cursor\": null\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Add Comment",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+                "method": "POST",
+                "header": [
+                  { "key": "Accept", "value": "application/json" },
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"body\": \"lol classic NPE\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{base_url}}/v1/posts/{{post_id}}/comments",
+                  "host": ["{{base_url}}"],
+                  "path": ["v1", "posts", "{{post_id}}", "comments"]
+                },
+                "description": "Rate limited to 30 requests/min."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 201) {",
+                      "    pm.collectionVariables.set('comment_id', pm.response.json().data.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "201 Created",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [{ "key": "Accept", "value": "application/json" }],
+                    "url": {
+                      "raw": "{{base_url}}/v1/posts/1/comments",
+                      "host": ["{{base_url}}"],
+                      "path": ["v1", "posts", "1", "comments"]
+                    }
+                  },
+                  "status": "Created",
+                  "code": 201,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"data\": {\n    \"id\": 1,\n    \"body\": \"lol classic NPE\",\n    \"user\": { \"id\": 1, \"username\": \"alice\", \"name\": \"Alice Smith\", \"avatar_url\": null },\n    \"created_at\": \"2026-07-05T20:16:35.000000Z\"\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Delete Comment",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+                "method": "DELETE",
+                "header": [{ "key": "Accept", "value": "application/json" }],
+                "url": {
+                  "raw": "{{base_url}}/v1/comments/{{comment_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["v1", "comments", "{{comment_id}}"]
+                },
+                "description": "The comment's author, or the owner of the post it's on, may delete it."
+              },
+              "response": [
+                {
+                  "name": "204 No Content",
+                  "originalRequest": {
+                    "method": "DELETE",
+                    "header": [{ "key": "Accept", "value": "application/json" }],
+                    "url": {
+                      "raw": "{{base_url}}/v1/comments/1",
+                      "host": ["{{base_url}}"],
+                      "path": ["v1", "comments", "1"]
+                    }
+                  },
+                  "status": "No Content",
+                  "code": 204,
+                  "_postman_previewlanguage": "json",
+                  "header": [],
+                  "body": ""
+                },
+                {
+                  "name": "403 Forbidden",
+                  "originalRequest": {
+                    "method": "DELETE",
+                    "header": [{ "key": "Accept", "value": "application/json" }],
+                    "url": {
+                      "raw": "{{base_url}}/v1/comments/1",
+                      "host": ["{{base_url}}"],
+                      "path": ["v1", "comments", "1"]
+                    }
+                  },
+                  "status": "Forbidden",
+                  "code": 403,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"message\": \"This action is unauthorized.\"\n}"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

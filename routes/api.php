@@ -15,3 +15,5 @@ Route::prefix('telemetry')->group(function () {
     Route::post('events', [TelemetryController::class, 'events'])
         ->middleware(['auth:sanctum', 'throttle:120,1']);
 });
+
+Route::prefix('v1')->group(base_path('routes/api_v1.php'));

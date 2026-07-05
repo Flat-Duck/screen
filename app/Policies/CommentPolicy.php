@@ -1,0 +1,15 @@
+<?php
+
+namespace App\Policies;
+
+use App\Models\Comment;
+use App\Models\User;
+
+class CommentPolicy
+{
+    /** The comment's author, or the owner of the post it's on, may delete it. */
+    public function delete(User $user, Comment $comment): bool
+    {
+        return $user->id === $comment->user_id || $user->id === $comment->post->user_id;
+    }
+}
