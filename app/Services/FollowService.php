@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Notifications\NewFollowerNotification;
 use Illuminate\Contracts\Pagination\CursorPaginator;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 use Illuminate\Validation\ValidationException;
@@ -20,6 +21,7 @@ class FollowService
 
         if (! $follower->following()->where('followee_id', $target->id)->exists()) {
             $follower->following()->attach($target->id);
+            $target->notify(new NewFollowerNotification($follower));
         }
     }
 

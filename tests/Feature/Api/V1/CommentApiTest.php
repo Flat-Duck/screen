@@ -69,4 +69,42 @@ class CommentApiTest extends TestCase
         $response->assertNoContent();
         $this->assertDatabaseCount('comments', 0);
     }
+
+    public function test_listing_comments_returns_them_oldest_first_and_cursor_paginated(): void
+    {
+        $post = Post::factory()->create();
+        $first = Comment::factory()->create(['post_id' => $post->id, 'created_at' => now()->subMinutes(2)]);
+        $second = Comment::factory()->create(['post_id' => $post->id, 'created_at' => now()->subMinute()]);
+        Sanctum::actingAs(User::factory()->create());
+
+        $response = $this->getJson("/api/v1/posts/{$post->id}/comments");
+
+        $response->assertOk();
+        $response->assertJsonStructure(['data', 'links', 'meta']);
+        $response->assertJsonPath('data.0.id', $first->id);
+        $response->assertJsonPath('data.1.id', $second->id);
+    }
+
+    public function test_listing_comments_for_a_missing_post_returns_404(): void
+    {
+        Sanctum::actingAs(User::factory()->create());
+
+        $response = $this->getJson('/api/v1/posts/999999/comments');
+
+        $response->assertNotFound();
+    }
+
+    public function test_comment_resource_returns_the_full_expected_shape(): void
+    {
+        $user = User::factory()->create();
+        $post = Post::factory()->create();
+        Sanctum::actingAs($user);
+
+        $response = $this->postJson("/api/v1/posts/{$post->id}/comments", ['body' => 'Nice catch!']);
+
+        $response->assertCreated();
+        $response->assertJsonStructure([
+            'data' => ['id', 'body', 'user' => ['id', 'username', 'name', 'avatar_url'], 'created_at'],
+        ]);
+    }
 }

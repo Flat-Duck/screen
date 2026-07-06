@@ -89,3 +89,11 @@ controllers. Both use `#[Url]`-bound public properties for search/sort state and
   prohibits destructive DB commands in production.
 - `Password::defaults()` only enforces the strict policy (12 chars, mixed case, symbols,
   uncompromised) in production; local/testing has no extra password rules beyond Fortify's base.
+- No CORS config exists, intentionally — the only `/api/v1/*` consumer is a native Android app,
+  and CORS is a browser-only enforcement mechanism. If a web client (admin panel, marketing site,
+  etc.) is ever added, that's the trigger to add `config/cors.php` — don't add it speculatively.
+- `routes/console.php` schedules `posts:prune-deleted` (daily) to permanently purge soft-deleted
+  `Post`s + their media files past `config('social.post_retention_days')` (30 by default). This app
+  previously had zero scheduled tasks, so any deploy environment needs a
+  `* * * * * php artisan schedule:run` cron entry for this to actually fire — same operational
+  category as `composer dev`'s queue worker, but a separate process.

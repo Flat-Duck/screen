@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Like;
 use App\Models\Post;
 use App\Models\User;
+use App\Notifications\PostLikedNotification;
 use Illuminate\Support\Collection;
 
 class LikeService
@@ -12,10 +13,14 @@ class LikeService
     /** Idempotent — backed by the (post_id, user_id) unique constraint as a race-condition backstop. */
     public function like(User $user, Post $post): void
     {
-        Like::query()->firstOrCreate([
+        $like = Like::query()->firstOrCreate([
             'post_id' => $post->id,
             'user_id' => $user->id,
         ]);
+
+        if ($like->wasRecentlyCreated && $user->isNot($post->user)) {
+            $post->user->notify(new PostLikedNotification($post, $user));
+        }
     }
 
     /** Idempotent — unliking a post you haven't liked is a no-op. */

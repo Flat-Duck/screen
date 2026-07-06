@@ -61,11 +61,22 @@ class PostService
     }
 
     /**
-     * Deletes each media's files from disk before removing DB rows — the FK's cascade delete
-     * stays only as a referential-integrity backstop, since a raw cascade wouldn't fire
-     * Eloquent events and would leak orphaned files.
+     * Soft-deletes the post only — files stay on disk so a soft-deleted post remains
+     * recoverable/inspectable until {@see purgePost()} runs it past the retention window.
      */
     public function deletePost(Post $post): void
+    {
+        $post->delete();
+    }
+
+    /**
+     * Permanently removes a (soft-deleted) post: deletes each media's files from disk, then
+     * force-deletes the DB rows. The FK's cascade delete stays only as a referential-integrity
+     * backstop, since a raw cascade wouldn't fire Eloquent events and would leak orphaned files.
+     *
+     * Only called by the scheduled prune command — never directly from a controller.
+     */
+    public function purgePost(Post $post): void
     {
         $disk = Storage::disk(config('social.media_disk'));
 
@@ -73,7 +84,7 @@ class PostService
             $disk->delete(array_values(array_filter([$media->original_path, $media->thumbnail_path])));
         }
 
-        $post->delete();
+        $post->forceDelete();
     }
 
     /** @return CursorPaginator<int, Post> */

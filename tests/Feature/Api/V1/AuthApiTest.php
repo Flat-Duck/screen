@@ -93,4 +93,32 @@ class AuthApiTest extends TestCase
 
         $response->assertForbidden();
     }
+
+    public function test_registering_with_a_device_name_names_the_token(): void
+    {
+        $this->postJson('/api/v1/auth/register', $this->registerPayload(['device_name' => 'pixel-8']))
+            ->assertCreated();
+
+        $this->assertDatabaseHas('personal_access_tokens', ['name' => 'pixel-8']);
+    }
+
+    public function test_registering_without_a_device_name_defaults_the_token_name(): void
+    {
+        $this->postJson('/api/v1/auth/register', $this->registerPayload())->assertCreated();
+
+        $this->assertDatabaseHas('personal_access_tokens', ['name' => 'mobile']);
+    }
+
+    public function test_login_with_a_device_name_names_the_token(): void
+    {
+        User::factory()->create(['username' => 'ada', 'password' => 'password123!']);
+
+        $this->postJson('/api/v1/auth/login', [
+            'login' => 'ada',
+            'password' => 'password123!',
+            'device_name' => 'pixel-8',
+        ])->assertOk();
+
+        $this->assertDatabaseHas('personal_access_tokens', ['name' => 'pixel-8']);
+    }
 }

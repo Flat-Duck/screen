@@ -63,4 +63,21 @@ class FollowApiTest extends TestCase
         $response->assertJsonCount(2, 'data');
         $response->assertJsonStructure(['data', 'links', 'meta']);
     }
+
+    public function test_following_list_is_cursor_paginated(): void
+    {
+        $user = User::factory()->create();
+        $followeeOne = User::factory()->create();
+        $followeeTwo = User::factory()->create();
+
+        $user->following()->attach([$followeeOne->id, $followeeTwo->id]);
+
+        Sanctum::actingAs($user);
+
+        $response = $this->getJson("/api/v1/users/{$user->id}/following");
+
+        $response->assertOk();
+        $response->assertJsonCount(2, 'data');
+        $response->assertJsonStructure(['data', 'links', 'meta']);
+    }
 }
