@@ -39,6 +39,12 @@ class AuthService
             ->orWhere('username', $credentials['login'])
             ->first();
 
+        if ($user && $user->password === null) {
+            throw ValidationException::withMessages([
+                'login' => __('This account signs in with Google, Facebook, or Apple. Continue with one of those, or set a password from your profile first.'),
+            ]);
+        }
+
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {
             throw ValidationException::withMessages([
                 'login' => __('auth.failed'),
@@ -54,5 +60,16 @@ class AuthService
     public function logout(User $user): void
     {
         $user->currentAccessToken()->delete();
+    }
+
+    /**
+     * Sets a password on an account that may not have had one before (a social-only
+     * sign-up completing profile setup) or is changing an existing one — the caller
+     * (SetPasswordRequest) has already confirmed `current_password` when one exists.
+     */
+    public function setPassword(User $user, string $password): void
+    {
+        $user->password = $password;
+        $user->save();
     }
 }

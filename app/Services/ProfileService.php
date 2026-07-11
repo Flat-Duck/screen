@@ -11,10 +11,14 @@ class ProfileService
     public function __construct(private readonly ImageProcessingService $images) {}
 
     /**
-     * @param  array{bio?: string|null, avatar?: UploadedFile|null}  $data
+     * @param  array{username?: string, bio?: string|null, avatar?: UploadedFile|null}  $data
      */
     public function updateProfile(User $user, array $data): User
     {
+        if (array_key_exists('username', $data)) {
+            $user->username = $data['username'];
+        }
+
         if (array_key_exists('bio', $data)) {
             $user->bio = $data['bio'];
         }

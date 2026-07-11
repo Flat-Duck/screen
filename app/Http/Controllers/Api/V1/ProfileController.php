@@ -18,6 +18,7 @@ class ProfileController extends Controller
 
         $user = $this->profiles->updateProfile($user, $request->validated());
 
-        return new UserResource($user->loadCount(['posts', 'followers', 'following']));
+        return (new UserResource($user->loadCount(['posts', 'followers', 'following'])))
+            ->additional(['profile_completion' => $user->profileCompletionStatus()]);
     }
 }

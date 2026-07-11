@@ -14,9 +14,13 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('auth/register', [AuthController::class, 'register'])->middleware('throttle:auth-register');
 Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:auth-login');
+Route::post('auth/social/google', [AuthController::class, 'google'])->middleware('throttle:auth-social');
+Route::post('auth/social/facebook', [AuthController::class, 'facebook'])->middleware('throttle:auth-social');
+Route::post('auth/social/apple', [AuthController::class, 'apple'])->middleware('throttle:auth-social');
 
 Route::middleware(['auth:sanctum', 'auth.user'])->group(function () {
     Route::post('auth/logout', [AuthController::class, 'logout'])->middleware('throttle:auth-logout');
+    Route::post('auth/password', [AuthController::class, 'setPassword'])->middleware('throttle:auth-password');
 
     Route::get('feed', [FeedController::class, 'index'])->middleware('throttle:reads');
 

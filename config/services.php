@@ -35,4 +35,22 @@ return [
         ],
     ],
 
+    // Audience ("aud" claim) the Android app's Google ID token must have — the OAuth
+    // "Web application" client ID from Google Cloud Console, not the Android client ID
+    // (see GoogleSignInOptions.Builder#requestIdToken on the client).
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+    ],
+
+    'facebook' => [
+        'app_id' => env('FACEBOOK_APP_ID'),
+        'app_secret' => env('FACEBOOK_APP_SECRET'),
+    ],
+
+    // Audience ("aud" claim) the Apple identity token must have — the Services ID
+    // (or app bundle ID) configured for Sign in with Apple.
+    'apple' => [
+        'client_id' => env('APPLE_CLIENT_ID'),
+    ],
+
 ];

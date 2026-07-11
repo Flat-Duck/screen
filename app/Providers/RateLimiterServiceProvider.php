@@ -37,6 +37,10 @@ class RateLimiterServiceProvider extends ServiceProvider
 
         RateLimiter::for('auth-logout', fn (Request $request) => $this->byUser($request, 30));
 
+        RateLimiter::for('auth-social', fn (Request $request) => Limit::perMinute(10)->by($request->ip()));
+
+        RateLimiter::for('auth-password', fn (Request $request) => $this->byUser($request, 10));
+
         RateLimiter::for('reads', fn (Request $request) => $this->byUser($request, 60));
 
         RateLimiter::for('writes-moderate', fn (Request $request) => $this->byUser($request, 30));
