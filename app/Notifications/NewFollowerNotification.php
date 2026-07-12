@@ -40,4 +40,9 @@ class NewFollowerNotification extends Notification implements FcmNotification, S
             'data' => ['type' => 'follow', 'user_id' => (string) $this->follower->id],
         ];
     }
+
+    public function settingsKey(): string
+    {
+        return 'follows';
+    }
 }

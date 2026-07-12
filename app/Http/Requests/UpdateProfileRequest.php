@@ -29,6 +29,7 @@ class UpdateProfileRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'name' => ['sometimes', 'string', 'max:255'],
             'username' => [
                 'sometimes', 'string', 'min:3', 'max:30', 'alpha_dash',
                 Rule::unique('users', 'username')->ignore($this->user()->id),

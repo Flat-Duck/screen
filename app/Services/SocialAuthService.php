@@ -12,7 +12,10 @@ use Illuminate\Validation\ValidationException;
 
 class SocialAuthService
 {
-    public function __construct(private readonly ImageProcessingService $images) {}
+    public function __construct(
+        private readonly ImageProcessingService $images,
+        private readonly AuthService $auth,
+    ) {}
 
     /**
      * Finds the user behind a verified provider identity, creating one on first sight —
@@ -20,7 +23,11 @@ class SocialAuthService
      * identity, never a separate register-then-login pair. A verified email matching an
      * existing account links this provider to it instead of creating a duplicate.
      *
-     * @return array{user: User, token: string, is_new_account: bool}
+     * A newly-created account can never have 2FA enabled yet, so the check below only
+     * ever bites for an existing account being logged into — matches AuthService::login's
+     * same short-circuit-before-token-issuance behavior.
+     *
+     * @return array{user: User, token: string, is_new_account: bool}|array{requires_two_factor: true, two_factor_token: string}
      */
     public function loginOrRegister(SocialUserPayload $payload, string $deviceName): array
     {
@@ -64,6 +71,10 @@ class SocialAuthService
 
             return $user;
         });
+
+        if ($user->hasEnabledTwoFactorAuthentication()) {
+            return $this->auth->twoFactorChallengeResponse($user);
+        }
 
         $token = $user->createToken($deviceName)->plainTextToken;
 

@@ -12,6 +12,8 @@ Artisan::command('inspire', function () {
 // this app previously had no scheduled tasks at all.
 Schedule::command('posts:prune-deleted')->daily();
 
+Schedule::command('users:prune-deleted')->daily();
+
 // Recomputes the trending/discovery pool FeedService blends into first-page feed loads.
 // Requires Redis; safe to skip a run or have Redis blip — the published set carries its
 // own safety TTL (config('social.trending.safety_ttl_minutes')) and the feed fails open.

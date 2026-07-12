@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\LikeService;
 use App\Services\PostService;
 use App\Services\ProfileService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
@@ -39,5 +40,10 @@ class UserController extends Controller
         $this->likes->annotateIsLiked($posts->getCollection(), $viewer);
 
         return PostResource::collection($posts);
+    }
+
+    public function topTags(User $user): JsonResponse
+    {
+        return response()->json(['data' => $this->posts->topHashtagsFor($user)]);
     }
 }

@@ -8,6 +8,7 @@ use App\Http\Requests\GoogleLoginRequest;
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RegisterUserRequest;
 use App\Http\Requests\SetPasswordRequest;
+use App\Http\Requests\TwoFactorChallengeRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\AuthService;
@@ -47,6 +48,10 @@ class AuthController extends Controller
             $request->string('device_name', 'mobile')->toString(),
         );
 
+        if (isset($result['requires_two_factor'])) {
+            return response()->json($result);
+        }
+
         return response()->json([
             'user' => new UserResource($result['user']->loadCount(['posts', 'followers', 'following'])),
             'token' => $result['token'],
@@ -82,6 +87,26 @@ class AuthController extends Controller
         return $this->respondToSocialLogin($payload, $request->string('device_name', 'mobile')->toString());
     }
 
+    /**
+     * Completes a login that stopped at `{"requires_two_factor": true, ...}` — the
+     * second step of the stateless two-step login (see AuthService::twoFactorChallengeResponse()).
+     */
+    public function twoFactorChallenge(TwoFactorChallengeRequest $request): JsonResponse
+    {
+        $result = $this->auth->completeTwoFactorChallenge(
+            $request->string('two_factor_token')->toString(),
+            $request->input('code'),
+            $request->input('recovery_code'),
+            $request->string('device_name', 'mobile')->toString(),
+        );
+
+        return response()->json([
+            'user' => new UserResource($result['user']->loadCount(['posts', 'followers', 'following'])),
+            'token' => $result['token'],
+            'profile_completion' => $result['user']->profileCompletionStatus(),
+        ]);
+    }
+
     public function setPassword(SetPasswordRequest $request): JsonResponse
     {
         /** @var User $user */
@@ -107,6 +132,10 @@ class AuthController extends Controller
     private function respondToSocialLogin(SocialUserPayload $payload, string $deviceName): JsonResponse
     {
         $result = $this->socialAuth->loginOrRegister($payload, $deviceName);
+
+        if (isset($result['requires_two_factor'])) {
+            return response()->json($result);
+        }
 
         return response()->json([
             'user' => new UserResource($result['user']->loadCount(['posts', 'followers', 'following'])),

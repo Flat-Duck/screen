@@ -6,6 +6,7 @@ use App\Models\DevicePushToken;
 use App\Models\User;
 use App\Notifications\Contracts\FcmNotification;
 use App\Services\Fcm\FcmClient;
+use App\Services\SettingsService;
 use Illuminate\Notifications\Notification;
 use Throwable;
 
@@ -20,7 +21,10 @@ use Throwable;
  */
 class FcmChannel
 {
-    public function __construct(private readonly FcmClient $fcm) {}
+    public function __construct(
+        private readonly FcmClient $fcm,
+        private readonly SettingsService $settings,
+    ) {}
 
     public function send(object $notifiable, Notification $notification): void
     {
@@ -29,6 +33,10 @@ class FcmChannel
         }
 
         if (! $this->fcm->isConfigured()) {
+            return;
+        }
+
+        if (! $this->settings->pushNotificationsEnabledFor($notifiable, $notification->settingsKey())) {
             return;
         }
 

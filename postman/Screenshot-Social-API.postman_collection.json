@@ -917,6 +917,119 @@
                   "body": "{\n  \"message\": \"The provided password does not match your current password.\",\n  \"errors\": {\n    \"current_password\": [\n      \"The provided password does not match your current password.\"\n    ]\n  }\n}"
                 }
               ]
+            },
+            {
+              "name": "Two-Factor Challenge",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/v1/auth/two-factor-challenge",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "auth",
+                    "two-factor-challenge"
+                  ]
+                },
+                "description": "Completes a login that stopped at {\"requires_two_factor\": true, \"two_factor_token\": \"...\"} from Login/Continue with Google/Facebook/Apple. Send either `code` (TOTP) or `recovery_code`, not both. `two_factor_token` expires after 5 minutes and is single-use. Unauthenticated \u2014 no bearer token exists yet at this point.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"two_factor_token\": \"{{two_factor_token}}\",\n  \"code\": \"123456\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/v1/auth/two-factor-challenge",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "auth",
+                        "two-factor-challenge"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"user\": { \"id\": 1, \"username\": \"jane\", \"...\": \"...\" },\n  \"token\": \"1|abcdef...\",\n  \"profile_completion\": { \"is_complete\": true, \"has_username\": true, \"has_password\": true, \"has_bio\": true, \"has_avatar\": true }\n}"
+                },
+                {
+                  "name": "422 Unprocessable Entity (invalid code)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/v1/auth/two-factor-challenge",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "auth",
+                        "two-factor-challenge"
+                      ]
+                    }
+                  },
+                  "status": "Unprocessable Entity",
+                  "code": 422,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"message\": \"The provided two factor authentication code was invalid.\",\n  \"errors\": { \"code\": [\"The provided two factor authentication code was invalid.\"] }\n}"
+                }
+              ]
             }
           ]
         },
@@ -946,6 +1059,11 @@
                 "body": {
                   "mode": "formdata",
                   "formdata": [
+                    {
+                      "key": "name",
+                      "value": "Jane Doe",
+                      "type": "text"
+                    },
                     {
                       "key": "bio",
                       "value": "Screenshot enthusiast \ud83d\udcf8",
@@ -978,7 +1096,7 @@
                     "profile"
                   ]
                 },
-                "description": "Both fields optional. Uploading a new avatar deletes the previous file from disk. Rate limited to 20 requests/min. Also accepts `username` (to complete a social sign-up's profile). Response includes `profile_completion`. Also accepts `birth_date` (`YYYY-MM-DD`, must be in the past) and `country_code` (ISO 3166-1 alpha-2, e.g. `EG`) \u2014 `birth_date` is only ever returned on your own profile (see Users > Get Profile), never on someone else's."
+                "description": "Both fields optional. Uploading a new avatar deletes the previous file from disk. Rate limited to 20 requests/min. Also accepts `name` (display name, editable after registration) and `username` (to complete a social sign-up's profile). Response includes `profile_completion`. Also accepts `birth_date` (`YYYY-MM-DD`, must be in the past) and `country_code` (ISO 3166-1 alpha-2, e.g. `EG`) \u2014 `birth_date` is only ever returned on your own profile (see Users > Get Profile), never on someone else's."
               },
               "response": [
                 {
@@ -1423,6 +1541,945 @@
           ]
         },
         {
+          "name": "Two-Factor",
+          "item": [
+            {
+              "name": "Get Status",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/v1/two-factor",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "two-factor"
+                  ]
+                },
+                "description": "Current two-factor status for the authenticated user."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/v1/two-factor",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "two-factor"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"enabled\": false\n}"
+                }
+              ]
+            },
+            {
+              "name": "Enable (start setup)",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/v1/two-factor",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "two-factor"
+                  ]
+                },
+                "description": "Starts 2FA setup. `current_password` only required if the account has a password set. Returns QR code + recovery codes in one response; 2FA isn't enabled yet until Confirm is called.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"current_password\": \"password123!\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/v1/two-factor",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "two-factor"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"qr_code_svg\": \"<svg>...</svg>\",\n  \"qr_code_url\": \"otpauth://totp/...\",\n  \"recovery_codes\": [\"aaaa-1111\", \"bbbb-2222\", \"... (8 total)\"]\n}"
+                }
+              ]
+            },
+            {
+              "name": "Confirm",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/v1/two-factor/confirm",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "two-factor",
+                    "confirm"
+                  ]
+                },
+                "description": "Confirms setup with a code from the authenticator app. 2FA becomes enabled on success.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"code\": \"123456\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/v1/two-factor/confirm",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "two-factor",
+                        "confirm"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"enabled\": true\n}"
+                }
+              ]
+            },
+            {
+              "name": "Disable",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/v1/two-factor",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "two-factor"
+                  ]
+                },
+                "description": "Disables 2FA and clears the secret/recovery codes. `current_password` only required if the account has a password set.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"current_password\": \"password123!\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [
+                {
+                  "name": "204 No Content",
+                  "originalRequest": {
+                    "method": "DELETE",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/v1/two-factor",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "two-factor"
+                      ]
+                    }
+                  },
+                  "status": "No Content",
+                  "code": 204,
+                  "_postman_previewlanguage": "json",
+                  "header": [],
+                  "body": ""
+                }
+              ]
+            },
+            {
+              "name": "Regenerate Recovery Codes",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/v1/two-factor/recovery-codes",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "two-factor",
+                    "recovery-codes"
+                  ]
+                },
+                "description": "Replaces the previous set of 8 recovery codes with a fresh set.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"current_password\": \"password123!\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/v1/two-factor/recovery-codes",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "two-factor",
+                        "recovery-codes"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"recovery_codes\": [\"cccc-3333\", \"dddd-4444\", \"... (8 total)\"]\n}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Account",
+          "item": [
+            {
+              "name": "Delete Account",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/v1/account",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "account"
+                  ]
+                },
+                "description": "Soft-deletes the account with a 30-day grace period and revokes every session immediately (including the one used for this request). `current_password` only required if the account has a password set. The account and its posts disappear from feeds/profiles/follow-lists for everyone else right away.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"current_password\": \"password123!\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [
+                {
+                  "name": "204 No Content",
+                  "originalRequest": {
+                    "method": "DELETE",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/v1/account",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "account"
+                      ]
+                    }
+                  },
+                  "status": "No Content",
+                  "code": 204,
+                  "_postman_previewlanguage": "json",
+                  "header": [],
+                  "body": ""
+                }
+              ]
+            },
+            {
+              "name": "Change Email",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/v1/account/email",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "account",
+                    "email"
+                  ]
+                },
+                "description": "Requests an email change. The live `email` field does NOT change until the user clicks the confirmation link mailed to the NEW address \u2014 there is no API call to complete this from the app itself.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"current_password\": \"password123!\",\n  \"email\": \"new@example.com\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/v1/account/email",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "account",
+                        "email"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"pending_email\": \"new@example.com\"\n}"
+                },
+                {
+                  "name": "422 Unprocessable Entity (email taken)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/v1/account/email",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "account",
+                        "email"
+                      ]
+                    }
+                  },
+                  "status": "Unprocessable Entity",
+                  "code": 422,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"message\": \"The email has already been taken.\",\n  \"errors\": { \"email\": [\"The email has already been taken.\"] }\n}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Connected Accounts",
+          "item": [
+            {
+              "name": "List Connected Accounts",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/v1/connected-accounts",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "connected-accounts"
+                  ]
+                },
+                "description": "Lists every social provider linked to the current account."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/v1/connected-accounts",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "connected-accounts"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"data\": [\n    { \"provider\": \"google\", \"avatar_url\": \"https://...\", \"connected_at\": \"2026-07-01T09:00:00.000000Z\" }\n  ]\n}"
+                }
+              ]
+            },
+            {
+              "name": "Unlink Provider",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/v1/connected-accounts/google",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "connected-accounts",
+                    "google"
+                  ]
+                },
+                "description": "Unlinks a provider (google/facebook/apple). Idempotent \u2014 unlinking an already-unlinked provider is a silent 204. Refused with 422 if it would leave the account with no way to sign in (no password + only linked provider)."
+              },
+              "response": [
+                {
+                  "name": "204 No Content",
+                  "originalRequest": {
+                    "method": "DELETE",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/v1/connected-accounts/google",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "connected-accounts",
+                        "google"
+                      ]
+                    }
+                  },
+                  "status": "No Content",
+                  "code": 204,
+                  "_postman_previewlanguage": "json",
+                  "header": [],
+                  "body": ""
+                },
+                {
+                  "name": "422 Unprocessable Entity (last sign-in method)",
+                  "originalRequest": {
+                    "method": "DELETE",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/v1/connected-accounts/google",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "connected-accounts",
+                        "google"
+                      ]
+                    }
+                  },
+                  "status": "Unprocessable Entity",
+                  "code": 422,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"message\": \"You must set a password before unlinking your only sign-in method.\",\n  \"errors\": { \"provider\": [\"You must set a password before unlinking your only sign-in method.\"] }\n}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Settings",
+          "item": [
+            {
+              "name": "Get Settings",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/v1/settings",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "settings"
+                  ]
+                },
+                "description": "Generic user settings, currently just push-notification toggles per category. Always returns all known keys with their effective value (defaulted to true)."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/v1/settings",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "settings"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"data\": {\n    \"notifications\": { \"likes\": true, \"comments\": true, \"follows\": true }\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Update Settings",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/v1/settings",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "settings"
+                  ]
+                },
+                "description": "Send only the keys you're changing \u2014 untouched keys/sub-keys are left as they were. Only gates push delivery; in-app/database notifications are unaffected.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"notifications\": {\n    \"likes\": false\n  }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/v1/settings",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "settings"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"data\": {\n    \"notifications\": { \"likes\": false, \"comments\": true, \"follows\": true }\n  }\n}"
+                }
+              ]
+            }
+          ]
+        },
+        {
           "name": "Users",
           "item": [
             {
@@ -1569,6 +2626,77 @@
                     }
                   ],
                   "body": "{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"caption\": \"Found a weird bug\",\n      \"status\": \"ready\",\n      \"user\": { \"id\": 2, \"username\": \"bob\", \"name\": \"Bob Jones\", \"avatar_url\": null },\n      \"media\": [\n        {\n          \"id\": 1,\n          \"position\": 0,\n          \"url\": \"http://telm.test/storage/posts/1/c3ce41ef-....-thumb.webp\",\n          \"original_url\": \"http://telm.test/storage/posts/1/c3ce41ef-....jpg\",\n          \"width\": 1080,\n          \"height\": 1920,\n          \"status\": \"ready\"\n        }\n      ],\n      \"likes_count\": 1,\n      \"comments_count\": 1,\n      \"is_liked\": true,\n      \"created_at\": \"2026-07-05T20:15:05.000000Z\"\n    }\n  ],\n  \"links\": {\n    \"first\": null,\n    \"last\": null,\n    \"prev\": null,\n    \"next\": null\n  },\n  \"meta\": {\n    \"path\": \"http://telm.test/api/v1/users/2/posts\",\n    \"per_page\": 12,\n    \"next_cursor\": null,\n    \"prev_cursor\": null\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Get Top Tags",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/v1/users/1/top-tags",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "users",
+                    "1",
+                    "top-tags"
+                  ]
+                },
+                "description": "This user's most-used hashtags across their own posts, most-used first. Parsed from `#word` tokens in post captions at creation time (Unicode-aware, so Arabic hashtags work too). Excludes soft-deleted posts."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/v1/users/1/top-tags",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "users",
+                        "1",
+                        "top-tags"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"data\": [\n    { \"name\": \"screenshot\", \"posts_count\": 12 },\n    { \"name\": \"bug\", \"posts_count\": 5 }\n  ]\n}"
                 }
               ]
             },

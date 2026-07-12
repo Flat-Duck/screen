@@ -48,4 +48,9 @@ class PostLikedNotification extends Notification implements FcmNotification, Sho
             ],
         ];
     }
+
+    public function settingsKey(): string
+    {
+        return 'likes';
+    }
 }

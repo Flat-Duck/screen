@@ -1,7 +1,9 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AccountController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CommentController;
+use App\Http\Controllers\Api\V1\ConnectedAccountController;
 use App\Http\Controllers\Api\V1\FeedController;
 use App\Http\Controllers\Api\V1\FollowController;
 use App\Http\Controllers\Api\V1\LikeController;
@@ -11,6 +13,8 @@ use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\PushTokenController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\SessionController;
+use App\Http\Controllers\Api\V1\SettingsController;
+use App\Http\Controllers\Api\V1\TwoFactorController;
 use App\Http\Controllers\Api\V1\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -20,9 +24,32 @@ Route::post('auth/social/google', [AuthController::class, 'google'])->middleware
 Route::post('auth/social/facebook', [AuthController::class, 'facebook'])->middleware('throttle:auth-social');
 Route::post('auth/social/apple', [AuthController::class, 'apple'])->middleware('throttle:auth-social');
 
+// Unauthenticated — completes a login that stopped at {"requires_two_factor": true, ...}
+// from auth/login or one of the auth/social/* endpoints above. IP-keyed rate limit
+// since there's no Sanctum-authenticated user yet at this point; this is the brute-force
+// surface for guessing a 6-digit TOTP code.
+Route::post('auth/two-factor-challenge', [AuthController::class, 'twoFactorChallenge'])->middleware('throttle:two-factor-challenge');
+
 Route::middleware(['auth:sanctum', 'auth.user'])->group(function () {
     Route::post('auth/logout', [AuthController::class, 'logout'])->middleware('throttle:auth-logout');
     Route::post('auth/password', [AuthController::class, 'setPassword'])->middleware('throttle:auth-password');
+
+    Route::delete('account', [AccountController::class, 'destroy'])->middleware('throttle:account-manage');
+    Route::post('account/email', [AccountController::class, 'changeEmail'])->middleware('throttle:account-manage');
+
+    Route::get('connected-accounts', [ConnectedAccountController::class, 'index'])->middleware('throttle:reads');
+    Route::delete('connected-accounts/{provider}', [ConnectedAccountController::class, 'destroy'])->middleware('throttle:account-manage');
+
+    Route::get('settings', [SettingsController::class, 'show'])->middleware('throttle:settings-manage');
+    Route::patch('settings', [SettingsController::class, 'update'])->middleware('throttle:settings-manage');
+
+    Route::get('two-factor', [TwoFactorController::class, 'show'])->middleware('throttle:two-factor-manage');
+    // Enable returns everything (QR + recovery codes) in this one response rather than
+    // Fortify's own multi-request web flow — see TwoFactorService::enable()'s doc comment.
+    Route::post('two-factor', [TwoFactorController::class, 'store'])->middleware('throttle:two-factor-manage');
+    Route::post('two-factor/confirm', [TwoFactorController::class, 'confirm'])->middleware('throttle:two-factor-manage');
+    Route::delete('two-factor', [TwoFactorController::class, 'destroy'])->middleware('throttle:two-factor-manage');
+    Route::post('two-factor/recovery-codes', [TwoFactorController::class, 'regenerateRecoveryCodes'])->middleware('throttle:two-factor-manage');
 
     Route::get('feed', [FeedController::class, 'index'])->middleware('throttle:reads');
 
@@ -37,6 +64,7 @@ Route::middleware(['auth:sanctum', 'auth.user'])->group(function () {
 
     Route::get('users/{user}', [UserController::class, 'show'])->middleware('throttle:reads');
     Route::get('users/{user}/posts', [UserController::class, 'posts'])->middleware('throttle:reads');
+    Route::get('users/{user}/top-tags', [UserController::class, 'topTags'])->middleware('throttle:reads');
 
     Route::post('users/{user}/follow', [FollowController::class, 'store'])->middleware('throttle:writes-moderate');
     Route::delete('users/{user}/follow', [FollowController::class, 'destroy'])->middleware('throttle:writes-moderate');

@@ -31,6 +31,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Account Retention
+    |--------------------------------------------------------------------------
+    |
+    | Mirrors post_retention_days above: a soft-deleted account (see AccountService)
+    | is recoverable via `users:restore {id}` until it's this many days old, at
+    | which point `users:prune-deleted` (scheduled daily) force-deletes it — cascading
+    | its posts/likes/comments/follows/social_accounts/device_push_tokens/passkeys at
+    | the DB level — and cleans up what the DB cascade can't (avatar file, post media
+    | files, its notifications inbox).
+    |
+    */
+
+    'account_retention_days' => env('SOCIAL_ACCOUNT_RETENTION_DAYS', 30),
+
+    /*
+    |--------------------------------------------------------------------------
     | Trending / Discovery
     |--------------------------------------------------------------------------
     |

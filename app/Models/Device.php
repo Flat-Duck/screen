@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\DeviceFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -15,7 +16,7 @@ use Laravel\Sanctum\HasApiTokens;
  */
 class Device extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\DeviceFactory> */
+    /** @use HasFactory<DeviceFactory> */
     use HasApiTokens, HasFactory;
 
     protected $fillable = [

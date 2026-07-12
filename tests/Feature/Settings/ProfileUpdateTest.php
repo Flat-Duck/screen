@@ -68,7 +68,10 @@ class ProfileUpdateTest extends TestCase
             ->assertHasNoErrors()
             ->assertRedirect('/');
 
-        $this->assertNull($user->fresh());
+        // $user->fresh() deliberately bypasses global scopes (including SoftDeletingScope
+        // — see Model::fresh()), so it still returns the row post-delete; assertSoftDeleted
+        // is the correct check now that User carries SoftDeletes (see AccountService).
+        $this->assertSoftDeleted($user);
         $this->assertFalse(auth()->check());
     }
 

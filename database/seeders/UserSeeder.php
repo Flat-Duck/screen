@@ -24,9 +24,9 @@ class UserSeeder extends Seeder
         ]);
 
         collect([
-            ['name' => 'Alice Nakamura', 'username' => 'alice', 'email' => 'alice@example.com','password' => bcrypt('123123')],
-            ['name' => 'Bob Sanderson', 'username' => 'bob', 'email' => 'bob@example.com','password'=> bcrypt('123123')],
-            ['name' => 'Carol Vasquez', 'username' => 'carol', 'email' => 'carol@example.com','password'=> bcrypt('123123')],
+            ['name' => 'Alice Nakamura', 'username' => 'alice', 'email' => 'alice@example.com', 'password' => bcrypt('123123')],
+            ['name' => 'Bob Sanderson', 'username' => 'bob', 'email' => 'bob@example.com', 'password' => bcrypt('123123')],
+            ['name' => 'Carol Vasquez', 'username' => 'carol', 'email' => 'carol@example.com', 'password' => bcrypt('123123')],
         ])->each(fn (array $attributes) => User::factory()->create([
             ...$attributes,
             'bio' => fake()->sentence(),

@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\Pivot;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
@@ -25,18 +26,21 @@ use Laravel\Sanctum\HasApiTokens;
  * @property string $name
  * @property string|null $username
  * @property string $email
+ * @property string|null $pending_email
  * @property Carbon|null $email_verified_at
  * @property string|null $password
  * @property string|null $bio
  * @property string|null $avatar_path
  * @property Carbon|null $birth_date
  * @property string|null $country_code
+ * @property array<string, mixed>|null $settings
  * @property string|null $two_factor_secret
  * @property string|null $two_factor_recovery_codes
  * @property Carbon|null $two_factor_confirmed_at
  * @property string|null $remember_token
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
+ * @property Carbon|null $deleted_at
  * @property bool|null $is_following Set per-request by ProfileService/UserController for the current viewer — not a DB column.
  */
 #[Fillable(['name', 'email', 'password', 'username', 'bio', 'avatar_path', 'birth_date', 'country_code'])]
@@ -44,7 +48,7 @@ use Laravel\Sanctum\HasApiTokens;
 class User extends Authenticatable implements PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasApiTokens, HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
+    use HasApiTokens, HasFactory, Notifiable, PasskeyAuthenticatable, SoftDeletes, TwoFactorAuthenticatable;
 
     /**
      * Get the attributes that should be cast.
@@ -57,6 +61,7 @@ class User extends Authenticatable implements PasskeyUser
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'birth_date' => 'date',
+            'settings' => 'array',
         ];
     }
 

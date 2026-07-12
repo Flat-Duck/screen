@@ -163,4 +163,43 @@ class ProfileApiTest extends TestCase
         $response->assertUnprocessable();
         $response->assertJsonValidationErrors(['country_code']);
     }
+
+    public function test_updating_the_display_name(): void
+    {
+        $user = User::factory()->create(['name' => 'Old Name']);
+        Sanctum::actingAs($user);
+
+        $response = $this->patchJson('/api/v1/profile', ['name' => 'New Name']);
+
+        $response->assertOk();
+        $response->assertJsonPath('data.name', 'New Name');
+        $this->assertSame('New Name', $user->fresh()->name);
+    }
+
+    /**
+     * Android sends `POST /v1/profile` with a `_method=PATCH` form field alongside a
+     * multipart avatar file, rather than a literal PATCH — Symfony/Laravel doesn't
+     * natively populate parsed multipart data for a literal PATCH the way it does POST,
+     * so clients spoof the method instead. Confirms Laravel's method-override handling
+     * reaches the same validated/processed route through the full
+     * auth:sanctum/auth.user/throttle middleware stack, not just routes without that
+     * middleware applied.
+     */
+    public function test_updating_avatar_via_method_spoofed_post_works_the_same_as_a_real_patch(): void
+    {
+        Storage::fake('public');
+
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $response = $this->post('/api/v1/profile', [
+            '_method' => 'PATCH',
+            'bio' => 'Spoofed via POST',
+            'avatar' => UploadedFile::fake()->image('avatar.jpg', 300, 300),
+        ], ['Accept' => 'application/json']);
+
+        $response->assertOk();
+        $response->assertJsonPath('data.bio', 'Spoofed via POST');
+        $this->assertNotNull($user->fresh()->avatar_path);
+    }
 }

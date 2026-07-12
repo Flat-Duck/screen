@@ -53,4 +53,9 @@ class PostCommentedNotification extends Notification implements FcmNotification,
             ],
         ];
     }
+
+    public function settingsKey(): string
+    {
+        return 'comments';
+    }
 }

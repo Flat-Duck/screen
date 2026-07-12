@@ -54,6 +54,19 @@ class RateLimiterServiceProvider extends ServiceProvider
         RateLimiter::for('notifications-mark-all', fn (Request $request) => $this->byUser($request, 20));
 
         RateLimiter::for('sessions-manage', fn (Request $request) => $this->byUser($request, 20));
+
+        RateLimiter::for('two-factor-manage', fn (Request $request) => $this->byUser($request, 20));
+
+        // Deliberately tight — these are irreversible-feeling account actions (delete
+        // account, unlink last sign-in method, change email), not routine traffic.
+        RateLimiter::for('account-manage', fn (Request $request) => $this->byUser($request, 5));
+
+        RateLimiter::for('settings-manage', fn (Request $request) => $this->byUser($request, 20));
+
+        // IP-keyed, not user-keyed — there's no Sanctum-authenticated user yet at this
+        // point in the login flow. Kept tight since this is the brute-force surface for
+        // guessing a 6-digit TOTP code.
+        RateLimiter::for('two-factor-challenge', fn (Request $request) => Limit::perMinute(10)->by($request->ip()));
     }
 
     /**
