@@ -52,6 +52,8 @@ class RateLimiterServiceProvider extends ServiceProvider
         RateLimiter::for('notifications-read', fn (Request $request) => $this->byUser($request, 60));
 
         RateLimiter::for('notifications-mark-all', fn (Request $request) => $this->byUser($request, 20));
+
+        RateLimiter::for('sessions-manage', fn (Request $request) => $this->byUser($request, 20));
     }
 
     /**

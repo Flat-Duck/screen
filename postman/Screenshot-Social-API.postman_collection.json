@@ -1177,6 +1177,252 @@
           ]
         },
         {
+          "name": "Sessions",
+          "item": [
+            {
+              "name": "List Sessions",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/v1/sessions",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "sessions"
+                  ]
+                },
+                "description": "Lists every active Sanctum token (\"device/session\") for the current user \u2014 device_name is whatever the client sent at register/login/social sign-in. is_current flags the token used for this very request."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/v1/sessions",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "sessions"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"data\": [\n    {\n      \"id\": 5,\n      \"device_name\": \"Pixel 8, Android 15\",\n      \"last_used_at\": \"2026-07-12T10:02:11.000000Z\",\n      \"created_at\": \"2026-07-05T20:14:23.000000Z\",\n      \"is_current\": true\n    },\n    {\n      \"id\": 3,\n      \"device_name\": \"Galaxy S24, Android 14\",\n      \"last_used_at\": \"2026-07-10T08:11:00.000000Z\",\n      \"created_at\": \"2026-07-01T09:00:00.000000Z\",\n      \"is_current\": false\n    }\n  ]\n}"
+                }
+              ]
+            },
+            {
+              "name": "Revoke Session",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/v1/sessions/3",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "sessions",
+                    "3"
+                  ]
+                },
+                "description": "Logs out one specific device by its session id (from List Sessions). Scoped to your own tokens \u2014 revoking someone else's id, or one that doesn't exist, is a silent no-op (204 either way), same convention as unlike/unfollow."
+              },
+              "response": [
+                {
+                  "name": "204 No Content",
+                  "originalRequest": {
+                    "method": "DELETE",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/v1/sessions/3",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "sessions",
+                        "3"
+                      ]
+                    }
+                  },
+                  "status": "No Content",
+                  "code": 204,
+                  "_postman_previewlanguage": "json",
+                  "header": [],
+                  "body": ""
+                }
+              ]
+            },
+            {
+              "name": "Revoke Other Sessions",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"current_password\": \"password123!\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/v1/sessions/revoke-others",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "sessions",
+                    "revoke-others"
+                  ]
+                },
+                "description": "Logs out every device except the one used for this request. `current_password` is only required if the account has a password set \u2014 a social-only account can omit it entirely, same rule as Set Password."
+              },
+              "response": [
+                {
+                  "name": "204 No Content",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/v1/sessions/revoke-others",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "sessions",
+                        "revoke-others"
+                      ]
+                    }
+                  },
+                  "status": "No Content",
+                  "code": 204,
+                  "_postman_previewlanguage": "json",
+                  "header": [],
+                  "body": ""
+                },
+                {
+                  "name": "422 Unprocessable Entity (wrong current_password)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/v1/sessions/revoke-others",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "sessions",
+                        "revoke-others"
+                      ]
+                    }
+                  },
+                  "status": "Unprocessable Entity",
+                  "code": 422,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"message\": \"The provided password does not match your current password.\",\n  \"errors\": {\n    \"current_password\": [\n      \"The provided password does not match your current password.\"\n    ]\n  }\n}"
+                }
+              ]
+            }
+          ]
+        },
+        {
           "name": "Users",
           "item": [
             {

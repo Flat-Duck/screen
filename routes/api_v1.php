@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\PostController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\PushTokenController;
 use App\Http\Controllers\Api\V1\ReportController;
+use App\Http\Controllers\Api\V1\SessionController;
 use App\Http\Controllers\Api\V1\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -29,6 +30,10 @@ Route::middleware(['auth:sanctum', 'auth.user'])->group(function () {
 
     Route::post('devices/push-token', [PushTokenController::class, 'store'])->middleware('throttle:writes-moderate');
     Route::delete('devices/push-token', [PushTokenController::class, 'destroy'])->middleware('throttle:writes-moderate');
+
+    Route::get('sessions', [SessionController::class, 'index'])->middleware('throttle:sessions-manage');
+    Route::delete('sessions/{tokenId}', [SessionController::class, 'destroy'])->whereNumber('tokenId')->middleware('throttle:sessions-manage');
+    Route::post('sessions/revoke-others', [SessionController::class, 'revokeOthers'])->middleware('throttle:sessions-manage');
 
     Route::get('users/{user}', [UserController::class, 'show'])->middleware('throttle:reads');
     Route::get('users/{user}/posts', [UserController::class, 'posts'])->middleware('throttle:reads');

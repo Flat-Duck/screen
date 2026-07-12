@@ -5,9 +5,8 @@ namespace App\Http\Requests;
 use App\Http\Requests\Concerns\RequiresCurrentPassword;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rules\Password;
 
-class SetPasswordRequest extends FormRequest
+class RevokeOtherSessionsRequest extends FormRequest
 {
     use RequiresCurrentPassword;
 
@@ -24,16 +23,12 @@ class SetPasswordRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * `current_password` is only required once the account already has a password —
-     * a social-only account setting its first password doesn't have one to confirm.
-     *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
         return [
             'current_password' => $this->currentPasswordRule(),
-            'password' => ['required', 'confirmed', Password::default()],
         ];
     }
 }
