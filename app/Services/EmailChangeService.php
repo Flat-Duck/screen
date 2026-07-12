@@ -2,13 +2,12 @@
 
 namespace App\Services;
 
-use App\Mail\ChangeEmailVerificationMail;
-use App\Mail\EmailChangedNotificationMail;
+use App\Actions\Security\EnqueueSecurityMail;
+use App\Enums\SecurityOutboxType;
 use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
 
@@ -20,6 +19,8 @@ use Illuminate\Validation\ValidationException;
  */
 class EmailChangeService
 {
+    public function __construct(private readonly EnqueueSecurityMail $enqueueSecurityMail) {}
+
     /**
      * ChangeEmailRequest's `unique:users,pending_email` rule already catches the common
      * case, but doesn't close the window between validation passing and this save
@@ -30,10 +31,23 @@ class EmailChangeService
      */
     public function requestChange(User $user, string $newEmail): void
     {
-        $user->pending_email = $newEmail;
-
         try {
-            $user->save();
+            DB::transaction(function () use ($user, $newEmail): void {
+                $user->pending_email = $newEmail;
+                $user->save();
+
+                $url = URL::temporarySignedRoute(
+                    'email.change.verify',
+                    now()->addMinutes(60),
+                    ['user' => $user->id, 'hash' => sha1($newEmail)],
+                );
+
+                ($this->enqueueSecurityMail)(
+                    SecurityOutboxType::ChangeEmailVerification,
+                    $newEmail,
+                    ['verification_url' => $url],
+                );
+            });
         } catch (QueryException $e) {
             if ($this->isUniqueConstraintViolation($e)) {
                 throw ValidationException::withMessages([
@@ -44,13 +58,6 @@ class EmailChangeService
             throw $e;
         }
 
-        $url = URL::temporarySignedRoute(
-            'email.change.verify',
-            now()->addMinutes(60),
-            ['user' => $user->id, 'hash' => sha1($newEmail)],
-        );
-
-        Mail::to($newEmail)->send(new ChangeEmailVerificationMail($url));
     }
 
     /**
@@ -88,7 +95,7 @@ class EmailChangeService
         // never from inside it, so the old owner is never told about a change that got
         // rolled back.
         try {
-            DB::transaction(function () use ($user, $newEmail): void {
+            DB::transaction(function () use ($user, $newEmail, $oldEmail): void {
                 $user->email = $newEmail;
                 // $user->email_verified_at is cast to the mutable Illuminate\Support\Carbon,
                 // not the app-wide default CarbonImmutable (AppServiceProvider::boot()) —
@@ -104,6 +111,12 @@ class EmailChangeService
                 // email is exactly the kind of thing worth forcing a fresh login on
                 // every device for.
                 $user->tokens()->delete();
+
+                ($this->enqueueSecurityMail)(
+                    SecurityOutboxType::EmailChangedNotification,
+                    $oldEmail,
+                    ['new_email' => $newEmail],
+                );
             });
         } catch (QueryException $e) {
             if ($this->isUniqueConstraintViolation($e)) {
@@ -115,7 +128,6 @@ class EmailChangeService
             throw $e;
         }
 
-        Mail::to($oldEmail)->send(new EmailChangedNotificationMail($newEmail));
     }
 
     /**

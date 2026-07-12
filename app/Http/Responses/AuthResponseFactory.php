@@ -1,0 +1,31 @@
+<?php
+
+namespace App\Http\Responses;
+
+use App\Http\Resources\UserResource;
+use App\Services\Auth\IssuedAccessToken;
+use App\Services\Auth\TwoFactorRequired;
+use Illuminate\Http\JsonResponse;
+
+final class AuthResponseFactory
+{
+    public function make(
+        IssuedAccessToken|TwoFactorRequired $result,
+        int $successStatus = 200,
+        bool $includeIsNewAccount = false,
+    ): JsonResponse {
+        if ($result instanceof TwoFactorRequired) {
+            return response()->json([
+                'requires_two_factor' => true,
+                'two_factor_token' => $result->twoFactorToken,
+            ]);
+        }
+
+        return response()->json([
+            'user' => new UserResource($result->user->loadCount(['posts', 'followers', 'following'])),
+            'token' => $result->token,
+            ...($includeIsNewAccount ? ['is_new_account' => $result->isNewAccount] : []),
+            'profile_completion' => $result->user->profileCompletionStatus(),
+        ], $successStatus);
+    }
+}

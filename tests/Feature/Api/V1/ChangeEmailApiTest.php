@@ -2,9 +2,8 @@
 
 namespace Tests\Feature\Api\V1;
 
+use App\Enums\SecurityOutboxType;
 use App\Mail\AccountConfirmationCodeMail;
-use App\Mail\ChangeEmailVerificationMail;
-use App\Mail\EmailChangedNotificationMail;
 use App\Models\User;
 use App\Services\EmailChangeService;
 use Illuminate\Database\QueryException;
@@ -153,7 +152,7 @@ class ChangeEmailApiTest extends TestCase
         $response->assertJsonValidationErrors(['email']);
     }
 
-    public function test_requesting_a_change_sets_pending_email_and_mails_the_new_address_not_the_old_one(): void
+    public function test_requesting_a_change_sets_pending_email_and_enqueues_the_new_address_notification(): void
     {
         Mail::fake();
         $user = User::factory()->create(['password' => 'password123!']);
@@ -166,11 +165,10 @@ class ChangeEmailApiTest extends TestCase
         $this->assertSame('new@example.com', $user->fresh()->pending_email);
         $this->assertNotSame('new@example.com', $user->fresh()->email);
 
-        // ChangeEmailVerificationMail implements ShouldQueue, so Mail::to()->send() queues
-        // it rather than sending inline — see PendingMail::send()'s ShouldQueue check.
-        Mail::assertQueued(ChangeEmailVerificationMail::class, function (ChangeEmailVerificationMail $mail) {
-            return $mail->hasTo('new@example.com');
-        });
+        $this->assertDatabaseHas('security_outbox_messages', [
+            'type' => SecurityOutboxType::ChangeEmailVerification->value,
+            'recipient' => 'new@example.com',
+        ]);
     }
 
     public function test_visiting_the_signed_link_confirms_the_change(): void
@@ -195,9 +193,10 @@ class ChangeEmailApiTest extends TestCase
         $this->assertNull($fresh->pending_email);
         $this->assertNotNull($fresh->email_verified_at);
 
-        Mail::assertQueued(EmailChangedNotificationMail::class, function (EmailChangedNotificationMail $mail) use ($originalEmail) {
-            return $mail->hasTo($originalEmail) && $mail->newEmail === 'new@example.com';
-        });
+        $this->assertDatabaseHas('security_outbox_messages', [
+            'type' => SecurityOutboxType::EmailChangedNotification->value,
+            'recipient' => $originalEmail,
+        ]);
     }
 
     public function test_confirming_revokes_every_session_including_the_one_that_requested_the_change(): void

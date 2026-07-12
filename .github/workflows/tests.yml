@@ -20,6 +20,20 @@ permissions:
 jobs:
   ci:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: screenshut_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d screenshut_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     strategy:
       matrix:
         php-version: ['8.3', '8.4', '8.5']
@@ -65,3 +79,14 @@ jobs:
 
       - name: Run Tests
         run: php artisan test
+
+      - name: Run PostgreSQL workflow tests
+        if: matrix.php-version == '8.3'
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: screenshut_test
+          DB_USERNAME: postgres
+          DB_PASSWORD: postgres
+        run: php artisan test tests/Feature/PostgresSocialConcurrencyTest.php tests/Feature/WorkflowDurabilityTest.php tests/Feature/Api/V1/SocialAuthTest.php tests/Feature/Api/V1/ChangeEmailApiTest.php

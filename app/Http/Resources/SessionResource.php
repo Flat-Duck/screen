@@ -9,7 +9,7 @@ use Laravel\Sanctum\PersonalAccessToken;
 /**
  * A Sanctum personal access token, presented as a "session/device" — its `name` column
  * is whatever `device_name` the client sent at register/login/social sign-in (see
- * AuthService/SocialAuthService), which is why it's exposed here as `device_name`.
+ * authentication Actions), which is why it's exposed here as `device_name`.
  *
  * @mixin PersonalAccessToken
  */

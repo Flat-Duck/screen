@@ -25,10 +25,10 @@ class CreatePost
 
     public function __invoke(User $user, CreatePostData $data): Post
     {
-        $staged = ($this->stageMedia)($data);
+        $batch = ($this->stageMedia)($data);
 
         try {
-            return DB::transaction(function () use ($user, $data, $staged): Post {
+            return DB::transaction(function () use ($user, $data, $batch): Post {
                 $post = Post::create([
                     'user_id' => $user->id,
                     'caption' => $data->caption,
@@ -37,15 +37,17 @@ class CreatePost
 
                 ($this->syncHashtags)($post, $data->caption);
 
-                foreach ($staged as $media) {
+                foreach ($batch->media as $media) {
                     $row = $this->createMediaRow($post, $media);
                     GeneratePostMediaThumbnail::dispatch($row->id)->afterCommit();
                 }
 
+                DB::table('media_cleanup_tasks')->where('id', $batch->cleanupTaskId)->delete();
+
                 return $post->load('media');
             });
         } catch (Throwable $exception) {
-            $this->stageMedia->cleanup($staged);
+            $this->stageMedia->cleanup($batch);
 
             throw $exception;
         }

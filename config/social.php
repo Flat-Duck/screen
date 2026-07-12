@@ -16,6 +16,12 @@ return [
 
     'media_disk' => env('SOCIAL_MEDIA_DISK', 'public'),
 
+    'media_cleanup_grace_minutes' => (int) env('SOCIAL_MEDIA_CLEANUP_GRACE_MINUTES', 60),
+
+    'media_job_timeout_seconds' => (int) env('SOCIAL_MEDIA_JOB_TIMEOUT_SECONDS', 60),
+
+    'media_job_backoff_seconds' => [30, 120, 300],
+
     /*
     |--------------------------------------------------------------------------
     | Post Retention

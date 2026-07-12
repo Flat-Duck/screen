@@ -11,6 +11,7 @@ use App\Data\Posts\CreatePostData;
 use App\Enums\PostPurgeOutcome;
 use App\Enums\PostPurgeStatus;
 use App\Jobs\GeneratePostMediaThumbnail;
+use App\Models\MediaCleanupTask;
 use App\Models\Post;
 use App\Models\PostMedia;
 use App\Models\User;
@@ -69,6 +70,26 @@ class PostLifecycleActionsTest extends TestCase
         Queue::assertNothingPushed();
     }
 
+    public function test_cleanup_failure_keeps_a_retryable_ledger_without_masking_the_workflow_error(): void
+    {
+        Storage::fake('public');
+        $hashtags = Mockery::mock(SyncPostHashtags::class);
+        $hashtags->shouldReceive('__invoke')->once()->andThrow(new RuntimeException('workflow failed'));
+        $files = Mockery::mock(MediaFileStore::class);
+        $files->shouldReceive('deleteDirectory')->once()->andThrow(new RuntimeException('storage unavailable'));
+        $action = new CreatePost(new StagePostMedia(app(ImageProcessingService::class), $files), $hashtags);
+
+        try {
+            $action(User::factory()->create(), new CreatePostData(null, [UploadedFile::fake()->image('shot.jpg')]));
+            $this->fail('Expected workflow failure.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame('workflow failed', $exception->getMessage());
+        }
+
+        $task = MediaCleanupTask::firstOrFail();
+        $this->assertStringContainsString('storage unavailable', $task->last_error);
+    }
+
     public function test_purge_is_idempotent_when_files_or_rows_are_already_missing(): void
     {
         Storage::fake('public');
@@ -101,6 +122,11 @@ class PostLifecycleActionsTest extends TestCase
         $failingStore = new class implements MediaFileStore
         {
             public function deletePaths(array $paths): void
+            {
+                throw new RuntimeException('storage unavailable');
+            }
+
+            public function deleteDirectory(string $directory): void
             {
                 throw new RuntimeException('storage unavailable');
             }
@@ -141,6 +167,11 @@ class PostLifecycleActionsTest extends TestCase
 
                 $this->realStore->deletePaths($paths);
             }
+
+            public function deleteDirectory(string $directory): void
+            {
+                $this->realStore->deleteDirectory($directory);
+            }
         });
 
         $this->artisan('posts:prune-deleted')->assertExitCode(1);
@@ -164,6 +195,11 @@ class PostLifecycleActionsTest extends TestCase
         $this->app->instance(MediaFileStore::class, new class implements MediaFileStore
         {
             public function deletePaths(array $paths): void
+            {
+                throw new RuntimeException('storage unavailable');
+            }
+
+            public function deleteDirectory(string $directory): void
             {
                 throw new RuntimeException('storage unavailable');
             }

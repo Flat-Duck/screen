@@ -3,6 +3,7 @@
 namespace App\Actions\Telemetry;
 
 use App\Data\Telemetry\RegisterDeviceData;
+use App\Exceptions\DeviceProofOfPossessionRequired;
 use App\Models\Device;
 
 /**
@@ -31,11 +32,9 @@ class RegisterDevice
         $isNewDevice = ! $device->exists;
 
         if ($device->exists) {
-            abort_unless(
-                $authenticatedDevice?->is($device),
-                401,
-                'This device is already registered. Re-registering it requires the current device token.',
-            );
+            if (! $authenticatedDevice?->is($device)) {
+                throw new DeviceProofOfPossessionRequired;
+            }
         }
 
         $device->fill([

@@ -3,7 +3,6 @@
 namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 
@@ -13,7 +12,7 @@ use Illuminate\Queue\SerializesModels;
  * other artifact of this flow (the confirmation link, the account itself) only ever
  * touches the NEW address from here on.
  */
-class EmailChangedNotificationMail extends Mailable implements ShouldQueue
+class EmailChangedNotificationMail extends Mailable
 {
     use Queueable, SerializesModels;
 

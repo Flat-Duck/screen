@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Exceptions\PermanentRemoteImageException;
+use App\Exceptions\TransientRemoteImageException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -62,45 +64,47 @@ class ImageProcessingService
 
     /**
      * Downloads a remote image (e.g. a Google/Facebook profile picture URL) and stores
-     * it through the same orient/scale/re-encode pipeline as storeOriginal(). An avatar
-     * fetched this way is a nice-to-have during social sign-in, never a hard requirement,
-     * so any failure (network, decode, unrecognized format) is swallowed and returns
-     * null rather than throwing — callers should treat null as "skip the avatar".
+     * it through the same orient/scale/re-encode pipeline as storeOriginal().
      *
-     * @return array{path: string, width: int, height: int, mime: string, size: int}|null
+     * @return array{path: string, width: int, height: int, mime: string, size: int}
      */
-    public function storeFromUrl(string $url, string $directory, ?int $maxDimension = 512): ?array
+    public function storeFromUrl(string $url, string $directory, ?int $maxDimension = 512): array
     {
-        try {
-            $response = Http::timeout(10)->get($url);
+        $response = Http::timeout(10)->get($url);
 
-            if ($response->failed()) {
-                return null;
-            }
-
-            $image = $this->manager->read($response->body())->orient();
-
-            if ($maxDimension !== null) {
-                $image->scaleDown($maxDimension, $maxDimension);
-            }
-
-            $encoded = $image->encode();
-            $extension = MediaType::create($encoded->mimetype())->fileExtension()->value;
-
-            $path = sprintf('%s/%s.%s', $directory, (string) Str::uuid(), $extension);
-
-            Storage::disk(config('social.media_disk'))->put($path, (string) $encoded);
-
-            return [
-                'path' => $path,
-                'width' => $image->width(),
-                'height' => $image->height(),
-                'mime' => $encoded->mimetype(),
-                'size' => $encoded->size(),
-            ];
-        } catch (Throwable) {
-            return null;
+        if ($response->serverError()) {
+            throw new TransientRemoteImageException("Remote image server returned {$response->status()}.");
         }
+
+        if ($response->clientError()) {
+            throw new PermanentRemoteImageException("Remote image request was rejected with {$response->status()}.");
+        }
+
+        try {
+            $image = $this->manager->read($response->body())->orient();
+        } catch (Throwable $exception) {
+            throw new PermanentRemoteImageException('Remote image could not be decoded.', previous: $exception);
+        }
+
+        if ($maxDimension !== null) {
+            $image->scaleDown($maxDimension, $maxDimension);
+        }
+
+        $encoded = $image->encode();
+        $extension = MediaType::create($encoded->mimetype())->fileExtension()->value;
+        $path = sprintf('%s/%s.%s', $directory, (string) Str::uuid(), $extension);
+
+        if (! Storage::disk(config('social.media_disk'))->put($path, (string) $encoded)) {
+            throw new TransientRemoteImageException("Failed to store remote image [{$path}].");
+        }
+
+        return [
+            'path' => $path,
+            'width' => $image->width(),
+            'height' => $image->height(),
+            'mime' => $encoded->mimetype(),
+            'size' => $encoded->size(),
+        ];
     }
 
     /**

@@ -2,10 +2,10 @@
 
 namespace Tests\Feature\Api\V1;
 
+use App\Actions\Auth\CompleteSocialLogin;
 use App\Models\User;
 use App\Services\Auth\TwoFactorRequired;
 use App\Services\SocialAuth\SocialUserPayload;
-use App\Services\SocialAuthService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Laravel\Fortify\Actions\ConfirmTwoFactorAuthentication;
@@ -276,7 +276,7 @@ class TwoFactorLoginChallengeTest extends TestCase
         // exercised at the service level (not a full HTTP round trip through Google's
         // real JWKS) since the point here is the 2FA gate, not token verification
         // (already covered by SocialAuthTest).
-        $result = app(SocialAuthService::class)->loginOrRegister($payload, 'mobile');
+        $result = app(CompleteSocialLogin::class)($payload, 'mobile');
 
         $this->assertInstanceOf(TwoFactorRequired::class, $result);
     }

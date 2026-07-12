@@ -21,4 +21,17 @@ class LaravelMediaFileStore implements MediaFileStore
             }
         }
     }
+
+    public function deleteDirectory(string $directory): void
+    {
+        $disk = app('filesystem')->disk(config('social.media_disk'));
+
+        if (! $disk->directoryExists($directory)) {
+            return;
+        }
+
+        if (! $disk->deleteDirectory($directory)) {
+            throw new RuntimeException("Failed to delete media directory [{$directory}].");
+        }
+    }
 }

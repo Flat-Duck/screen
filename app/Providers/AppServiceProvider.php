@@ -6,6 +6,7 @@ use App\Contracts\MediaFileStore;
 use App\Models\User;
 use App\Services\Storage\LaravelMediaFileStore;
 use Carbon\CarbonImmutable;
+use Illuminate\Foundation\DevCommands;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -28,6 +29,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        DevCommands::artisan('queue:listen --queue=security,media,default --tries=1 --timeout=0', 'queue');
         $this->configureDefaults();
         $this->configureGates();
         URL::forceScheme('https');

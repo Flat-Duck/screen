@@ -21,7 +21,19 @@ class GeneratePostMediaThumbnail implements ShouldQueue
 
     public int $tries = 3;
 
-    public function __construct(public readonly int $postMediaId) {}
+    public int $timeout;
+
+    public function __construct(public readonly int $postMediaId)
+    {
+        $this->timeout = (int) config('social.media_job_timeout_seconds', 60);
+        $this->onQueue('media');
+    }
+
+    /** @return list<int> */
+    public function backoff(): array
+    {
+        return array_values(config('social.media_job_backoff_seconds', [30, 120, 300]));
+    }
 
     public function handle(ImageProcessingService $images): void
     {

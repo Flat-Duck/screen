@@ -1,6 +1,6 @@
 # Screenshut Telemetry Backend
 
-**Screenshut Telemetry** is a comprehensive analytics and telemetry platform for the **Screenshut** application, built with Laravel and MySQL.
+**Screenshut Telemetry** is a telemetry and social API for the **Screenshut** application, built with Laravel and PostgreSQL.
 
 ## 🚀 Overview
 
@@ -18,12 +18,12 @@ The backend serves as the central hub for collecting, processing, and serving an
 
 ## 🛠️ Tech Stack
 
-- **Core Framework**: [Laravel](https://laravel.com/) 12.x
-- **Database**: [MySQL](https://www.mysql.com/) 8.0+
+- **Core Framework**: [Laravel](https://laravel.com/) 13.x
+- **Database**: [PostgreSQL](https://www.postgresql.org/) 17+
 - **Authentication**: Laravel Sanctum
 - **WebSockets**: Laravel Echo (Pusher)
 - **Queue System**: Laravel Queues (Database/Redis)
-- **Testing**: Pest, Laravel Dusk
+- **Testing**: Pest/PHPUnit, Larastan, and Pint
 - **Development Tools**: Laravel Sail (Docker), LaraLens
 
 ## 📁 Project Structure
@@ -160,6 +160,27 @@ The project uses Pest for testing.
   ```bash
   ./vendor/bin/pest --browser
   ```
+
+## Production Workers and Scheduler
+
+Run the scheduler once per minute on every deployment, with Laravel's single-server
+locks backed by a shared cache:
+
+```bash
+* * * * * php /path/to/artisan schedule:run
+```
+
+Run independent workers so security notifications are not delayed by image processing:
+
+```bash
+php artisan queue:work --queue=security
+php artisan queue:work --queue=media
+php artisan queue:work --queue=default
+```
+
+`composer dev` consumes `security,media,default` in priority order for local development.
+Security email delivery uses a transactional outbox recovered every minute. Abandoned post
+staging directories are retained in a cleanup ledger and retried every ten minutes.
 
 ## 🔐 Security
 
