@@ -22,6 +22,14 @@ class FeedController extends Controller
         $user = $request->user();
 
         $posts = $this->feed->feedFor($user);
+
+        // Only the first page — a cursor points at a specific position in the pure
+        // in-network sequence, so splicing extra posts into a later page would make it
+        // meaningless.
+        if (! $request->filled('cursor')) {
+            $this->feed->injectDiscovery($posts, $user);
+        }
+
         $this->likes->annotateIsLiked($posts->getCollection(), $user);
 
         return PostResource::collection($posts);
