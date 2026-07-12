@@ -21,14 +21,18 @@ class TelemetryController extends Controller
      * auth is possible here for a genuinely new device_uuid — this is how a device gets a
      * token in the first place.
      *
-     * Re-registering an *existing* device_uuid that already holds a token is a different
-     * story: without this check, anyone who learns/guesses a device_uuid could silently
-     * steal that device's identity by re-registering unauthenticated — the old token gets
-     * deleted and a fresh one handed to the attacker instead. So rotating an
-     * already-token-holding device's token requires presenting that exact device's current
-     * token via Authorization: Bearer — proof of possession, not just knowledge of the UUID.
-     * A device with no live token yet (first registration never got this far, or its token
-     * already expired/was revoked) has nothing to steal, so that case still needs no auth.
+     * Re-registering an *existing* device_uuid is a different story: without this check,
+     * anyone who learns/guesses a device_uuid could silently steal that device's identity
+     * by re-registering unauthenticated — the old token (if any) gets deleted and a fresh
+     * one handed to the attacker instead. So rotating an existing device's token always
+     * requires presenting that exact device's current token via Authorization: Bearer —
+     * proof of possession, not just knowledge of the UUID. This holds even for a device
+     * that currently has *no* live token (e.g. deliberately revoked by support after a
+     * compromise, or its token expired): a tokenless device is not up for grabs by
+     * whoever asks next, since that would let anyone silently reclaim exactly the kind of
+     * device a revocation was meant to lock out. There is deliberately no unauthenticated
+     * recovery path for an existing device_uuid that lost its token — a real reinstall
+     * (see CLAUDE.md) produces a brand new device_uuid anyway, which registers fine.
      */
     public function register(RegisterDeviceRequest $request): JsonResponse
     {
@@ -37,7 +41,7 @@ class TelemetryController extends Controller
         $device = Device::firstOrNew(['device_uuid' => $validated['device_id']]);
         $isNewDevice = ! $device->exists;
 
-        if ($device->exists && $device->tokens()->exists()) {
+        if ($device->exists) {
             $authenticated = $request->user('sanctum');
 
             abort_unless(

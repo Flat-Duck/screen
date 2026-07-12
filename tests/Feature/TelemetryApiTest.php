@@ -92,19 +92,24 @@ class TelemetryApiTest extends TestCase
         $this->assertDatabaseCount('personal_access_tokens', 2);
     }
 
-    /** A device with no live token yet (e.g. its token already expired/was revoked) has nothing to steal. */
-    public function test_re_registering_a_device_with_no_existing_token_needs_no_auth(): void
+    /**
+     * A device with no live token (e.g. deliberately revoked by support after a
+     * compromise) must NOT be unauthenticated-reclaimable — that would let anyone
+     * silently take over exactly the kind of device a revocation was meant to lock
+     * out. There is no unauthenticated recovery path for an existing device_uuid once
+     * its token is gone; a real reinstall produces a new device_uuid instead.
+     */
+    public function test_re_registering_a_device_with_no_existing_token_is_still_rejected(): void
     {
         $deviceId = (string) Str::uuid();
-        $first = $this->postJson('/api/telemetry/register', $this->registerPayload($deviceId));
-        $first->assertCreated();
+        $this->postJson('/api/telemetry/register', $this->registerPayload($deviceId))->assertCreated();
 
         Device::where('device_uuid', $deviceId)->first()->tokens()->delete();
 
         $second = $this->postJson('/api/telemetry/register', $this->registerPayload($deviceId));
 
-        $second->assertOk();
-        $this->assertDatabaseCount('personal_access_tokens', 1);
+        $second->assertUnauthorized();
+        $this->assertDatabaseCount('personal_access_tokens', 0);
     }
 
     public function test_events_endpoint_rejects_unauthenticated_requests(): void

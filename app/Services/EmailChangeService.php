@@ -34,7 +34,7 @@ class EmailChangeService
         try {
             $user->save();
         } catch (QueryException $e) {
-            if ((int) $e->getCode() === 23000) {
+            if ($this->isUniqueConstraintViolation($e)) {
                 throw ValidationException::withMessages([
                     'email' => __('The email has already been taken.'),
                 ]);
@@ -89,7 +89,7 @@ class EmailChangeService
         try {
             $user->save();
         } catch (QueryException $e) {
-            if ((int) $e->getCode() === 23000) {
+            if ($this->isUniqueConstraintViolation($e)) {
                 throw ValidationException::withMessages([
                     'email' => __('This email address was taken by another account in the meantime. Please request the change again.'),
                 ]);
@@ -106,5 +106,19 @@ class EmailChangeService
         $user->tokens()->delete();
 
         Mail::to($oldEmail)->send(new EmailChangedNotificationMail($newEmail));
+    }
+
+    /**
+     * `getCode()` returns the driver's SQLSTATE, not a fixed integer, so it has to be
+     * compared as a string across drivers: MySQL/SQLite both report a unique violation
+     * as the general '23000' integrity-constraint-violation class, but Postgres (this
+     * app's actual driver — see config/database.php) reports the more specific
+     * '23505' (unique_violation) instead. Checking only '23000' looked correct against
+     * the SQLite-backed test suite but silently never matched in the real Postgres
+     * environment, letting the violation escape as an uncaught 500.
+     */
+    private function isUniqueConstraintViolation(QueryException $e): bool
+    {
+        return in_array((string) $e->getCode(), ['23000', '23505'], true);
     }
 }

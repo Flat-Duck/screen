@@ -29,6 +29,15 @@ trait RequiresStepUpAuth
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
+            // A single-use step-up code (the email_code path) would otherwise get
+            // consumed even when some *other* field on this request is invalid — the
+            // request as a whole still fails, but the code is gone, forcing the caller
+            // to request a fresh one just to retry with a corrected field. Only spend
+            // it once everything else has already passed.
+            if ($validator->errors()->isNotEmpty()) {
+                return;
+            }
+
             try {
                 app(StepUpService::class)->verify(
                     $this->user(),

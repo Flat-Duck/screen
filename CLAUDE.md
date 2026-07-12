@@ -42,17 +42,19 @@ in `TelemetryController` it is always a `Device`.
 
 - `POST /api/telemetry/register` (throttled 20/min): creates a `Device` by `device_uuid` and mints
   a fresh Sanctum token — unauthenticated, since that's the only way a device can get a token in
-  the first place. Re-registering a `device_uuid` that **already holds a live token** is different:
-  it requires that exact device's current token via `Authorization: Bearer` to rotate it (proof of
-  possession, not just knowledge of the UUID) — otherwise anyone who learns/guesses a `device_uuid`
-  could silently steal that device's identity, since tokens are hashed at rest and the old one gets
-  deleted unconditionally. A `device_uuid` with no live token (first registration never completed,
-  or the token already expired/was revoked) still needs no auth to (re-)register — there's nothing
-  to steal. Practically: a real reinstall/cleared-app-data event that wipes the token *and* the
-  locally-stored `device_uuid` together (the common case) is unaffected — the client just generates
-  a new UUID and registers fresh, same as any new device. Only a `device_uuid` that somehow persists
-  independently of the token (e.g. derived from a more durable identifier) would need its old token
-  to recover, and can no longer do so silently.
+  the first place. Re-registering an **existing** `device_uuid` is different: it always requires
+  that exact device's current token via `Authorization: Bearer` to rotate it (proof of possession,
+  not just knowledge of the UUID) — otherwise anyone who learns/guesses a `device_uuid` could
+  silently steal that device's identity, since tokens are hashed at rest and the old one gets
+  deleted unconditionally. This holds even for a device with **no live token** (e.g. deliberately
+  revoked by support after a compromise) — a tokenless device is not up for grabs by whoever asks
+  next, since that would let anyone silently reclaim exactly the kind of device a revocation was
+  meant to lock out. There is deliberately no unauthenticated recovery path for an existing
+  `device_uuid` that lost its token. Practically: a real reinstall/cleared-app-data event wipes the
+  token *and* the locally-stored `device_uuid` together (the common case), so the client just
+  generates a new UUID and registers fresh, same as any new device — this restriction only ever
+  bites a `device_uuid` that somehow persists independently of the token, or a genuine attack
+  attempt.
 - `POST /api/telemetry/events` (`auth:sanctum`, throttled 120/min): batch-ingests events. The
   `device` block in the payload body is informational only (used to refresh app version / last seen)
   — identity comes solely from the Sanctum token, never from the body. Insertion is

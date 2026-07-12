@@ -29,6 +29,8 @@ class StepUpService
 {
     private const EMAIL_CODE_TTL_MINUTES = 10;
 
+    public function __construct(private readonly TwoFactorAuthenticationProvider $twoFactor) {}
+
     /** @return 'password'|'two_factor'|'email_code' */
     public function requiredMethod(User $user): string
     {
@@ -89,12 +91,9 @@ class StepUpService
     {
         $code = $input['two_factor_code'] ?? null;
 
-        /** @var TwoFactorAuthenticationProvider $provider */
-        $provider = app(TwoFactorAuthenticationProvider::class);
-
         if (
             ! is_string($code) || $code === ''
-            || ! $provider->verify(Fortify::currentEncrypter()->decrypt((string) $user->two_factor_secret), $code)
+            || ! $this->twoFactor->verify(Fortify::currentEncrypter()->decrypt((string) $user->two_factor_secret), $code)
         ) {
             throw ValidationException::withMessages([
                 'two_factor_code' => __('The provided two factor authentication code was invalid.'),
@@ -102,21 +101,40 @@ class StepUpService
         }
     }
 
-    /** @param  array<string, mixed>  $input */
+    /**
+     * Locked per-user around the whole check-then-consume sequence — without it, two
+     * concurrent requests presenting the same code could both pass `Hash::check()`
+     * before either `Cache::forget()` call lands, defeating "single-use" the same way
+     * the 2FA challenge/recovery-code races did (see AuthService).
+     *
+     * @param  array<string, mixed>  $input
+     */
     private function verifyEmailCode(User $user, array $input): void
     {
         $code = $input['confirmation_code'] ?? null;
         $key = $this->emailCodeCacheKey($user);
-        $hashed = Cache::get($key);
+        $lock = Cache::lock("{$key}:lock", 10);
 
-        if (! is_string($code) || $code === '' || ! is_string($hashed) || ! Hash::check($code, $hashed)) {
+        if (! $lock->get()) {
             throw ValidationException::withMessages([
-                'confirmation_code' => __('The provided confirmation code is invalid or has expired.'),
+                'confirmation_code' => __('Please try again in a moment.'),
             ]);
         }
 
-        // Single-use: consumed on successful verification, same as a 2FA recovery code.
-        Cache::forget($key);
+        try {
+            $hashed = Cache::get($key);
+
+            if (! is_string($code) || $code === '' || ! is_string($hashed) || ! Hash::check($code, $hashed)) {
+                throw ValidationException::withMessages([
+                    'confirmation_code' => __('The provided confirmation code is invalid or has expired.'),
+                ]);
+            }
+
+            // Single-use: consumed on successful verification, same as a 2FA recovery code.
+            Cache::forget($key);
+        } finally {
+            $lock->release();
+        }
     }
 
     private function emailCodeCacheKey(User $user): string

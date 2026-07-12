@@ -6,6 +6,7 @@ use App\Mail\AccountConfirmationCodeMail;
 use App\Models\User;
 use App\Services\StepUpService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Actions\ConfirmTwoFactorAuthentication;
@@ -135,5 +136,34 @@ class StepUpServiceTest extends TestCase
 
         $this->expectException(ValidationException::class);
         app(StepUpService::class)->verify($user, ['confirmation_code' => '000000']);
+    }
+
+    /**
+     * Simulates the concurrent case directly (a single-threaded test can't produce a
+     * true race): another process holding the per-user email-code lock when this
+     * request arrives is exactly what a real concurrent double-submit would look like.
+     * See StepUpService::verifyEmailCode()'s doc comment.
+     */
+    public function test_email_code_verification_while_another_request_holds_its_lock_is_rejected(): void
+    {
+        Mail::fake();
+        $user = User::factory()->create(['password' => null]);
+        app(StepUpService::class)->sendEmailCode($user);
+        $code = null;
+        Mail::assertQueued(AccountConfirmationCodeMail::class, function (AccountConfirmationCodeMail $mail) use (&$code): bool {
+            $code = $mail->code;
+
+            return true;
+        });
+
+        $lock = Cache::lock("step-up-email-code:{$user->id}:lock", 10);
+        $lock->get();
+
+        try {
+            $this->expectException(ValidationException::class);
+            app(StepUpService::class)->verify($user, ['confirmation_code' => $code]);
+        } finally {
+            $lock->release();
+        }
     }
 }
