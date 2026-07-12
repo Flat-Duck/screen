@@ -35,6 +35,12 @@ class UpdateProfileRequest extends FormRequest
             ],
             'bio' => ['nullable', 'string', 'max:500'],
             'avatar' => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:5120', 'dimensions:min_width=100,min_height=100'],
+            'birth_date' => ['nullable', 'date', 'before:today'],
+            // Validated as format only (2 letters), not against the full ISO 3166-1
+            // alpha-2 list — clients (Android's Locale.getISOCountries()) already only
+            // ever send a value from that list, so duplicating it server-side would just
+            // be a second place to keep in sync for no real protection.
+            'country_code' => ['nullable', 'string', 'size:2', 'alpha'],
         ];
     }
 }

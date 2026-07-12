@@ -101,4 +101,66 @@ class ProfileApiTest extends TestCase
         Storage::disk('public')->assertMissing($firstAvatarPath);
         Storage::disk('public')->assertExists($user->fresh()->avatar_path);
     }
+
+    public function test_updating_own_birth_date_and_country_code(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $response = $this->patchJson('/api/v1/profile', [
+            'birth_date' => '1990-05-15',
+            'country_code' => 'eg',
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('data.birth_date', '1990-05-15');
+        $response->assertJsonPath('data.country_code', 'EG');
+        $this->assertSame('EG', $user->fresh()->country_code);
+    }
+
+    public function test_birth_date_is_hidden_on_another_users_public_profile(): void
+    {
+        $target = User::factory()->create(['birth_date' => '1990-05-15']);
+        $viewer = User::factory()->create();
+        Sanctum::actingAs($viewer);
+
+        $response = $this->getJson("/api/v1/users/{$target->id}");
+
+        $response->assertOk();
+        $this->assertArrayNotHasKey('birth_date', $response->json('data'));
+    }
+
+    public function test_country_code_is_visible_on_another_users_public_profile(): void
+    {
+        $target = User::factory()->create(['country_code' => 'EG']);
+        $viewer = User::factory()->create();
+        Sanctum::actingAs($viewer);
+
+        $response = $this->getJson("/api/v1/users/{$target->id}");
+
+        $response->assertOk();
+        $response->assertJsonPath('data.country_code', 'EG');
+    }
+
+    public function test_birth_date_must_be_in_the_past(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $response = $this->patchJson('/api/v1/profile', ['birth_date' => now()->addDay()->toDateString()]);
+
+        $response->assertUnprocessable();
+        $response->assertJsonValidationErrors(['birth_date']);
+    }
+
+    public function test_country_code_must_be_two_letters(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $response = $this->patchJson('/api/v1/profile', ['country_code' => 'EGY']);
+
+        $response->assertUnprocessable();
+        $response->assertJsonValidationErrors(['country_code']);
+    }
 }

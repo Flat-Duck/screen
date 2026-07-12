@@ -955,6 +955,16 @@
                       "key": "avatar",
                       "type": "file",
                       "src": []
+                    },
+                    {
+                      "key": "birth_date",
+                      "value": "1990-05-15",
+                      "type": "text"
+                    },
+                    {
+                      "key": "country_code",
+                      "value": "EG",
+                      "type": "text"
                     }
                   ]
                 },
@@ -968,7 +978,7 @@
                     "profile"
                   ]
                 },
-                "description": "Both fields optional. Uploading a new avatar deletes the previous file from disk. Rate limited to 20 requests/min. Also accepts `username` (to complete a social sign-up's profile). Response includes `profile_completion`."
+                "description": "Both fields optional. Uploading a new avatar deletes the previous file from disk. Rate limited to 20 requests/min. Also accepts `username` (to complete a social sign-up's profile). Response includes `profile_completion`. Also accepts `birth_date` (`YYYY-MM-DD`, must be in the past) and `country_code` (ISO 3166-1 alpha-2, e.g. `EG`) \u2014 `birth_date` is only ever returned on your own profile (see Users > Get Profile), never on someone else's."
               },
               "response": [
                 {
@@ -1001,7 +1011,166 @@
                       "value": "application/json"
                     }
                   ],
-                  "body": "{\n  \"data\": {\n    \"id\": 1,\n    \"username\": \"alice\",\n    \"name\": \"Alice Smith\",\n    \"bio\": \"Screenshot enthusiast \\ud83d\\udcf8\",\n    \"avatar_url\": \"http://telm.test/storage/avatars/1/6f1c2a3b-....jpg\",\n    \"posts_count\": 0,\n    \"followers_count\": 1,\n    \"following_count\": 1,\n    \"created_at\": \"2026-07-05T20:14:23.000000Z\"\n  },\n  \"profile_completion\": {\n    \"is_complete\": true,\n    \"has_username\": true,\n    \"has_password\": true,\n    \"has_bio\": true,\n    \"has_avatar\": true\n  }\n}"
+                  "body": "{\n  \"data\": {\n    \"id\": 1,\n    \"username\": \"alice\",\n    \"name\": \"Alice Smith\",\n    \"bio\": \"Screenshot enthusiast \\ud83d\\udcf8\",\n    \"avatar_url\": \"http://telm.test/storage/avatars/1/6f1c2a3b-....jpg\",\n    \"country_code\": \"EG\",\n    \"birth_date\": \"1990-05-15\",\n    \"posts_count\": 0,\n    \"followers_count\": 1,\n    \"following_count\": 1,\n    \"created_at\": \"2026-07-05T20:14:23.000000Z\"\n  },\n  \"profile_completion\": {\n    \"is_complete\": true,\n    \"has_username\": true,\n    \"has_password\": true,\n    \"has_bio\": true,\n    \"has_avatar\": true\n  }\n}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Devices",
+          "item": [
+            {
+              "name": "Register Push Token",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"fcm_token\": \"<FCM registration token from FirebaseMessaging.getToken()>\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/v1/devices/push-token",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "devices",
+                    "push-token"
+                  ]
+                },
+                "description": "Upserts on `fcm_token` (not per-user) \u2014 call this right after every successful login/register/social auth, and again whenever FirebaseMessagingService.onNewToken fires. If the same token resurfaces under a different account (re-install, account switch on the same device), it re-points to the new owner rather than creating a duplicate row."
+              },
+              "response": [
+                {
+                  "name": "204 No Content",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/v1/devices/push-token",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "devices",
+                        "push-token"
+                      ]
+                    }
+                  },
+                  "status": "No Content",
+                  "code": 204,
+                  "_postman_previewlanguage": "json",
+                  "header": [],
+                  "body": ""
+                }
+              ]
+            },
+            {
+              "name": "Unregister Push Token",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"fcm_token\": \"<the same FCM token passed to Register Push Token>\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/v1/devices/push-token",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "devices",
+                    "push-token"
+                  ]
+                },
+                "description": "Call on logout so a signed-out device stops receiving pushes meant for this account. Scoped to the current user \u2014 only removes the token if it belongs to you."
+              },
+              "response": [
+                {
+                  "name": "204 No Content",
+                  "originalRequest": {
+                    "method": "DELETE",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/v1/devices/push-token",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "v1",
+                        "devices",
+                        "push-token"
+                      ]
+                    }
+                  },
+                  "status": "No Content",
+                  "code": 204,
+                  "_postman_previewlanguage": "json",
+                  "header": [],
+                  "body": ""
                 }
               ]
             }
@@ -1041,7 +1210,7 @@
                     "{{user_b_id}}"
                   ]
                 },
-                "description": "Public profile. `is_following` reflects whether the authenticated caller follows this user (omitted when viewing your own profile)."
+                "description": "Public profile. `is_following` reflects whether the authenticated caller follows this user (omitted when viewing your own profile). `birth_date` is deliberately never included here \u2014 only on your own profile via Update Profile's response."
               },
               "response": [
                 {
@@ -1075,7 +1244,7 @@
                       "value": "application/json"
                     }
                   ],
-                  "body": "{\n  \"data\": {\n    \"id\": 2,\n    \"username\": \"bob\",\n    \"name\": \"Bob Jones\",\n    \"bio\": null,\n    \"avatar_url\": null,\n    \"posts_count\": 1,\n    \"followers_count\": 1,\n    \"following_count\": 0,\n    \"is_following\": true,\n    \"created_at\": \"2026-07-05T20:14:29.000000Z\"\n  }\n}"
+                  "body": "{\n  \"data\": {\n    \"id\": 2,\n    \"username\": \"bob\",\n    \"name\": \"Bob Jones\",\n    \"bio\": null,\n    \"avatar_url\": null,\n    \"country_code\": \"EG\",\n    \"posts_count\": 1,\n    \"followers_count\": 1,\n    \"following_count\": 0,\n    \"is_following\": true,\n    \"created_at\": \"2026-07-05T20:14:29.000000Z\"\n  }\n}"
                 }
               ]
             },

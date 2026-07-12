@@ -26,6 +26,15 @@ class UserResource extends JsonResource
             'name' => $this->name,
             'bio' => $this->bio,
             'avatar_url' => $this->avatarUrl(),
+            'country_code' => $this->country_code,
+            // Unlike every other field here, birth_date is only ever included on your
+            // own profile — it's PII with no reason to be visible to other viewers, even
+            // though the rest of this resource is otherwise identical for "me" vs.
+            // "someone else's public profile" (see UserController::show).
+            'birth_date' => $this->when(
+                $request->user()?->is($this->resource),
+                fn (): ?string => $this->birth_date?->format('Y-m-d'),
+            ),
             'posts_count' => $this->posts_count,
             'followers_count' => $this->followers_count,
             'following_count' => $this->following_count,

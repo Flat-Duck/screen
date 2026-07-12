@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\LikeController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\PostController;
 use App\Http\Controllers\Api\V1\ProfileController;
+use App\Http\Controllers\Api\V1\PushTokenController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\UserController;
 use Illuminate\Support\Facades\Route;
@@ -25,6 +26,9 @@ Route::middleware(['auth:sanctum', 'auth.user'])->group(function () {
     Route::get('feed', [FeedController::class, 'index'])->middleware('throttle:reads');
 
     Route::patch('profile', [ProfileController::class, 'update'])->middleware('throttle:writes-moderate');
+
+    Route::post('devices/push-token', [PushTokenController::class, 'store'])->middleware('throttle:writes-moderate');
+    Route::delete('devices/push-token', [PushTokenController::class, 'destroy'])->middleware('throttle:writes-moderate');
 
     Route::get('users/{user}', [UserController::class, 'show'])->middleware('throttle:reads');
     Route::get('users/{user}/posts', [UserController::class, 'posts'])->middleware('throttle:reads');

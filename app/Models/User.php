@@ -29,6 +29,8 @@ use Laravel\Sanctum\HasApiTokens;
  * @property string|null $password
  * @property string|null $bio
  * @property string|null $avatar_path
+ * @property Carbon|null $birth_date
+ * @property string|null $country_code
  * @property string|null $two_factor_secret
  * @property string|null $two_factor_recovery_codes
  * @property Carbon|null $two_factor_confirmed_at
@@ -37,7 +39,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @property Carbon|null $updated_at
  * @property bool|null $is_following Set per-request by ProfileService/UserController for the current viewer — not a DB column.
  */
-#[Fillable(['name', 'email', 'password', 'username', 'bio', 'avatar_path'])]
+#[Fillable(['name', 'email', 'password', 'username', 'bio', 'avatar_path', 'birth_date', 'country_code'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements PasskeyUser
 {
@@ -54,6 +56,7 @@ class User extends Authenticatable implements PasskeyUser
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'birth_date' => 'date',
         ];
     }
 
@@ -87,6 +90,14 @@ class User extends Authenticatable implements PasskeyUser
     public function socialAccounts(): HasMany
     {
         return $this->hasMany(SocialAccount::class);
+    }
+
+    /**
+     * @return HasMany<DevicePushToken, $this>
+     */
+    public function pushTokens(): HasMany
+    {
+        return $this->hasMany(DevicePushToken::class);
     }
 
     /**
