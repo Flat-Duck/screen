@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\PostPurgeStatus;
 use Database\Factories\PostFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -43,6 +44,8 @@ class Post extends Model
     {
         return [
             'account_deleted_at' => 'datetime',
+            'purge_status' => PostPurgeStatus::class,
+            'purge_attempted_at' => 'datetime',
         ];
     }
 

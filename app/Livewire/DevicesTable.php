@@ -12,6 +12,9 @@ class DevicesTable extends Component
 {
     use WithPagination;
 
+    /** @var list<string> */
+    private const SORTABLE_FIELDS = ['model', 'events_count', 'crashes_count', 'last_seen_at'];
+
     #[Url]
     public string $search = '';
 
@@ -23,6 +26,10 @@ class DevicesTable extends Component
 
     public function sortBy(string $field): void
     {
+        if (! in_array($field, self::SORTABLE_FIELDS, true)) {
+            return;
+        }
+
         if ($this->sortField === $field) {
             $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
         } else {
@@ -38,6 +45,11 @@ class DevicesTable extends Component
 
     public function render(): View
     {
+        $sortField = in_array($this->sortField, self::SORTABLE_FIELDS, true)
+            ? $this->sortField
+            : 'last_seen_at';
+        $sortDirection = $this->sortDirection === 'asc' ? 'asc' : 'desc';
+
         $devices = Device::query()
             ->withCount(['events', 'crashes'])
             ->when($this->search !== '', function ($query) {
@@ -48,7 +60,7 @@ class DevicesTable extends Component
                         ->orWhere('model', 'like', "%{$this->search}%");
                 });
             })
-            ->orderBy($this->sortField, $this->sortDirection)
+            ->orderBy($sortField, $sortDirection)
             ->paginate(15);
 
         return view('livewire.devices-table', ['devices' => $devices]);

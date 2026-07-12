@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Actions\Auth\BeginTwoFactorChallenge;
+use App\Actions\Auth\IssueAccessToken;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Services\Auth\IssuedAccessToken;
@@ -16,7 +18,8 @@ class SocialAuthService
 {
     public function __construct(
         private readonly ImageProcessingService $images,
-        private readonly AuthService $auth,
+        private readonly IssueAccessToken $issueToken,
+        private readonly BeginTwoFactorChallenge $beginTwoFactor,
     ) {}
 
     /**
@@ -26,7 +29,7 @@ class SocialAuthService
      * existing account links this provider to it instead of creating a duplicate.
      *
      * A newly-created account can never have 2FA enabled yet, so the check below only
-     * ever bites for an existing account being logged into — matches AuthService::login's
+     * ever bites for an existing account being logged into — matches PasswordLogin's
      * same short-circuit-before-token-issuance behavior.
      */
     public function loginOrRegister(SocialUserPayload $payload, string $deviceName): IssuedAccessToken|TwoFactorRequired
@@ -73,12 +76,10 @@ class SocialAuthService
         });
 
         if ($user->hasEnabledTwoFactorAuthentication()) {
-            return $this->auth->twoFactorChallengeResponse($user);
+            return ($this->beginTwoFactor)($user);
         }
 
-        $token = $user->createToken($deviceName)->plainTextToken;
-
-        return new IssuedAccessToken($user, $token, $isNewAccount);
+        return ($this->issueToken)($user, $deviceName, $isNewAccount);
     }
 
     /**

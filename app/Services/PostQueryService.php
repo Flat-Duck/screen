@@ -2,25 +2,14 @@
 
 namespace App\Services;
 
-use App\Actions\Posts\PurgePost;
 use App\Models\Post;
 use App\Models\User;
 use Illuminate\Pagination\CursorPaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
-class PostService
+class PostQueryService
 {
-    /**
-     * Soft-deletes the post only — files stay on disk so a soft-deleted post remains
-     * recoverable/inspectable until {@see PurgePost} runs it past
-     * the retention window.
-     */
-    public function deletePost(Post $post): void
-    {
-        $post->delete();
-    }
-
     /** @return CursorPaginator<int, Post> */
     public function postsForUser(User $user, int $perPage = 12): CursorPaginator
     {
@@ -31,15 +20,7 @@ class PostService
             ->cursorPaginate($perPage);
     }
 
-    /**
-     * The user's most-used hashtags across their own posts, most-used first — powers a
-     * profile screen's "top tags" chips. A raw query builder aggregate rather than going
-     * through Eloquent's `Post`/`Hashtag` models, since there's no model hydration
-     * needed here — just counts. Soft-deleted posts don't count (the join bypasses
-     * Post's model-level soft-delete scope, so it's filtered explicitly).
-     *
-     * @return Collection<int, array{name: string, posts_count: int}>
-     */
+    /** @return Collection<int, array{name: string, posts_count: int}> */
     public function topHashtagsFor(User $user, int $limit = 5): Collection
     {
         return DB::table('hashtags')

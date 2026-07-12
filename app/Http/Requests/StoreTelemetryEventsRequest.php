@@ -2,12 +2,46 @@
 
 namespace App\Http\Requests;
 
+use App\Data\Telemetry\TelemetryBatchData;
+use App\Data\Telemetry\TelemetryEventData;
 use App\Models\TelemetryEvent;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreTelemetryEventsRequest extends FormRequest
 {
+    public function toData(): TelemetryBatchData
+    {
+        $data = $this->validated();
+        $device = $data['device'];
+
+        $events = array_map(static function (array $event): TelemetryEventData {
+            $error = isset($event['error']) && is_array($event['error']) ? $event['error'] : [];
+
+            return new TelemetryEventData(
+                eventUuid: (string) $event['event_id'],
+                kind: (string) $event['kind'],
+                name: (string) $event['name'],
+                occurredAt: (string) $event['occurred_at'],
+                extras: isset($event['extras']) && is_array($event['extras']) ? $event['extras'] : [],
+                breadcrumbs: isset($event['breadcrumbs']) && is_array($event['breadcrumbs']) ? array_values($event['breadcrumbs']) : [],
+                errorTag: isset($error['tag']) ? (string) $error['tag'] : null,
+                exceptionClass: isset($error['exception_class']) ? (string) $error['exception_class'] : null,
+                errorMessage: isset($error['message']) ? (string) $error['message'] : null,
+                stackTrace: isset($error['stack_trace']) ? (string) $error['stack_trace'] : null,
+                threadName: isset($error['thread_name']) ? (string) $error['thread_name'] : null,
+                isFatal: isset($error['is_fatal']) ? (bool) $error['is_fatal'] : null,
+            );
+        }, array_values($data['events']));
+
+        return new TelemetryBatchData(
+            reportedDeviceUuid: (string) $device['device_id'],
+            appVersionName: isset($device['app_version_name']) ? (string) $device['app_version_name'] : null,
+            appVersionCode: isset($device['app_version_code']) ? (int) $device['app_version_code'] : null,
+            events: $events,
+        );
+    }
+
     /**
      * Determine if the user is authorized to make this request.
      *

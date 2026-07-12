@@ -2,8 +2,8 @@
 
 namespace App\Actions\Telemetry;
 
+use App\Data\Telemetry\RegisterDeviceData;
 use App\Models\Device;
-use Illuminate\Http\Request;
 
 /**
  * First-run enrollment: creates a Device and issues it a fresh Sanctum token. No prior
@@ -25,31 +25,28 @@ use Illuminate\Http\Request;
  */
 class RegisterDevice
 {
-    /** @param  array<string, mixed>  $validated  Validated RegisterDeviceRequest data. */
-    public function __invoke(Request $request, array $validated): DeviceRegistration
+    public function __invoke(RegisterDeviceData $data, ?Device $authenticatedDevice): DeviceRegistration
     {
-        $device = Device::firstOrNew(['device_uuid' => $validated['device_id']]);
+        $device = Device::firstOrNew(['device_uuid' => $data->deviceId]);
         $isNewDevice = ! $device->exists;
 
         if ($device->exists) {
-            $authenticated = $request->user('sanctum');
-
             abort_unless(
-                $authenticated instanceof Device && $authenticated->is($device),
+                $authenticatedDevice?->is($device),
                 401,
                 'This device is already registered. Re-registering it requires the current device token.',
             );
         }
 
         $device->fill([
-            'manufacturer' => $validated['manufacturer'] ?? null,
-            'brand' => $validated['brand'] ?? null,
-            'model' => $validated['model'] ?? null,
-            'os_name' => $validated['os_name'] ?? 'Android',
-            'os_version' => $validated['os_version'] ?? null,
-            'sdk_int' => $validated['sdk_int'] ?? null,
-            'app_version_name' => $validated['app_version_name'] ?? null,
-            'app_version_code' => $validated['app_version_code'] ?? null,
+            'manufacturer' => $data->manufacturer,
+            'brand' => $data->brand,
+            'model' => $data->model,
+            'os_name' => $data->osName ?? 'Android',
+            'os_version' => $data->osVersion,
+            'sdk_int' => $data->sdkInt,
+            'app_version_name' => $data->appVersionName,
+            'app_version_code' => $data->appVersionCode,
             'last_seen_at' => now(),
         ]);
         if ($isNewDevice) {

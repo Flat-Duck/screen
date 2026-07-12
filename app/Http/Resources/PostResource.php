@@ -8,7 +8,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * Callers must `loadCount(['likes', 'comments'])` and set `is_liked` on the model
- * for the current viewer (see LikeService/PostService) before resourcing.
+ * for the current viewer (see LikeService/PostQueryService) before resourcing.
  *
  * @mixin Post
  */

@@ -2,11 +2,22 @@
 
 namespace App\Http\Requests;
 
+use App\Data\Posts\CreatePostData;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StorePostRequest extends FormRequest
 {
+    public function toData(): CreatePostData
+    {
+        $data = $this->validated();
+
+        return new CreatePostData(
+            caption: isset($data['caption']) ? (string) $data['caption'] : null,
+            images: array_values($this->file('images', [])),
+        );
+    }
+
     /**
      * Determine if the user is authorized to make this request.
      *

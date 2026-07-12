@@ -2,6 +2,7 @@
 
 namespace App\Actions\Telemetry;
 
+use App\Data\Telemetry\TelemetryBatchData;
 use App\Models\Device;
 use App\Models\TelemetryEvent;
 use Illuminate\Support\Facades\DB;
@@ -18,42 +19,37 @@ class IngestTelemetryBatch
     /** Max stack trace length stored — payload hygiene, matches the Android-side plan's own callout. */
     private const MAX_STACK_TRACE_LENGTH = 4000;
 
-    /**
-     * @param  array<string, mixed>  $validated  Validated StoreTelemetryEventsRequest data.
-     * @return array<int, string> Accepted event UUIDs, in submission order.
-     */
-    public function __invoke(Device $device, array $validated): array
+    /** @return array<int, string> Accepted event UUIDs, in submission order. */
+    public function __invoke(Device $device, TelemetryBatchData $batch): array
     {
         $device->forceFill([
-            'app_version_name' => $validated['device']['app_version_name'] ?? $device->app_version_name,
-            'app_version_code' => $validated['device']['app_version_code'] ?? $device->app_version_code,
+            'app_version_name' => $batch->appVersionName ?? $device->app_version_name,
+            'app_version_code' => $batch->appVersionCode ?? $device->app_version_code,
             'last_seen_at' => now(),
         ])->save();
 
-        return DB::transaction(function () use ($validated, $device) {
+        return DB::transaction(function () use ($batch, $device) {
             $accepted = [];
 
-            foreach ($validated['events'] as $eventData) {
-                $error = $eventData['error'] ?? null;
-
+            foreach ($batch->events as $eventData) {
                 $event = TelemetryEvent::firstOrCreate(
-                    ['event_uuid' => $eventData['event_id']],
+                    ['event_uuid' => $eventData->eventUuid],
                     [
                         'device_id' => $device->id,
-                        'kind' => $eventData['kind'],
-                        'name' => $eventData['name'],
-                        'occurred_at' => $eventData['occurred_at'],
+                        'kind' => $eventData->kind,
+                        'name' => $eventData->name,
+                        'occurred_at' => $eventData->occurredAt,
                         'received_at' => now(),
-                        'extras' => $eventData['extras'] ?? [],
-                        'breadcrumbs' => $eventData['breadcrumbs'] ?? [],
-                        'error_tag' => $error['tag'] ?? null,
-                        'exception_class' => $error['exception_class'] ?? null,
-                        'error_message' => $error['message'] ?? null,
-                        'stack_trace' => isset($error['stack_trace'])
-                            ? Str::limit($error['stack_trace'], self::MAX_STACK_TRACE_LENGTH, '')
+                        'extras' => $eventData->extras,
+                        'breadcrumbs' => $eventData->breadcrumbs,
+                        'error_tag' => $eventData->errorTag,
+                        'exception_class' => $eventData->exceptionClass,
+                        'error_message' => $eventData->errorMessage,
+                        'stack_trace' => $eventData->stackTrace !== null
+                            ? Str::limit($eventData->stackTrace, self::MAX_STACK_TRACE_LENGTH, '')
                             : null,
-                        'thread_name' => $error['thread_name'] ?? null,
-                        'is_fatal' => $error['is_fatal'] ?? null,
+                        'thread_name' => $eventData->threadName,
+                        'is_fatal' => $eventData->isFatal,
                     ]
                 );
 

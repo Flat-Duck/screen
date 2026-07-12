@@ -53,11 +53,16 @@ class TelemetryEvent extends Model
         ];
     }
 
+    /** @return BelongsTo<Device, $this> */
     public function device(): BelongsTo
     {
         return $this->belongsTo(Device::class);
     }
 
+    /**
+     * @param  Builder<TelemetryEvent>  $query
+     * @return Builder<TelemetryEvent>
+     */
     public function scopeCrashes(Builder $query): Builder
     {
         return $query->where('kind', '!=', self::KIND_EVENT);

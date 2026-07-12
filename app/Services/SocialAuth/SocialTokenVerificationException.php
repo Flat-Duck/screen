@@ -9,7 +9,7 @@ use RuntimeException;
 /**
  * Thrown when a provider token is invalid, expired, or fails an audience/issuer check.
  * Renders like a validation failure (422 + `errors`) to match how every other auth
- * failure in this API reports itself (see AuthService::login's ValidationException).
+ * failure in this API reports itself (see PasswordLogin's ValidationException).
  */
 class SocialTokenVerificationException extends RuntimeException
 {

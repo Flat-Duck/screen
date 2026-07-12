@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Actions\Auth\CompleteTwoFactorLogin;
+use App\Actions\Auth\PasswordLogin;
+use App\Actions\Auth\RegisterUser;
 use App\Http\Requests\AppleLoginRequest;
 use App\Http\Requests\FacebookLoginRequest;
 use App\Http\Requests\GoogleLoginRequest;
@@ -29,18 +32,16 @@ class AuthController extends Controller
         private readonly SocialAuthService $socialAuth,
     ) {}
 
-    public function register(RegisterUserRequest $request): JsonResponse
+    public function register(RegisterUserRequest $request, RegisterUser $registerUser): JsonResponse
     {
-        return $this->respondToAuthResult($this->auth->register($request->validated()), successStatus: 201);
+        return $this->respondToAuthResult($registerUser($request->validated()), successStatus: 201);
     }
 
-    public function login(LoginRequest $request): JsonResponse
+    public function login(LoginRequest $request, PasswordLogin $passwordLogin): JsonResponse
     {
-        $result = $this->auth->login(
-            [
-                'login' => $request->string('login')->toString(),
-                'password' => $request->string('password')->toString(),
-            ],
+        $result = $passwordLogin(
+            $request->string('login')->toString(),
+            $request->string('password')->toString(),
             $request->string('device_name', 'mobile')->toString(),
         );
 
@@ -77,11 +78,11 @@ class AuthController extends Controller
 
     /**
      * Completes a login that stopped at `{"requires_two_factor": true, ...}` — the
-     * second step of the stateless two-step login (see AuthService::twoFactorChallengeResponse()).
+     * second step of the stateless two-step login (see BeginTwoFactorChallenge).
      */
-    public function twoFactorChallenge(TwoFactorChallengeRequest $request): JsonResponse
+    public function twoFactorChallenge(TwoFactorChallengeRequest $request, CompleteTwoFactorLogin $completeLogin): JsonResponse
     {
-        $result = $this->auth->completeTwoFactorChallenge(
+        $result = $completeLogin(
             $request->string('two_factor_token')->toString(),
             $request->input('code'),
             $request->input('recovery_code'),

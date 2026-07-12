@@ -193,7 +193,7 @@ class TwoFactorLoginChallengeTest extends TestCase
      * Simulates the concurrent case directly (a single-threaded test can't produce a
      * true race): another process holding the per-challenge-token lock when this
      * request arrives is exactly what a real concurrent double-submit would look like.
-     * See AuthService::completeTwoFactorChallenge()'s doc comment.
+     * See CompleteTwoFactorLogin's doc comment.
      */
     public function test_completing_the_challenge_while_another_request_holds_its_lock_is_rejected(): void
     {

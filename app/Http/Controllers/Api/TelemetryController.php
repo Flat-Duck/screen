@@ -14,7 +14,9 @@ class TelemetryController extends Controller
 {
     public function register(RegisterDeviceRequest $request, RegisterDevice $registerDevice): JsonResponse
     {
-        $registration = $registerDevice($request, $request->validated());
+        $principal = $request->user('sanctum');
+        $authenticatedDevice = $principal instanceof Device ? $principal : null;
+        $registration = $registerDevice($request->toData(), $authenticatedDevice);
 
         return response()->json([
             'device_id' => $registration->device->id,
@@ -27,7 +29,7 @@ class TelemetryController extends Controller
         /** @var Device $device */
         $device = $request->user();
 
-        $acceptedEventIds = $ingestBatch($device, $request->validated());
+        $acceptedEventIds = $ingestBatch($device, $request->toData());
 
         return response()->json(['accepted_event_ids' => $acceptedEventIds]);
     }

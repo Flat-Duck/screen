@@ -2,14 +2,14 @@
 
 namespace App\Actions\Posts;
 
+use App\Data\Posts\CreatePostData;
+use App\Data\Posts\StagedPostMedia;
 use App\Jobs\GeneratePostMediaThumbnail;
-use App\Models\Hashtag;
 use App\Models\Post;
 use App\Models\PostMedia;
 use App\Models\User;
-use App\Services\ImageProcessingService;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 /**
  * Creates a post + its media rows atomically, then dispatches one thumbnail job per
@@ -18,75 +18,49 @@ use Illuminate\Support\Facades\DB;
  */
 class CreatePost
 {
-    public function __construct(private readonly ImageProcessingService $images) {}
+    public function __construct(
+        private readonly StagePostMedia $stageMedia,
+        private readonly SyncPostHashtags $syncHashtags,
+    ) {}
 
-    /** @param  array<string, mixed>  $data  Validated StorePostRequest data: 'caption' and 'images'. */
-    public function __invoke(User $user, array $data): Post
+    public function __invoke(User $user, CreatePostData $data): Post
     {
-        $post = DB::transaction(function () use ($user, $data) {
-            $post = Post::create([
-                'user_id' => $user->id,
-                'caption' => $data['caption'] ?? null,
-                'status' => Post::STATUS_PROCESSING,
-            ]);
+        $staged = ($this->stageMedia)($data);
 
-            $this->syncHashtags($post, $data['caption'] ?? null);
+        try {
+            return DB::transaction(function () use ($user, $data, $staged): Post {
+                $post = Post::create([
+                    'user_id' => $user->id,
+                    'caption' => $data->caption,
+                    'status' => Post::STATUS_PROCESSING,
+                ]);
 
-            $images = is_array($data['images'] ?? null) ? $data['images'] : [];
+                ($this->syncHashtags)($post, $data->caption);
 
-            foreach (array_values($images) as $position => $image) {
-                if (! $image instanceof UploadedFile) {
-                    continue;
+                foreach ($staged as $media) {
+                    $row = $this->createMediaRow($post, $media);
+                    GeneratePostMediaThumbnail::dispatch($row->id)->afterCommit();
                 }
 
-                $stored = $this->images->storeOriginal($image, "posts/{$post->id}");
+                return $post->load('media');
+            });
+        } catch (Throwable $exception) {
+            $this->stageMedia->cleanup($staged);
 
-                $post->media()->create([
-                    'position' => $position,
-                    'original_path' => $stored['path'],
-                    'width' => $stored['width'],
-                    'height' => $stored['height'],
-                    'mime_type' => $stored['mime'],
-                    'size_bytes' => $stored['size'],
-                    'status' => PostMedia::STATUS_PENDING,
-                ]);
-            }
-
-            return $post;
-        });
-
-        $post->load('media');
-        $post->media->each(fn (PostMedia $item) => GeneratePostMediaThumbnail::dispatch($item->id));
-
-        return $post;
+            throw $exception;
+        }
     }
 
-    /**
-     * Extracts `#word` tokens from the caption (Unicode-aware, so Arabic hashtags work
-     * too — this app is bilingual) and links them to the post. There's no post-edit
-     * endpoint, so this only ever needs to run once, at creation.
-     */
-    private function syncHashtags(Post $post, ?string $caption): void
+    private function createMediaRow(Post $post, StagedPostMedia $media): PostMedia
     {
-        if (! $caption) {
-            return;
-        }
-
-        preg_match_all('/#([\p{L}\p{N}_]+)/u', $caption, $matches);
-
-        $names = collect($matches[1])
-            ->map(fn (string $tag): string => Hashtag::normalize($tag))
-            ->unique()
-            ->values();
-
-        if ($names->isEmpty()) {
-            return;
-        }
-
-        $hashtagIds = $names->map(
-            fn (string $name): int => Hashtag::query()->firstOrCreate(['name' => $name])->id
-        );
-
-        $post->hashtags()->sync($hashtagIds);
+        return $post->media()->create([
+            'position' => $media->position,
+            'original_path' => $media->path,
+            'width' => $media->width,
+            'height' => $media->height,
+            'mime_type' => $media->mimeType,
+            'size_bytes' => $media->sizeBytes,
+            'status' => PostMedia::STATUS_PENDING,
+        ]);
     }
 }

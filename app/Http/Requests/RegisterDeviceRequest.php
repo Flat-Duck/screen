@@ -2,11 +2,29 @@
 
 namespace App\Http\Requests;
 
+use App\Data\Telemetry\RegisterDeviceData;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class RegisterDeviceRequest extends FormRequest
 {
+    public function toData(): RegisterDeviceData
+    {
+        $data = $this->validated();
+
+        return new RegisterDeviceData(
+            deviceId: (string) $data['device_id'],
+            manufacturer: isset($data['manufacturer']) ? (string) $data['manufacturer'] : null,
+            brand: isset($data['brand']) ? (string) $data['brand'] : null,
+            model: isset($data['model']) ? (string) $data['model'] : null,
+            osName: isset($data['os_name']) ? (string) $data['os_name'] : null,
+            osVersion: isset($data['os_version']) ? (string) $data['os_version'] : null,
+            sdkInt: isset($data['sdk_int']) ? (int) $data['sdk_int'] : null,
+            appVersionName: isset($data['app_version_name']) ? (string) $data['app_version_name'] : null,
+            appVersionCode: isset($data['app_version_code']) ? (int) $data['app_version_code'] : null,
+        );
+    }
+
     /**
      * Determine if the user is authorized to make this request.
      *

@@ -15,7 +15,8 @@ use Tests\TestCase;
 
 /**
  * QUEUE_CONNECTION=sync in testing (see phpunit.xml), so the thumbnail job dispatched by
- * PostService::createPost() runs inline within these requests — no manual dispatch needed.
+ * CreatePost dispatches the job after commit; QUEUE_CONNECTION=sync in testing means it
+ * still runs during these requests without manual dispatch.
  */
 class GeneratePostMediaThumbnailJobTest extends TestCase
 {

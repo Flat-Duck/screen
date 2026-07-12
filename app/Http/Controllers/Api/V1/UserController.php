@@ -6,7 +6,7 @@ use App\Http\Resources\PostResource;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\LikeService;
-use App\Services\PostService;
+use App\Services\PostQueryService;
 use App\Services\ProfileService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,7 +16,7 @@ class UserController extends Controller
 {
     public function __construct(
         private readonly ProfileService $profiles,
-        private readonly PostService $posts,
+        private readonly PostQueryService $posts,
         private readonly LikeService $likes,
     ) {}
 

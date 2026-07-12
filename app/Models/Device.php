@@ -43,20 +43,21 @@ class Device extends Authenticatable
         ];
     }
 
+    /** @return HasMany<TelemetryEvent, $this> */
     public function telemetryEvents(): HasMany
     {
         return $this->hasMany(TelemetryEvent::class);
     }
 
-    /** Plain (non-error) app events. */
+    /** @return HasMany<TelemetryEvent, $this> Plain (non-error) app events. */
     public function events(): HasMany
     {
         return $this->telemetryEvents()->where('kind', TelemetryEvent::KIND_EVENT);
     }
 
-    /** Both non-fatal caught exceptions and fatal uncaught crashes. */
+    /** @return HasMany<TelemetryEvent, $this> Both non-fatal caught exceptions and fatal uncaught crashes. */
     public function crashes(): HasMany
     {
-        return $this->telemetryEvents()->crashes();
+        return $this->telemetryEvents()->where('kind', '!=', TelemetryEvent::KIND_EVENT);
     }
 }

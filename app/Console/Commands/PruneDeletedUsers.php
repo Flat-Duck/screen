@@ -3,9 +3,11 @@
 namespace App\Console\Commands;
 
 use App\Actions\Posts\PurgePost;
+use App\Contracts\MediaFileStore;
+use App\Enums\PostPurgeOutcome;
 use App\Models\User;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Storage;
+use Throwable;
 
 class PruneDeletedUsers extends Command
 {
@@ -15,38 +17,50 @@ class PruneDeletedUsers extends Command
     /** @var string */
     protected $description = 'Permanently deletes soft-deleted accounts (and their remaining files) past the retention window.';
 
-    public function handle(PurgePost $purgePost): int
+    public function handle(PurgePost $purgePost, MediaFileStore $files): int
     {
         $cutoff = now()->subDays((int) config('social.account_retention_days', 30));
+        $purgedUsers = 0;
+        $busyPosts = 0;
+        $failedUsers = 0;
 
-        $pending = User::onlyTrashed()->where('deleted_at', '<', $cutoff)->get();
+        foreach (User::onlyTrashed()->where('deleted_at', '<', $cutoff)->select('id')->lazyById(100) as $candidate) {
+            $user = User::onlyTrashed()->find($candidate->id);
 
-        $disk = Storage::disk(config('social.media_disk'));
-
-        foreach ($pending as $user) {
-            // AccountService::deleteAccount() already soft-deleted these at request time,
-            // but purge them here too rather than trusting posts:prune-deleted got to
-            // them first — forceDelete()'ing the user below cascades any still-present
-            // post rows at the DB level, which would leak their media files otherwise
-            // (same reasoning as PurgePost's own doc comment).
-            $trashedPosts = $user->posts()->onlyTrashed()->with('media')->get();
-            foreach ($trashedPosts as $post) {
-                $purgePost($post);
+            if (! $user) {
+                continue;
             }
 
-            if ($user->avatar_path) {
-                $disk->delete($user->avatar_path);
+            try {
+                $canDeleteUser = true;
+
+                foreach ($user->posts()->onlyTrashed()->select('posts.id')->lazyById(100) as $post) {
+                    $outcome = $purgePost($post->id);
+
+                    if ($outcome === PostPurgeOutcome::Busy) {
+                        $busyPosts++;
+                        $canDeleteUser = false;
+                    }
+                }
+
+                if (! $canDeleteUser) {
+                    continue;
+                }
+
+                $files->deletePaths($user->avatar_path ? [$user->avatar_path] : []);
+                $user->notifications()->delete();
+                $user->tokens()->delete();
+                $user->forceDelete();
+                $purgedUsers++;
+            } catch (Throwable $exception) {
+                $failedUsers++;
+                report($exception);
+                $this->error("Failed to purge account #{$user->id}: {$exception->getMessage()}");
             }
-
-            // Polymorphic, so not FK-cascaded by forceDelete() below.
-            $user->notifications()->delete();
-            $user->tokens()->delete();
-
-            $user->forceDelete();
         }
 
-        $this->info("Purged {$pending->count()} account(s) past the retention window.");
+        $this->info("Account purge complete: {$purgedUsers} purged, {$busyPosts} posts busy, {$failedUsers} accounts failed.");
 
-        return self::SUCCESS;
+        return $failedUsers > 0 ? self::FAILURE : self::SUCCESS;
     }
 }

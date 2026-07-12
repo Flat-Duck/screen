@@ -12,6 +12,9 @@ class EventsTable extends Component
 {
     use WithPagination;
 
+    /** @var list<string> */
+    private const SORTABLE_FIELDS = ['name', 'occurred_at', 'received_at'];
+
     #[Url]
     public string $search = '';
 
@@ -27,6 +30,10 @@ class EventsTable extends Component
 
     public function sortBy(string $field): void
     {
+        if (! in_array($field, self::SORTABLE_FIELDS, true)) {
+            return;
+        }
+
         if ($this->sortField === $field) {
             $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
         } else {
@@ -47,9 +54,15 @@ class EventsTable extends Component
 
     public function render(): View
     {
+        $kind = in_array($this->kind, TelemetryEvent::KINDS, true) ? $this->kind : '';
+        $sortField = in_array($this->sortField, self::SORTABLE_FIELDS, true)
+            ? $this->sortField
+            : 'received_at';
+        $sortDirection = $this->sortDirection === 'asc' ? 'asc' : 'desc';
+
         $events = TelemetryEvent::query()
             ->with('device')
-            ->when($this->kind !== '', fn ($query) => $query->where('kind', $this->kind))
+            ->when($kind !== '', fn ($query) => $query->where('kind', $kind))
             ->when($this->search !== '', function ($query) {
                 $query->where(function ($query) {
                     $query->where('name', 'like', "%{$this->search}%")
@@ -60,7 +73,7 @@ class EventsTable extends Component
                         });
                 });
             })
-            ->orderBy($this->sortField, $this->sortDirection)
+            ->orderBy($sortField, $sortDirection)
             ->paginate(20);
 
         return view('livewire.events-table', ['events' => $events]);

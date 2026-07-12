@@ -4,7 +4,7 @@ namespace App\Services\Auth;
 
 /**
  * Stops a login short of issuing a token — the stateless equivalent of Fortify's own
- * session-stored "who's mid-login" state (see AuthService::twoFactorChallengeResponse()).
+ * session-stored "who's mid-login" state (see BeginTwoFactorChallenge).
  */
 final readonly class TwoFactorRequired
 {
