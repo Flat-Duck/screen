@@ -1,12 +1,14 @@
 <?php
 
 use App\Http\Controllers\Api\TelemetryController;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/user', function (Request $request) {
-    return $request->user();
-})->middleware('auth:sanctum');
+// Deliberately no generic `/user` endpoint here: personal_access_tokens is polymorphic
+// (Device or User), and a route that just echoes back whichever principal a token
+// resolves to — without going through the v1 UserResource/auth.user guard — bypasses
+// every field-visibility rule the rest of the API enforces. `GET /v1/users/{user}` (via
+// UserController, behind auth.user) is the correct equivalent for a User principal;
+// there's no equivalent need for a Device principal to fetch "itself".
 
 Route::prefix('telemetry')->group(function () {
     Route::post('register', [TelemetryController::class, 'register'])

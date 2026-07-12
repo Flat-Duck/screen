@@ -105,6 +105,11 @@ class AuthService
     }
 
     /**
+     * Serialized per challenge token via `Cache::lock` — without it, two concurrent
+     * requests for the same `two_factor_token` could both read the still-present cache
+     * entry, both pass verification, and both mint a token before either call to
+     * `Cache::forget()` lands (a classic check-then-act race on a "single-use" token).
+     *
      * @return array{user: User, token: string}
      */
     public function completeTwoFactorChallenge(
@@ -114,25 +119,36 @@ class AuthService
         string $deviceName,
     ): array {
         $cacheKey = "two-factor-challenge:{$challengeToken}";
+        $lock = Cache::lock("{$cacheKey}:lock", 10);
 
-        /** @var int|null $userId */
-        $userId = Cache::get($cacheKey);
-
-        if (! $userId) {
+        if (! $lock->get()) {
             throw ValidationException::withMessages([
-                'two_factor_token' => __('This two-factor challenge has expired or is invalid. Please log in again.'),
+                'two_factor_token' => __('This two-factor challenge is already being completed. Please try again in a moment.'),
             ]);
         }
 
-        $user = User::query()->findOrFail($userId);
+        try {
+            /** @var int|null $userId */
+            $userId = Cache::get($cacheKey);
 
-        $this->verifyTwoFactorCode($user, $code, $recoveryCode);
+            if (! $userId) {
+                throw ValidationException::withMessages([
+                    'two_factor_token' => __('This two-factor challenge has expired or is invalid. Please log in again.'),
+                ]);
+            }
 
-        Cache::forget($cacheKey);
+            $user = User::query()->findOrFail($userId);
 
-        $token = $user->createToken($deviceName)->plainTextToken;
+            $this->verifyTwoFactorCode($user, $code, $recoveryCode);
 
-        return ['user' => $user, 'token' => $token];
+            Cache::forget($cacheKey);
+
+            $token = $user->createToken($deviceName)->plainTextToken;
+
+            return ['user' => $user, 'token' => $token];
+        } finally {
+            $lock->release();
+        }
     }
 
     /**
@@ -140,17 +156,37 @@ class AuthService
      * fresh one) — `$user->replaceRecoveryCode()` itself is a silent no-op for a code
      * that isn't actually present, so membership is checked explicitly first rather
      * than trusting that call alone to signal success.
+     *
+     * Recovery-code consumption is additionally locked per-user (not just per challenge
+     * token): two *different* challenge tokens — e.g. two concurrent login attempts —
+     * could otherwise both race to consume the same recovery code, since each holds its
+     * own `$user` instance loaded before either write lands. `$user->refresh()` after
+     * acquiring the lock picks up whatever the other request already committed.
      */
     private function verifyTwoFactorCode(User $user, ?string $code, ?string $recoveryCode): void
     {
         if ($recoveryCode) {
-            if (! in_array($recoveryCode, $user->recoveryCodes(), true)) {
+            $lock = Cache::lock("recovery-code-consume:{$user->id}", 10);
+
+            if (! $lock->get()) {
                 throw ValidationException::withMessages([
-                    'code' => __('The provided recovery code is invalid.'),
+                    'code' => __('Please try again in a moment.'),
                 ]);
             }
 
-            $user->replaceRecoveryCode($recoveryCode);
+            try {
+                $user->refresh();
+
+                if (! in_array($recoveryCode, $user->recoveryCodes(), true)) {
+                    throw ValidationException::withMessages([
+                        'code' => __('The provided recovery code is invalid.'),
+                    ]);
+                }
+
+                $user->replaceRecoveryCode($recoveryCode);
+            } finally {
+                $lock->release();
+            }
 
             return;
         }

@@ -34,6 +34,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @property Carbon|null $birth_date
  * @property string|null $country_code
  * @property array<string, mixed>|null $settings
+ * @property bool $is_admin
  * @property string|null $two_factor_secret
  * @property string|null $two_factor_recovery_codes
  * @property Carbon|null $two_factor_confirmed_at
@@ -62,6 +63,7 @@ class User extends Authenticatable implements PasskeyUser
             'password' => 'hashed',
             'birth_date' => 'date',
             'settings' => 'array',
+            'is_admin' => 'boolean',
         ];
     }
 

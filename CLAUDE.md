@@ -40,10 +40,19 @@ in `TelemetryController` it is always a `Device`.
 
 ### Telemetry ingestion flow (`routes/api.php` → `App\Http\Controllers\Api\TelemetryController`)
 
-- `POST /api/telemetry/register` (unauthenticated, throttled 20/min): upserts a `Device` by
-  `device_uuid`, deletes any existing tokens for it, and mints a fresh Sanctum token. Re-registering
-  the same `device_uuid` (reinstall, cleared app data) always revokes the old token — tokens are
-  hashed at rest and never retrievable again, so there's no way to hand back the same one.
+- `POST /api/telemetry/register` (throttled 20/min): creates a `Device` by `device_uuid` and mints
+  a fresh Sanctum token — unauthenticated, since that's the only way a device can get a token in
+  the first place. Re-registering a `device_uuid` that **already holds a live token** is different:
+  it requires that exact device's current token via `Authorization: Bearer` to rotate it (proof of
+  possession, not just knowledge of the UUID) — otherwise anyone who learns/guesses a `device_uuid`
+  could silently steal that device's identity, since tokens are hashed at rest and the old one gets
+  deleted unconditionally. A `device_uuid` with no live token (first registration never completed,
+  or the token already expired/was revoked) still needs no auth to (re-)register — there's nothing
+  to steal. Practically: a real reinstall/cleared-app-data event that wipes the token *and* the
+  locally-stored `device_uuid` together (the common case) is unaffected — the client just generates
+  a new UUID and registers fresh, same as any new device. Only a `device_uuid` that somehow persists
+  independently of the token (e.g. derived from a more durable identifier) would need its old token
+  to recover, and can no longer do so silently.
 - `POST /api/telemetry/events` (`auth:sanctum`, throttled 120/min): batch-ingests events. The
   `device` block in the payload body is informational only (used to refresh app version / last seen)
   — identity comes solely from the Sanctum token, never from the body. Insertion is
@@ -64,6 +73,13 @@ searchable/sortable/paginated tables themselves are separate Livewire components
 (`App\Livewire\DevicesTable`, `App\Livewire\EventsTable`) rendered inside those views — not the
 controllers. Both use `#[Url]`-bound public properties for search/sort state and reset pagination
 `updating*` hooks fire.
+
+Gated by the `viewTelemetry` Gate (`AppServiceProvider::configureGates()`), which checks
+`User::$is_admin` — not just `auth`+`verified`. This matters because `User` is *also* the social
+API's end-user principal (Sanctum, mobile app): without the Gate, any registered mobile-app user
+could browse every device's crash/event history simply by logging into the web dashboard.
+`is_admin` is deliberately absent from `User`'s `#[Fillable]` attribute (never mass-assignable);
+grant/revoke it via `php artisan users:make-admin {email} [--revoke]`.
 
 ### Views
 

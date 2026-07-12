@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Services\SocialAuth\SocialUserPayload;
 use App\Services\SocialAuthService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Laravel\Fortify\Actions\ConfirmTwoFactorAuthentication;
 use Laravel\Fortify\Actions\EnableTwoFactorAuthentication;
 use Laravel\Fortify\Fortify;
@@ -185,6 +186,76 @@ class TwoFactorLoginChallengeTest extends TestCase
         ]);
 
         $response->assertUnprocessable();
+    }
+
+    /**
+     * Simulates the concurrent case directly (a single-threaded test can't produce a
+     * true race): another process holding the per-challenge-token lock when this
+     * request arrives is exactly what a real concurrent double-submit would look like.
+     * See AuthService::completeTwoFactorChallenge()'s doc comment.
+     */
+    public function test_completing_the_challenge_while_another_request_holds_its_lock_is_rejected(): void
+    {
+        $user = $this->makeTwoFactorUser();
+        $secret = Fortify::currentEncrypter()->decrypt($user->two_factor_secret);
+
+        $login = $this->postJson('/api/v1/auth/login', [
+            'login' => $user->username,
+            'password' => 'password123!',
+        ]);
+        $challengeToken = $login->json('two_factor_token');
+
+        $lock = Cache::lock("two-factor-challenge:{$challengeToken}:lock", 10);
+        $lock->get();
+
+        try {
+            $response = $this->postJson('/api/v1/auth/two-factor-challenge', [
+                'two_factor_token' => $challengeToken,
+                'code' => $this->codeAt($secret, 1),
+            ]);
+
+            $response->assertUnprocessable();
+            $response->assertJsonValidationErrors(['two_factor_token']);
+        } finally {
+            $lock->release();
+        }
+
+        // The lock being released means the challenge is still completable afterward —
+        // this was a "try again" rejection, not a burned/expired token.
+        $retry = $this->postJson('/api/v1/auth/two-factor-challenge', [
+            'two_factor_token' => $challengeToken,
+            'code' => $this->codeAt($secret, 1),
+        ]);
+        $retry->assertOk();
+    }
+
+    /** Same simulated-concurrency approach as above, at the recovery-code-specific lock. */
+    public function test_consuming_a_recovery_code_while_another_request_holds_its_lock_is_rejected(): void
+    {
+        $user = $this->makeTwoFactorUser();
+        $recoveryCode = $user->recoveryCodes()[0];
+
+        $login = $this->postJson('/api/v1/auth/login', [
+            'login' => $user->username,
+            'password' => 'password123!',
+        ]);
+        $challengeToken = $login->json('two_factor_token');
+
+        $lock = Cache::lock("recovery-code-consume:{$user->id}", 10);
+        $lock->get();
+
+        try {
+            $response = $this->postJson('/api/v1/auth/two-factor-challenge', [
+                'two_factor_token' => $challengeToken,
+                'recovery_code' => $recoveryCode,
+            ]);
+
+            $response->assertUnprocessable();
+        } finally {
+            $lock->release();
+        }
+
+        $this->assertContains($recoveryCode, $user->fresh()->recoveryCodes());
     }
 
     public function test_social_login_also_gates_on_two_factor(): void

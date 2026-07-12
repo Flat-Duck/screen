@@ -11,11 +11,16 @@ class HealthCheckTest extends TestCase
 {
     use RefreshDatabase;
 
+    private function withSecret(): self
+    {
+        return $this->withHeader('X-Health-Check-Secret', config('health.deep_check_secret'));
+    }
+
     public function test_deep_health_check_reports_healthy_under_normal_conditions(): void
     {
         Storage::fake('public');
 
-        $response = $this->getJson('/up/deep');
+        $response = $this->withSecret()->getJson('/up/deep');
 
         $response->assertOk();
         $response->assertJsonPath('status', 'ok');
@@ -36,10 +41,31 @@ class HealthCheckTest extends TestCase
             'available_at' => now()->timestamp,
         ]));
 
-        $response = $this->getJson('/up/deep');
+        $response = $this->withSecret()->getJson('/up/deep');
 
         $response->assertStatus(503);
         $response->assertJsonPath('status', 'unhealthy');
         $response->assertJsonPath('checks.queue.ok', false);
+    }
+
+    public function test_deep_health_check_404s_without_the_secret(): void
+    {
+        $this->getJson('/up/deep')->assertNotFound();
+    }
+
+    public function test_deep_health_check_404s_with_the_wrong_secret(): void
+    {
+        $this->withHeader('X-Health-Check-Secret', 'wrong')
+            ->getJson('/up/deep')
+            ->assertNotFound();
+    }
+
+    public function test_deep_health_check_fails_closed_when_the_secret_is_unconfigured(): void
+    {
+        config(['health.deep_check_secret' => null]);
+
+        $this->withHeader('X-Health-Check-Secret', '')
+            ->getJson('/up/deep')
+            ->assertNotFound();
     }
 }

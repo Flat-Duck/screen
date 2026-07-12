@@ -18,7 +18,7 @@ Route::get('/email/verify-change/{user}', [EmailChangeVerificationController::cl
     ->middleware('signed')
     ->name('email.change.verify');
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified', 'can:viewTelemetry'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::get('devices', [DeviceController::class, 'index'])->name('devices.index');

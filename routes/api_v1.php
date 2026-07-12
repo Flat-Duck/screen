@@ -36,6 +36,10 @@ Route::middleware(['auth:sanctum', 'auth.user'])->group(function () {
 
     Route::delete('account', [AccountController::class, 'destroy'])->middleware('throttle:account-manage');
     Route::post('account/email', [AccountController::class, 'changeEmail'])->middleware('throttle:account-manage');
+    // Sends the step-up email code (StepUpService) — only for an account with neither a
+    // password nor 2FA. Tightly throttled: this is a brute-force/spam surface (mailing
+    // yourself codes) same in spirit as the 2FA challenge limiter.
+    Route::post('account/confirmation-code', [AccountController::class, 'sendConfirmationCode'])->middleware('throttle:account-manage');
 
     Route::get('connected-accounts', [ConnectedAccountController::class, 'index'])->middleware('throttle:reads');
     Route::delete('connected-accounts/{provider}', [ConnectedAccountController::class, 'destroy'])->middleware('throttle:account-manage');

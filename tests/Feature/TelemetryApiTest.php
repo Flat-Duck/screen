@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Device;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Laravel\Sanctum\PersonalAccessToken;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -37,7 +38,28 @@ class TelemetryApiTest extends TestCase
         $this->assertDatabaseCount('personal_access_tokens', 1);
     }
 
-    public function test_re_registering_the_same_device_reissues_a_token_without_duplicating_the_device(): void
+    public function test_re_registering_the_same_device_with_its_current_token_reissues_a_token_without_duplicating_the_device(): void
+    {
+        $deviceId = (string) Str::uuid();
+
+        $first = $this->postJson('/api/telemetry/register', $this->registerPayload($deviceId));
+        $first->assertCreated();
+
+        $second = $this->withHeader('Authorization', "Bearer {$first->json('token')}")
+            ->postJson('/api/telemetry/register', $this->registerPayload($deviceId));
+        $second->assertOk();
+
+        $this->assertDatabaseCount('devices', 1);
+        $this->assertDatabaseCount('personal_access_tokens', 1);
+        $this->assertNotSame($first->json('token'), $second->json('token'));
+    }
+
+    /**
+     * Without proof of possession, re-registering an already-enrolled device_uuid would let
+     * anyone who learns/guesses it steal that device's identity: the old token gets deleted
+     * and a fresh one handed to whoever asked. Knowing the UUID alone must not be enough.
+     */
+    public function test_re_registering_an_already_enrolled_device_without_its_token_is_rejected(): void
     {
         $deviceId = (string) Str::uuid();
 
@@ -45,11 +67,44 @@ class TelemetryApiTest extends TestCase
         $first->assertCreated();
 
         $second = $this->postJson('/api/telemetry/register', $this->registerPayload($deviceId));
-        $second->assertOk();
 
-        $this->assertDatabaseCount('devices', 1);
+        $second->assertUnauthorized();
         $this->assertDatabaseCount('personal_access_tokens', 1);
-        $this->assertNotSame($first->json('token'), $second->json('token'));
+
+        // The rejected attempt didn't revoke the legitimate device's original token — it
+        // still resolves via Sanctum's own token lookup, unchanged.
+        $token = PersonalAccessToken::findToken($first->json('token'));
+        $this->assertNotNull($token);
+    }
+
+    public function test_re_registering_an_already_enrolled_device_with_a_different_devices_token_is_rejected(): void
+    {
+        $deviceId = (string) Str::uuid();
+        $this->postJson('/api/telemetry/register', $this->registerPayload($deviceId))->assertCreated();
+
+        $otherDevice = $this->postJson('/api/telemetry/register', $this->registerPayload());
+        $otherDevice->assertCreated();
+
+        $response = $this->withHeader('Authorization', "Bearer {$otherDevice->json('token')}")
+            ->postJson('/api/telemetry/register', $this->registerPayload($deviceId));
+
+        $response->assertUnauthorized();
+        $this->assertDatabaseCount('personal_access_tokens', 2);
+    }
+
+    /** A device with no live token yet (e.g. its token already expired/was revoked) has nothing to steal. */
+    public function test_re_registering_a_device_with_no_existing_token_needs_no_auth(): void
+    {
+        $deviceId = (string) Str::uuid();
+        $first = $this->postJson('/api/telemetry/register', $this->registerPayload($deviceId));
+        $first->assertCreated();
+
+        Device::where('device_uuid', $deviceId)->first()->tokens()->delete();
+
+        $second = $this->postJson('/api/telemetry/register', $this->registerPayload($deviceId));
+
+        $second->assertOk();
+        $this->assertDatabaseCount('personal_access_tokens', 1);
     }
 
     public function test_events_endpoint_rejects_unauthenticated_requests(): void

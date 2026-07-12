@@ -21,6 +21,7 @@ class UserSeeder extends Seeder
             'name' => 'Test User',
             'username' => 'testuser',
             'email' => 'test@example.com',
+            'is_admin' => true,
         ]);
 
         collect([

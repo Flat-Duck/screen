@@ -20,9 +20,18 @@ class EventDashboardTest extends TestCase
         $this->get(route('events.show', $event))->assertRedirect(route('login'));
     }
 
-    public function test_authenticated_users_can_view_the_events_list(): void
+    public function test_non_admin_users_are_forbidden(): void
     {
         $this->actingAs(User::factory()->create());
+        $event = TelemetryEvent::factory()->for(Device::factory())->create();
+
+        $this->get(route('events.index'))->assertForbidden();
+        $this->get(route('events.show', $event))->assertForbidden();
+    }
+
+    public function test_admin_users_can_view_the_events_list(): void
+    {
+        $this->actingAs(User::factory()->create(['is_admin' => true]));
         TelemetryEvent::factory()->for(Device::factory())->count(3)->create();
 
         $this->get(route('events.index'))->assertOk();
@@ -30,7 +39,7 @@ class EventDashboardTest extends TestCase
 
     public function test_event_show_page_displays_breadcrumbs_and_stack_trace_for_a_crash(): void
     {
-        $this->actingAs(User::factory()->create());
+        $this->actingAs(User::factory()->create(['is_admin' => true]));
         $device = Device::factory()->create();
         $crash = TelemetryEvent::factory()->for($device)->fatalCrash()->create([
             'breadcrumbs' => [

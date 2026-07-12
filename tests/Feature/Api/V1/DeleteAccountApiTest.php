@@ -2,16 +2,42 @@
 
 namespace Tests\Feature\Api\V1;
 
+use App\Mail\AccountConfirmationCodeMail;
 use App\Models\Post;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class DeleteAccountApiTest extends TestCase
 {
     use RefreshDatabase;
+
+    private function withHeaderFor(User $user): self
+    {
+        $token = $user->createToken('mobile')->plainTextToken;
+
+        return $this->withHeader('Authorization', "Bearer {$token}");
+    }
+
+    /** For a passwordless, non-2FA account — the only step-up proof it has available. */
+    private function confirmationCodeFor(User $user): string
+    {
+        Mail::fake();
+
+        $this->withHeaderFor($user)->postJson('/api/v1/account/confirmation-code')->assertNoContent();
+
+        $code = null;
+        Mail::assertQueued(AccountConfirmationCodeMail::class, function (AccountConfirmationCodeMail $mail) use (&$code): bool {
+            $code = $mail->code;
+
+            return true;
+        });
+
+        return $code;
+    }
 
     public function test_deleting_requires_the_current_password(): void
     {
@@ -26,16 +52,30 @@ class DeleteAccountApiTest extends TestCase
         $this->assertNotSoftDeleted($user);
     }
 
-    public function test_deleting_does_not_require_a_password_for_a_social_only_account(): void
+    public function test_deleting_a_passwordless_account_requires_the_email_confirmation_code(): void
     {
         $user = User::factory()->create(['password' => null]);
-        $token = $user->createToken('mobile')->plainTextToken;
 
-        $this->withHeader('Authorization', "Bearer {$token}")
-            ->deleteJson('/api/v1/account')
+        $withoutCode = $this->withHeaderFor($user)->deleteJson('/api/v1/account');
+        $withoutCode->assertUnprocessable();
+        $withoutCode->assertJsonValidationErrors(['confirmation_code']);
+
+        $code = $this->confirmationCodeFor($user);
+
+        $this->withHeaderFor($user)
+            ->deleteJson('/api/v1/account', ['confirmation_code' => $code])
             ->assertNoContent();
 
         $this->assertSoftDeleted($user);
+    }
+
+    public function test_deleting_a_passwordless_2fa_account_requires_a_totp_code_not_the_email_code(): void
+    {
+        $user = User::factory()->withTwoFactor()->create(['password' => null]);
+
+        $response = $this->withHeaderFor($user)->postJson('/api/v1/account/confirmation-code');
+        $response->assertUnprocessable();
+        $response->assertJsonValidationErrors(['confirmation_code']);
     }
 
     public function test_deleting_soft_deletes_the_account_revokes_all_tokens_and_hides_it_from_others(): void

@@ -2,13 +2,13 @@
 
 namespace App\Http\Requests;
 
-use App\Http\Requests\Concerns\RequiresCurrentPassword;
+use App\Http\Requests\Concerns\RequiresStepUpAuth;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class DisableTwoFactorRequest extends FormRequest
 {
-    use RequiresCurrentPassword;
+    use RequiresStepUpAuth;
 
     /**
      * Determine if the user is authorized to make this request.
@@ -25,8 +25,6 @@ class DisableTwoFactorRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
-            'current_password' => $this->currentPasswordRule(),
-        ];
+        return $this->stepUpRules();
     }
 }

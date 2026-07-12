@@ -6,7 +6,7 @@ use App\Http\Requests\Concerns\RequiresStepUpAuth;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
-class EnableTwoFactorRequest extends FormRequest
+class UnlinkConnectedAccountRequest extends FormRequest
 {
     use RequiresStepUpAuth;
 

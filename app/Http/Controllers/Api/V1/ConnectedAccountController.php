@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Http\Requests\UnlinkConnectedAccountRequest;
 use App\Http\Resources\ConnectedAccountResource;
 use App\Models\User;
 use App\Services\ConnectedAccountService;
@@ -21,7 +22,7 @@ class ConnectedAccountController extends Controller
         return ConnectedAccountResource::collection($this->connectedAccounts->listFor($user));
     }
 
-    public function destroy(Request $request, string $provider): JsonResponse
+    public function destroy(UnlinkConnectedAccountRequest $request, string $provider): JsonResponse
     {
         /** @var User $user */
         $user = $request->user();

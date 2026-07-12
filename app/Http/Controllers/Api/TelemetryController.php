@@ -17,8 +17,18 @@ class TelemetryController extends Controller
     private const MAX_STACK_TRACE_LENGTH = 4000;
 
     /**
-     * First-run enrollment: creates (or re-registers) a Device and issues it a fresh Sanctum
-     * token. No prior auth is possible here — this is how a device gets one in the first place.
+     * First-run enrollment: creates a Device and issues it a fresh Sanctum token. No prior
+     * auth is possible here for a genuinely new device_uuid — this is how a device gets a
+     * token in the first place.
+     *
+     * Re-registering an *existing* device_uuid that already holds a token is a different
+     * story: without this check, anyone who learns/guesses a device_uuid could silently
+     * steal that device's identity by re-registering unauthenticated — the old token gets
+     * deleted and a fresh one handed to the attacker instead. So rotating an
+     * already-token-holding device's token requires presenting that exact device's current
+     * token via Authorization: Bearer — proof of possession, not just knowledge of the UUID.
+     * A device with no live token yet (first registration never got this far, or its token
+     * already expired/was revoked) has nothing to steal, so that case still needs no auth.
      */
     public function register(RegisterDeviceRequest $request): JsonResponse
     {
@@ -26,6 +36,16 @@ class TelemetryController extends Controller
 
         $device = Device::firstOrNew(['device_uuid' => $validated['device_id']]);
         $isNewDevice = ! $device->exists;
+
+        if ($device->exists && $device->tokens()->exists()) {
+            $authenticated = $request->user('sanctum');
+
+            abort_unless(
+                $authenticated instanceof Device && $authenticated->is($device),
+                401,
+                'This device is already registered. Re-registering it requires the current device token.',
+            );
+        }
 
         $device->fill([
             'manufacturer' => $validated['manufacturer'] ?? null,
