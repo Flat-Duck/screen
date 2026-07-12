@@ -38,7 +38,12 @@ routes exactly like it would a `User` on web routes — the two never mix becaus
 belongs to exactly one tokenable model. Don't assume `$request->user()` on API routes is a `User`;
 in `TelemetryController` it is always a `Device`.
 
-### Telemetry ingestion flow (`routes/api.php` → `App\Http\Controllers\Api\TelemetryController`)
+### Telemetry ingestion flow (`routes/api.php` → `App\Http\Controllers\Api\TelemetryController` →
+`App\Actions\Telemetry\{RegisterDevice,IngestTelemetryBatch}`)
+
+The controller itself is now just request validation + delegation; enrollment/token-rotation
+logic lives in `RegisterDevice` (returns an immutable `DeviceRegistration` result), and batch
+persistence lives in `IngestTelemetryBatch`.
 
 - `POST /api/telemetry/register` (throttled 20/min): creates a `Device` by `device_uuid` and mints
   a fresh Sanctum token — unauthenticated, since that's the only way a device can get a token in
@@ -65,7 +70,7 @@ in `TelemetryController` it is always a `Device`.
 - Request validation in `StoreTelemetryEventsRequest` intentionally mirrors the Android client's
   `TelemetryBatchRequest`/`TelemetryEventPayload` field names exactly — keep them in sync if the
   client payload shape changes.
-- Stack traces are truncated to `TelemetryController::MAX_STACK_TRACE_LENGTH` (4000 chars) before
+- Stack traces are truncated to `IngestTelemetryBatch::MAX_STACK_TRACE_LENGTH` (4000 chars) before
   storage.
 
 ### Dashboard (web, session auth)

@@ -7,6 +7,7 @@ use App\Mail\EmailChangedNotificationMail;
 use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
@@ -79,15 +80,31 @@ class EmailChangeService
         $oldEmail = $user->email;
         $newEmail = $user->pending_email;
 
-        $user->email = $newEmail;
-        // $user->email_verified_at is cast to the mutable Illuminate\Support\Carbon, not
-        // the app-wide default CarbonImmutable (AppServiceProvider::boot()) —
-        // Carbon::now() matches the cast's declared type, now() doesn't.
-        $user->email_verified_at = Carbon::now();
-        $user->pending_email = null;
-
+        // The email mutation and token revocation are coordinated as one durable step:
+        // either both land or neither does, rather than a save that succeeds followed
+        // by a revoke that might not (leaving the account's email changed but every
+        // stolen/compromised session still valid). The notification is dispatched only
+        // *after* this transaction returns — i.e. only after it's actually committed —
+        // never from inside it, so the old owner is never told about a change that got
+        // rolled back.
         try {
-            $user->save();
+            DB::transaction(function () use ($user, $newEmail): void {
+                $user->email = $newEmail;
+                // $user->email_verified_at is cast to the mutable Illuminate\Support\Carbon,
+                // not the app-wide default CarbonImmutable (AppServiceProvider::boot()) —
+                // Carbon::now() matches the cast's declared type, now() doesn't.
+                $user->email_verified_at = Carbon::now();
+                $user->pending_email = null;
+                $user->save();
+
+                // Revoke every session, not just "other" ones — unlike a password change
+                // (done from an already-authenticated request, where "keep this session"
+                // is meaningful), this confirmation happens from a signed web link with
+                // no session of its own to exempt. A token that changed the account's
+                // email is exactly the kind of thing worth forcing a fresh login on
+                // every device for.
+                $user->tokens()->delete();
+            });
         } catch (QueryException $e) {
             if ($this->isUniqueConstraintViolation($e)) {
                 throw ValidationException::withMessages([
@@ -97,13 +114,6 @@ class EmailChangeService
 
             throw $e;
         }
-
-        // Revoke every session, not just "other" ones — unlike a password change (done
-        // from an already-authenticated request, where "keep this session" is
-        // meaningful), this confirmation happens from a signed web link with no session
-        // of its own to exempt. A token that changed the account's email is exactly the
-        // kind of thing worth forcing a fresh login on every device for.
-        $user->tokens()->delete();
 
         Mail::to($oldEmail)->send(new EmailChangedNotificationMail($newEmail));
     }

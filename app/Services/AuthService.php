@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Services\Auth\IssuedAccessToken;
+use App\Services\Auth\TwoFactorRequired;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -14,11 +16,8 @@ class AuthService
 {
     public function __construct(private readonly TwoFactorAuthenticationProvider $twoFactor) {}
 
-    /**
-     * @param  array<string, string>  $data
-     * @return array{user: User, token: string}
-     */
-    public function register(array $data): array
+    /** @param  array<string, string>  $data */
+    public function register(array $data): IssuedAccessToken
     {
         $user = User::create([
             'name' => $data['name'],
@@ -29,7 +28,12 @@ class AuthService
 
         $token = $user->createToken($data['device_name'] ?? 'mobile')->plainTextToken;
 
-        return ['user' => $user, 'token' => $token];
+        // isNewAccount stays at its default (false) here — this endpoint's response
+        // never included an `is_new_account` field (unlike social login's, which needs
+        // it to distinguish 200 vs 201), and a plain /auth/register call is redundant
+        // with that fact anyway. Don't change the wire shape as a side effect of this
+        // DTO refactor.
+        return new IssuedAccessToken($user, $token);
     }
 
     /**
@@ -39,9 +43,8 @@ class AuthService
      * {@see completeTwoFactorChallenge()}.
      *
      * @param  array<string, string>  $credentials  Expects 'login' and 'password' keys.
-     * @return array{user: User, token: string}|array{requires_two_factor: true, two_factor_token: string}
      */
-    public function login(array $credentials, string $deviceName = 'mobile'): array
+    public function login(array $credentials, string $deviceName = 'mobile'): IssuedAccessToken|TwoFactorRequired
     {
         $user = User::query()
             ->where('email', $credentials['login'])
@@ -66,7 +69,7 @@ class AuthService
 
         $token = $user->createToken($deviceName)->plainTextToken;
 
-        return ['user' => $user, 'token' => $token];
+        return new IssuedAccessToken($user, $token);
     }
 
     /** Revokes only the current token — a login on another device stays valid. */
@@ -92,16 +95,14 @@ class AuthService
      * since a Sanctum API client has no PHP session to hold that in. The client is
      * expected to prompt for a TOTP/recovery code and complete the login via
      * {@see completeTwoFactorChallenge()}.
-     *
-     * @return array{requires_two_factor: true, two_factor_token: string}
      */
-    public function twoFactorChallengeResponse(User $user): array
+    public function twoFactorChallengeResponse(User $user): TwoFactorRequired
     {
         $challengeToken = Str::random(64);
 
         Cache::put("two-factor-challenge:{$challengeToken}", $user->id, now()->addMinutes(5));
 
-        return ['requires_two_factor' => true, 'two_factor_token' => $challengeToken];
+        return new TwoFactorRequired($challengeToken);
     }
 
     /**
@@ -109,15 +110,13 @@ class AuthService
      * requests for the same `two_factor_token` could both read the still-present cache
      * entry, both pass verification, and both mint a token before either call to
      * `Cache::forget()` lands (a classic check-then-act race on a "single-use" token).
-     *
-     * @return array{user: User, token: string}
      */
     public function completeTwoFactorChallenge(
         string $challengeToken,
         ?string $code,
         ?string $recoveryCode,
         string $deviceName,
-    ): array {
+    ): IssuedAccessToken {
         $cacheKey = "two-factor-challenge:{$challengeToken}";
         $lock = Cache::lock("{$cacheKey}:lock", 10);
 
@@ -145,7 +144,7 @@ class AuthService
 
             $token = $user->createToken($deviceName)->plainTextToken;
 
-            return ['user' => $user, 'token' => $token];
+            return new IssuedAccessToken($user, $token);
         } finally {
             $lock->release();
         }

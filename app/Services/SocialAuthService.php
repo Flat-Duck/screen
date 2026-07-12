@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\SocialAccount;
 use App\Models\User;
+use App\Services\Auth\IssuedAccessToken;
+use App\Services\Auth\TwoFactorRequired;
 use App\Services\SocialAuth\SocialUserPayload;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -26,10 +28,8 @@ class SocialAuthService
      * A newly-created account can never have 2FA enabled yet, so the check below only
      * ever bites for an existing account being logged into — matches AuthService::login's
      * same short-circuit-before-token-issuance behavior.
-     *
-     * @return array{user: User, token: string, is_new_account: bool}|array{requires_two_factor: true, two_factor_token: string}
      */
-    public function loginOrRegister(SocialUserPayload $payload, string $deviceName): array
+    public function loginOrRegister(SocialUserPayload $payload, string $deviceName): IssuedAccessToken|TwoFactorRequired
     {
         $isNewAccount = false;
 
@@ -78,7 +78,7 @@ class SocialAuthService
 
         $token = $user->createToken($deviceName)->plainTextToken;
 
-        return ['user' => $user, 'token' => $token, 'is_new_account' => $isNewAccount];
+        return new IssuedAccessToken($user, $token, $isNewAccount);
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api\V1;
 
 use App\Models\User;
+use App\Services\Auth\TwoFactorRequired;
 use App\Services\SocialAuth\SocialUserPayload;
 use App\Services\SocialAuthService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -277,8 +278,6 @@ class TwoFactorLoginChallengeTest extends TestCase
         // (already covered by SocialAuthTest).
         $result = app(SocialAuthService::class)->loginOrRegister($payload, 'mobile');
 
-        $this->assertArrayHasKey('requires_two_factor', $result);
-        $this->assertTrue($result['requires_two_factor']);
-        $this->assertArrayNotHasKey('token', $result);
+        $this->assertInstanceOf(TwoFactorRequired::class, $result);
     }
 }

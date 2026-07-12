@@ -11,6 +11,8 @@ use App\Http\Requests\SetPasswordRequest;
 use App\Http\Requests\TwoFactorChallengeRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
+use App\Services\Auth\IssuedAccessToken;
+use App\Services\Auth\TwoFactorRequired;
 use App\Services\AuthService;
 use App\Services\SocialAuth\AppleTokenVerifier;
 use App\Services\SocialAuth\FacebookTokenVerifier;
@@ -29,13 +31,7 @@ class AuthController extends Controller
 
     public function register(RegisterUserRequest $request): JsonResponse
     {
-        $result = $this->auth->register($request->validated());
-
-        return response()->json([
-            'user' => new UserResource($result['user']->loadCount(['posts', 'followers', 'following'])),
-            'token' => $result['token'],
-            'profile_completion' => $result['user']->profileCompletionStatus(),
-        ], 201);
+        return $this->respondToAuthResult($this->auth->register($request->validated()), successStatus: 201);
     }
 
     public function login(LoginRequest $request): JsonResponse
@@ -48,15 +44,7 @@ class AuthController extends Controller
             $request->string('device_name', 'mobile')->toString(),
         );
 
-        if (isset($result['requires_two_factor'])) {
-            return response()->json($result);
-        }
-
-        return response()->json([
-            'user' => new UserResource($result['user']->loadCount(['posts', 'followers', 'following'])),
-            'token' => $result['token'],
-            'profile_completion' => $result['user']->profileCompletionStatus(),
-        ]);
+        return $this->respondToAuthResult($result);
     }
 
     public function google(GoogleLoginRequest $request, GoogleTokenVerifier $verifier): JsonResponse
@@ -100,11 +88,7 @@ class AuthController extends Controller
             $request->string('device_name', 'mobile')->toString(),
         );
 
-        return response()->json([
-            'user' => new UserResource($result['user']->loadCount(['posts', 'followers', 'following'])),
-            'token' => $result['token'],
-            'profile_completion' => $result['user']->profileCompletionStatus(),
-        ]);
+        return $this->respondToAuthResult($result);
     }
 
     public function setPassword(SetPasswordRequest $request): JsonResponse
@@ -133,15 +117,38 @@ class AuthController extends Controller
     {
         $result = $this->socialAuth->loginOrRegister($payload, $deviceName);
 
-        if (isset($result['requires_two_factor'])) {
-            return response()->json($result);
+        return $this->respondToAuthResult(
+            $result,
+            successStatus: $result instanceof IssuedAccessToken && $result->isNewAccount ? 201 : 200,
+            includeIsNewAccount: true,
+        );
+    }
+
+    /**
+     * Shared response shape for every endpoint that can end in either a fresh token or
+     * a two-factor challenge — avoids re-deriving the same `{user, token,
+     * profile_completion}` (or `{requires_two_factor, two_factor_token}`) JSON at each
+     * of the four call sites above. `includeIsNewAccount` exists because only social
+     * login's response ever carried that field — register/login/2FA-challenge never
+     * did, and shouldn't start just because they now share this DTO.
+     */
+    private function respondToAuthResult(
+        IssuedAccessToken|TwoFactorRequired $result,
+        int $successStatus = 200,
+        bool $includeIsNewAccount = false,
+    ): JsonResponse {
+        if (! $result instanceof IssuedAccessToken) {
+            return response()->json([
+                'requires_two_factor' => true,
+                'two_factor_token' => $result->twoFactorToken,
+            ]);
         }
 
         return response()->json([
-            'user' => new UserResource($result['user']->loadCount(['posts', 'followers', 'following'])),
-            'token' => $result['token'],
-            'is_new_account' => $result['is_new_account'],
-            'profile_completion' => $result['user']->profileCompletionStatus(),
-        ], $result['is_new_account'] ? 201 : 200);
+            'user' => new UserResource($result->user->loadCount(['posts', 'followers', 'following'])),
+            'token' => $result->token,
+            ...($includeIsNewAccount ? ['is_new_account' => $result->isNewAccount] : []),
+            'profile_completion' => $result->user->profileCompletionStatus(),
+        ], $successStatus);
     }
 }

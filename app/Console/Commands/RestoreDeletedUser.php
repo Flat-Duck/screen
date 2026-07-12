@@ -23,17 +23,18 @@ class RestoreDeletedUser extends Command
             return self::FAILURE;
         }
 
-        // Also restores every post soft-deleted alongside the account (see
-        // AccountService::deleteAccount()) — a full account restore implies restoring
-        // its content too. Any post the user had already soft-deleted on their own
-        // *before* deleting the account is indistinguishable from one that was only
-        // soft-deleted as part of the account deletion, so it comes back too. This is a
-        // rare, support-only tool, not a general-purpose per-post undo — documented
-        // limitation, not a gap to fix later.
-        $user->posts()->onlyTrashed()->restore();
+        // Only revives posts trashed *because* the account was deleted
+        // (`account_deleted_at` — see AccountService::deleteAccount()) — a post the
+        // user had deleted individually before ever deleting their account stays
+        // trashed, since restoring the account isn't an undo for that separate choice.
+        $restoredPosts = $user->posts()->onlyTrashed()->whereNotNull('account_deleted_at')->update([
+            'deleted_at' => null,
+            'account_deleted_at' => null,
+        ]);
+
         $user->restore();
 
-        $this->info("Restored account #{$user->id} ({$user->email}).");
+        $this->info("Restored account #{$user->id} ({$user->email}) and {$restoredPosts} post(s).");
 
         return self::SUCCESS;
     }

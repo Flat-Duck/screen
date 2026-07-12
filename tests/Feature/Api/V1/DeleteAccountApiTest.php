@@ -5,6 +5,7 @@ namespace Tests\Feature\Api\V1;
 use App\Mail\AccountConfirmationCodeMail;
 use App\Models\Post;
 use App\Models\User;
+use App\Services\AccountService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Mail;
@@ -159,17 +160,39 @@ class DeleteAccountApiTest extends TestCase
         $this->assertSoftDeleted($user);
     }
 
-    public function test_restore_command_restores_the_account_and_its_posts(): void
+    public function test_restore_command_restores_the_account_and_posts_deleted_by_account_deletion(): void
     {
         $user = User::factory()->create();
         $post = Post::factory()->for($user)->create();
 
-        $user->posts()->delete();
-        $user->delete();
+        app(AccountService::class)->deleteAccount($user);
 
         Artisan::call('users:restore', ['id' => $user->id]);
 
         $this->assertNotSoftDeleted($user);
-        $this->assertNotSoftDeleted($post);
+        $this->assertNotSoftDeleted($post->fresh());
+        $this->assertNull($post->fresh()->account_deleted_at);
+    }
+
+    /**
+     * A post the user deleted on their own, before ever deleting the account, isn't
+     * something an account restore should undo — only content that became trashed *as
+     * a consequence of* deleting the account comes back.
+     */
+    public function test_restore_command_does_not_revive_a_post_deleted_independently_before_account_deletion(): void
+    {
+        $user = User::factory()->create();
+        $keptTrashed = Post::factory()->for($user)->create();
+        $revived = Post::factory()->for($user)->create();
+
+        $keptTrashed->delete();
+
+        app(AccountService::class)->deleteAccount($user);
+
+        Artisan::call('users:restore', ['id' => $user->id]);
+
+        $this->assertNotSoftDeleted($user);
+        $this->assertNotSoftDeleted($revived->fresh());
+        $this->assertSoftDeleted($keptTrashed->fresh());
     }
 }

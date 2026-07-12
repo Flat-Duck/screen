@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Actions\Posts\CreatePost;
 use App\Http\Requests\StorePostRequest;
 use App\Http\Resources\PostResource;
 use App\Models\Post;
@@ -12,14 +13,17 @@ use Illuminate\Http\Request;
 
 class PostController extends Controller
 {
-    public function __construct(private readonly PostService $posts) {}
+    public function __construct(
+        private readonly PostService $posts,
+        private readonly CreatePost $createPost,
+    ) {}
 
     public function store(StorePostRequest $request): JsonResponse
     {
         /** @var User $user */
         $user = $request->user();
 
-        $post = $this->posts->createPost($user, $request->validated());
+        $post = ($this->createPost)($user, $request->validated());
         $post->is_liked = false;
         $post->loadCount(['likes', 'comments'])->load('user');
 
