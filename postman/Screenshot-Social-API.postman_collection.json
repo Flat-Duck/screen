@@ -164,6 +164,74 @@
                                 },
                                 "url": "{{base_url}}/v1/telemetry/events"
                             }
+                        },
+                        {
+                            "name": "Clear Device FCM Token",
+                            "request": {
+                                "auth": {
+                                    "type": "bearer",
+                                    "bearer": [
+                                        {
+                                            "key": "token",
+                                            "value": "{{device_token}}",
+                                            "type": "string"
+                                        }
+                                    ]
+                                },
+                                "method": "DELETE",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{base_url}}/v1/devices/push-token",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "v1",
+                                        "devices",
+                                        "push-token"
+                                    ]
+                                },
+                                "description": "Call on logout so a signed-out device stops receiving pushes meant for this account. Scoped to the current user — only removes the token if it belongs to you."
+                            },
+                            "response": [
+                                {
+                                    "name": "204 No Content",
+                                    "originalRequest": {
+                                        "method": "DELETE",
+                                        "header": [
+                                            {
+                                                "key": "Accept",
+                                                "value": "application/json"
+                                            }
+                                        ],
+                                        "url": {
+                                            "raw": "{{base_url}}/v1/devices/push-token",
+                                            "host": [
+                                                "{{base_url}}"
+                                            ],
+                                            "path": [
+                                                "v1",
+                                                "devices",
+                                                "push-token"
+                                            ]
+                                        }
+                                    },
+                                    "status": "No Content",
+                                    "code": 204,
+                                    "_postman_previewlanguage": "json",
+                                    "header": [],
+                                    "body": ""
+                                }
+                            ]
                         }
                     ]
                 },
@@ -1302,156 +1370,6 @@
                                         }
                                     ],
                                     "body": "{\n  \"data\": {\n    \"id\": 1,\n    \"username\": \"alice\",\n    \"name\": \"Alice Smith\",\n    \"bio\": \"Screenshot enthusiast \\ud83d\\udcf8\",\n    \"avatar_url\": \"http://telm.test/storage/avatars/1/6f1c2a3b-....jpg\",\n    \"country_code\": \"EG\",\n    \"birth_date\": \"1990-05-15\",\n    \"posts_count\": 0,\n    \"followers_count\": 1,\n    \"following_count\": 1,\n    \"created_at\": \"2026-07-05T20:14:23.000000Z\"\n  },\n  \"profile_completion\": {\n    \"is_complete\": true,\n    \"has_username\": true,\n    \"has_password\": true,\n    \"has_bio\": true,\n    \"has_avatar\": true\n  }\n}"
-                                }
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "name": "Devices",
-                    "item": [
-                        {
-                            "name": "Register Push Token",
-                            "request": {
-                                "auth": {
-                                    "type": "bearer",
-                                    "bearer": [
-                                        {
-                                            "key": "token",
-                                            "value": "{{device_token}}",
-                                            "type": "string"
-                                        }
-                                    ]
-                                },
-                                "method": "PUT",
-                                "header": [
-                                    {
-                                        "key": "Accept",
-                                        "value": "application/json"
-                                    },
-                                    {
-                                        "key": "Content-Type",
-                                        "value": "application/json"
-                                    }
-                                ],
-                                "body": {
-                                    "mode": "raw",
-                                    "raw": "{\n  \"fcm_token\": \"<FCM registration token from FirebaseMessaging.getToken()>\"\n}",
-                                    "options": {
-                                        "raw": {
-                                            "language": "json"
-                                        }
-                                    }
-                                },
-                                "url": {
-                                    "raw": "{{base_url}}/v1/devices/push-token",
-                                    "host": [
-                                        "{{base_url}}"
-                                    ],
-                                    "path": [
-                                        "v1",
-                                        "devices",
-                                        "push-token"
-                                    ]
-                                },
-                                "description": "Upserts on `fcm_token` (not per-user) — call this right after every successful login/register/social auth, and again whenever FirebaseMessagingService.onNewToken fires. If the same token resurfaces under a different account (re-install, account switch on the same device), it re-points to the new owner rather than creating a duplicate row."
-                            },
-                            "response": [
-                                {
-                                    "name": "204 No Content",
-                                    "originalRequest": {
-                                        "method": "POST",
-                                        "header": [
-                                            {
-                                                "key": "Accept",
-                                                "value": "application/json"
-                                            }
-                                        ],
-                                        "url": {
-                                            "raw": "{{base_url}}/v1/devices/push-token",
-                                            "host": [
-                                                "{{base_url}}"
-                                            ],
-                                            "path": [
-                                                "v1",
-                                                "devices",
-                                                "push-token"
-                                            ]
-                                        }
-                                    },
-                                    "status": "No Content",
-                                    "code": 204,
-                                    "_postman_previewlanguage": "json",
-                                    "header": [],
-                                    "body": ""
-                                }
-                            ]
-                        },
-                        {
-                            "name": "Unregister Push Token",
-                            "request": {
-                                "auth": {
-                                    "type": "bearer",
-                                    "bearer": [
-                                        {
-                                            "key": "token",
-                                            "value": "{{device_token}}",
-                                            "type": "string"
-                                        }
-                                    ]
-                                },
-                                "method": "DELETE",
-                                "header": [
-                                    {
-                                        "key": "Accept",
-                                        "value": "application/json"
-                                    },
-                                    {
-                                        "key": "Content-Type",
-                                        "value": "application/json"
-                                    }
-                                ],
-                                "url": {
-                                    "raw": "{{base_url}}/v1/devices/push-token",
-                                    "host": [
-                                        "{{base_url}}"
-                                    ],
-                                    "path": [
-                                        "v1",
-                                        "devices",
-                                        "push-token"
-                                    ]
-                                },
-                                "description": "Call on logout so a signed-out device stops receiving pushes meant for this account. Scoped to the current user — only removes the token if it belongs to you."
-                            },
-                            "response": [
-                                {
-                                    "name": "204 No Content",
-                                    "originalRequest": {
-                                        "method": "DELETE",
-                                        "header": [
-                                            {
-                                                "key": "Accept",
-                                                "value": "application/json"
-                                            }
-                                        ],
-                                        "url": {
-                                            "raw": "{{base_url}}/v1/devices/push-token",
-                                            "host": [
-                                                "{{base_url}}"
-                                            ],
-                                            "path": [
-                                                "v1",
-                                                "devices",
-                                                "push-token"
-                                            ]
-                                        }
-                                    },
-                                    "status": "No Content",
-                                    "code": 204,
-                                    "_postman_previewlanguage": "json",
-                                    "header": [],
-                                    "body": ""
                                 }
                             ]
                         }
