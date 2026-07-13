@@ -17,7 +17,9 @@ use Throwable;
  * fails open the same way social login's avatar fetch and the trending feed's Redis
  * calls do: unconfigured credentials, a notifiable with no registered devices, or any
  * per-token send failure are all silently skipped rather than surfacing as an error —
- * this must never be what breaks a like/comment/follow from recording.
+ * this must never be what breaks a like/comment/follow from recording. Failures are
+ * still reported for operations, while an invalid response removes only that device's
+ * token.
  */
 class FcmChannel
 {
@@ -40,7 +42,9 @@ class FcmChannel
             return;
         }
 
-        $tokens = $notifiable->pushTokens()->pluck('fcm_token', 'id');
+        $tokens = DevicePushToken::query()
+            ->whereHas('device', fn ($query) => $query->where('user_id', $notifiable->id))
+            ->pluck('fcm_token', 'id');
 
         if ($tokens->isEmpty()) {
             return;

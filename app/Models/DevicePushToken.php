@@ -8,12 +8,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * An FCM registration token for one signed-in device. `fcm_token` is globally unique —
- * registering the same token again (token resurfacing after a re-install/account switch)
- * re-points `user_id` rather than creating a second row (see PushTokenService::register()).
+ * The current FCM registration token for one app installation.
  *
  * @property int $id
- * @property int $user_id
+ * @property int $device_id
  * @property string $fcm_token
  * @property string $platform
  */
@@ -23,16 +21,16 @@ class DevicePushToken extends Model
     use HasFactory;
 
     protected $fillable = [
-        'user_id',
+        'device_id',
         'fcm_token',
         'platform',
     ];
 
     /**
-     * @return BelongsTo<User, $this>
+     * @return BelongsTo<Device, $this>
      */
-    public function user(): BelongsTo
+    public function device(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(Device::class);
     }
 }

@@ -2,7 +2,10 @@
 
 namespace App\Actions\Auth;
 
+use App\Data\Auth\DeviceSessionContext;
+use App\Enums\LoginMethod;
 use App\Jobs\ImportSocialAvatar;
+use App\Models\Device;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Services\Auth\IssuedAccessToken;
@@ -17,11 +20,11 @@ use Illuminate\Validation\ValidationException;
 final class CompleteSocialLogin
 {
     public function __construct(
-        private readonly IssueAccessToken $issueToken,
+        private readonly StartDeviceSession $startSession,
         private readonly BeginTwoFactorChallenge $beginTwoFactor,
     ) {}
 
-    public function __invoke(SocialUserPayload $payload, string $deviceName): IssuedAccessToken|TwoFactorRequired
+    public function __invoke(Device $device, SocialUserPayload $payload, DeviceSessionContext $context): IssuedAccessToken|TwoFactorRequired
     {
         $isNewAccount = false;
 
@@ -96,10 +99,16 @@ final class CompleteSocialLogin
         }
 
         if ($user->hasEnabledTwoFactorAuthentication()) {
-            return ($this->beginTwoFactor)($user);
+            return ($this->beginTwoFactor)($user, $device, LoginMethod::from($payload->provider), $context);
         }
 
-        return ($this->issueToken)($user, $deviceName, $isNewAccount);
+        return ($this->startSession)(
+            $user,
+            $device,
+            LoginMethod::from($payload->provider),
+            $context,
+            isNewAccount: $isNewAccount,
+        );
     }
 
     private function isUniqueViolation(QueryException $exception): bool

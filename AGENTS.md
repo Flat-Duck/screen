@@ -4,12 +4,10 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 
 ## What this is
 
-A Laravel + Livewire (Flux) app that ingests telemetry (events, non-fatal errors, fatal crashes)
-from an Android client and presents it in an admin dashboard. It's built on the official
-`laravel/livewire-starter-kit` (Fortify auth, passkeys, 2FA, settings pages all come from that
-starter kit's `pages::` view namespace under `resources/views/pages/`) with a telemetry-specific
-domain layered on top: `Device`, `TelemetryEvent`, the `/api/telemetry/*` ingestion endpoints, and
-the dashboard/devices/events Livewire tables.
+A screenshot-sharing social platform whose Android installation, user sessions, FCM registration,
+and crash telemetry share one device domain. `Device` is a nullable-current-user installation
+identity, `DeviceSession` preserves login history, and telemetry is one `/api/v1` feature rather
+than a separate application.
 
 ## Commands
 
@@ -30,32 +28,32 @@ for how CI supplies these.
 
 ## Architecture
 
-### Two authenticatable principals, one guard family
+### Device-first authentication
 
 `Device` (app/Models/Device.php) extends the same `Authenticatable` base as `User` and uses
 `HasApiTokens` (Sanctum). This lets `auth:sanctum` resolve a `Device` as `$request->user()` on API
-routes exactly like it would a `User` on web routes — the two never mix because a Sanctum token
-belongs to exactly one tokenable model. Don't assume `$request->user()` on API routes is a `User`;
-in `TelemetryController` it is always a `Device`.
+routes exactly like it would a `User`. Android stores two credentials: a restricted Device token
+for enrollment/FCM/telemetry and a User token linked to a durable `DeviceSession` for social APIs.
+Registration/login/social/2FA require the Device credential before issuing a User session.
 
-### Telemetry ingestion flow (`routes/api.php` → `App\Http\Controllers\Api\TelemetryController`)
+### Unified device and telemetry flow
 
-- `POST /api/telemetry/register` (unauthenticated, throttled 20/min): upserts a `Device` by
-  `device_uuid`, deletes any existing tokens for it, and mints a fresh Sanctum token. Re-registering
-  the same `device_uuid` (reinstall, cleared app data) always revokes the old token — tokens are
-  hashed at rest and never retrievable again, so there's no way to hand back the same one.
-- `POST /api/telemetry/events` (`auth:sanctum`, throttled 120/min): batch-ingests events. The
-  `device` block in the payload body is informational only (used to refresh app version / last seen)
-  — identity comes solely from the Sanctum token, never from the body. Insertion is
-  `firstOrCreate` keyed on `event_uuid`, making resends after an ambiguous network failure safe.
+- `POST /api/v1/devices/enroll` creates an installation credential. Rotating an existing UUID
+  requires that installation's current token and is transactional.
+- `POST /api/v1/telemetry/events` requires the Device token. Device identity never comes from the
+  payload. An optional per-event `session_id` is accepted only when it belongs to the authenticated
+  device and the event occurred inside that session window.
+- `PUT/DELETE /api/v1/devices/push-token` manages the authenticated installation's single FCM token.
+- `devices.user_id` is the current account and becomes null on logout. Historical attribution is
+  stored on `device_sessions` and snapshotted onto telemetry events.
 - `TelemetryEvent` has three `kind`s (`KIND_EVENT`, `KIND_ERROR`, `KIND_FATAL_CRASH`); error-specific
   columns (`exception_class`, `stack_trace`, etc.) are nullable and populated only for the latter two
   — they're 1:1 with the row, not a separate table/relation. `scopeCrashes()` filters `kind != event`.
 - Request validation in `StoreTelemetryEventsRequest` intentionally mirrors the Android client's
   `TelemetryBatchRequest`/`TelemetryEventPayload` field names exactly — keep them in sync if the
   client payload shape changes.
-- Stack traces are truncated to `TelemetryController::MAX_STACK_TRACE_LENGTH` (4000 chars) before
-  storage.
+- Batches are capped at 50 events/512 KB; diagnostic context is bounded and redacted, stack traces
+  are truncated to 4000 characters, and crashes receive a stable fingerprint.
 
 ### Dashboard (web, session auth)
 

@@ -2,6 +2,9 @@
 
 namespace App\Actions\Auth;
 
+use App\Data\Auth\DeviceSessionContext;
+use App\Enums\LoginMethod;
+use App\Models\Device;
 use App\Models\User;
 use App\Services\Auth\IssuedAccessToken;
 use App\Services\Auth\TwoFactorRequired;
@@ -11,11 +14,11 @@ use Illuminate\Validation\ValidationException;
 class PasswordLogin
 {
     public function __construct(
-        private readonly IssueAccessToken $issueToken,
+        private readonly StartDeviceSession $startSession,
         private readonly BeginTwoFactorChallenge $beginTwoFactor,
     ) {}
 
-    public function __invoke(string $login, string $password, string $deviceName): IssuedAccessToken|TwoFactorRequired
+    public function __invoke(Device $device, string $login, string $password, DeviceSessionContext $context): IssuedAccessToken|TwoFactorRequired
     {
         $user = User::query()->where('email', $login)->orWhere('username', $login)->first();
 
@@ -30,9 +33,9 @@ class PasswordLogin
         }
 
         if ($user->hasEnabledTwoFactorAuthentication()) {
-            return ($this->beginTwoFactor)($user);
+            return ($this->beginTwoFactor)($user, $device, LoginMethod::Password, $context);
         }
 
-        return ($this->issueToken)($user, $deviceName);
+        return ($this->startSession)($user, $device, LoginMethod::Password, $context);
     }
 }

@@ -2,12 +2,25 @@
 
 namespace App\Http\Requests;
 
+use App\Data\Auth\RegisterUserData;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Password;
 
 class RegisterUserRequest extends FormRequest
 {
+    public function toData(): RegisterUserData
+    {
+        $data = $this->validated();
+
+        return new RegisterUserData(
+            (string) $data['name'],
+            (string) $data['username'],
+            (string) $data['email'],
+            (string) $data['password'],
+        );
+    }
+
     /**
      * Determine if the user is authorized to make this request.
      *

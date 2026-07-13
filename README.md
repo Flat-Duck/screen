@@ -31,7 +31,7 @@ The backend serves as the central hub for collecting, processing, and serving an
 ```
 screenshut-telemetry/
 ├── app/
-│   ├── Http/Controllers/  # All API controllers (V1, V2, Admin)
+│   ├── Http/Controllers/  # API and admin controllers
 │   ├── Models/              # Eloquent models
 │   ├── Services/            # Business logic and services
 │   └── Events/              # Event classes for notifications
@@ -40,9 +40,8 @@ screenshut-telemetry/
 │   ├── seeders/             # Seeders for test data (PostSeeder, etc.)
 │   └── factories/           # Model factories for testing
 ├── routes/
-│   ├── api.php              # V1 API routes
-│   ├── api_v2.php           # V2 API routes
-│   └── admin.php            # Admin panel routes
+│   ├── api.php              # API entrypoint
+│   └── api_v1.php           # Canonical mobile API routes
 ├── storage/                 # Application storage (logs, cache)
 ├── tests/
 │   ├── Feature/             # Feature tests
@@ -53,7 +52,7 @@ screenshut-telemetry/
 
 ## 🔌 API Endpoints
 
-The backend exposes two major API versions plus an admin panel.
+The backend exposes one canonical `/api/v1` mobile API plus an admin dashboard.
 
 ### V1 API (Core)
 
@@ -61,18 +60,12 @@ Primary API for client applications.
 
 - `POST /api/v1/auth/register` - User registration
 - `POST /api/v1/auth/login` - User login
+- `POST /api/v1/devices/enroll` - Installation enrollment and Device credential
+- `POST /api/v1/telemetry/events` - Device-authenticated telemetry ingestion
+- `PUT /api/v1/devices/push-token` - Set the installation's FCM token
 - `GET /api/v1/feed` - Get personalized feed
 - `POST /api/v1/posts` - Create a new post
 - `POST /api/v1/posts/{id}/like` - Like a post
-
-### V2 API (Advanced Features)
-
-Enhanced API with additional features.
-
-- `POST /api/v2/telemetry/report` - Submit telemetry data
-- `GET /api/v2/client/stats` - Get client statistics
-- `POST /api/v2/account/upgrade` - Handle subscription upgrades
-- `POST /api/v2/social/google` - Social login handler
 
 ### Admin Panel
 
@@ -89,7 +82,7 @@ Secure admin interface at `/admin`.
 
 - [PHP](https://www.php.net/) 8.2+
 - [Composer](https://getcomposer.org/)
-- [MySQL](https://www.mysql.com/) 8.0+
+- [PostgreSQL](https://www.postgresql.org/) 17+
 - [Node.js](https://nodejs.org/) (for frontend assets if applicable)
 - [Docker](https://www.docker.com/) (optional, for Sail)
 
@@ -193,11 +186,11 @@ staging directories are retained in a cleanup ledger and retried every ten minut
 ## 📈 Telemetry Data Flow
 
 1. **Client**: Screenshut desktop/mobile app collects usage data
-2. **Ingestion**: Client sends data to `/api/v2/telemetry/report`
-3. **Processing**: Queued job processes and stores data in `telemetry_events` table
-4. **Aggregation**: Hourly jobs aggregate data into `daily_stats`, `monthly_stats`, etc.
-5. **Ranking**: Feed ranking algorithm scores posts based on engagement and recency
-6. **Delivery**: Clients fetch personalized feeds from `/api/v1/feed`
+2. **Enrollment**: Installation obtains a restricted Device credential from `/api/v1/devices/enroll`
+3. **Attribution**: User authentication creates a durable `DeviceSession`
+4. **Ingestion**: Device submits bounded and redacted batches to `/api/v1/telemetry/events`
+5. **Correlation**: Valid session UUIDs snapshot user, session, and release attribution
+6. **Retention**: Scheduled pruning removes telemetry older than 90 days
 
 ## 👥 Contributing
 

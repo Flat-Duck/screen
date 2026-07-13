@@ -51,6 +51,7 @@ class DevicesTable extends Component
         $sortDirection = $this->sortDirection === 'asc' ? 'asc' : 'desc';
 
         $devices = Device::query()
+            ->with('user')
             ->withCount(['events', 'crashes'])
             ->when($this->search !== '', function ($query) {
                 $query->where(function ($query) {

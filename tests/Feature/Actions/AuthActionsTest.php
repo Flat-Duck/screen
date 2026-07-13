@@ -5,6 +5,9 @@ namespace Tests\Feature\Actions;
 use App\Actions\Auth\CompleteTwoFactorLogin;
 use App\Actions\Auth\PasswordLogin;
 use App\Actions\Auth\RegisterUser;
+use App\Data\Auth\DeviceSessionContext;
+use App\Data\Auth\RegisterUserData;
+use App\Models\Device;
 use App\Models\User;
 use App\Services\Auth\IssuedAccessToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -17,23 +20,29 @@ class AuthActionsTest extends TestCase
 
     public function test_register_user_issues_a_named_token(): void
     {
-        $result = app(RegisterUser::class)([
-            'name' => 'Ada',
-            'username' => 'ada',
-            'email' => 'ada@example.com',
-            'password' => 'password123!',
-            'device_name' => 'pixel',
-        ]);
+        $device = Device::factory()->create();
+        $result = app(RegisterUser::class)(
+            $device,
+            new RegisterUserData('Ada', 'ada', 'ada@example.com', 'password123!'),
+            new DeviceSessionContext('pixel', '127.0.0.1', 'phpunit'),
+        );
 
         $this->assertInstanceOf(IssuedAccessToken::class, $result);
         $this->assertDatabaseHas('personal_access_tokens', ['name' => 'pixel']);
+        $this->assertSame($result->user->id, $device->fresh()->user_id);
     }
 
     public function test_password_login_uses_the_shared_token_issuer(): void
     {
         $user = User::factory()->create(['username' => 'ada', 'password' => 'password123!']);
 
-        $result = app(PasswordLogin::class)('ada', 'password123!', 'tablet');
+        $device = Device::factory()->create();
+        $result = app(PasswordLogin::class)(
+            $device,
+            'ada',
+            'password123!',
+            new DeviceSessionContext('tablet', '127.0.0.1', 'phpunit'),
+        );
 
         $this->assertInstanceOf(IssuedAccessToken::class, $result);
         $this->assertSame($user->id, $result->user->id);
@@ -44,6 +53,6 @@ class AuthActionsTest extends TestCase
     {
         $this->expectException(ValidationException::class);
 
-        app(CompleteTwoFactorLogin::class)('unknown', '123456', null, 'mobile');
+        app(CompleteTwoFactorLogin::class)(Device::factory()->create(), 'unknown', '123456', null);
     }
 }

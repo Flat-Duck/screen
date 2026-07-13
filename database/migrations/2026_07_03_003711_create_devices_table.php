@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('devices', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
             $table->uuid('device_uuid')->unique();
             $table->string('manufacturer')->nullable();
             $table->string('brand')->nullable();

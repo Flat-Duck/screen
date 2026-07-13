@@ -29,6 +29,7 @@
                     <th class="px-4 py-3">Kind</th>
                     <th class="cursor-pointer px-4 py-3" wire:click="sortBy('name')">Name</th>
                     <th class="px-4 py-3">Device</th>
+                    <th class="px-4 py-3">User / Release</th>
                     <th class="cursor-pointer px-4 py-3" wire:click="sortBy('occurred_at')">Occurred</th>
                     <th class="cursor-pointer px-4 py-3" wire:click="sortBy('received_at')">Received</th>
                 </tr>
@@ -58,12 +59,16 @@
                                 {{ $event->device->manufacturer }} {{ $event->device->model }}
                             </a>
                         </td>
+                        <td class="px-4 py-3 text-zinc-600 dark:text-zinc-300">
+                            <div>{{ $event->user?->email ?? 'Anonymous' }}</div>
+                            <div class="text-xs text-zinc-500">{{ $event->app_version_name ?? '—' }} ({{ $event->app_version_code ?? '—' }})</div>
+                        </td>
                         <td class="px-4 py-3 text-zinc-600 dark:text-zinc-300">{{ $event->occurred_at->diffForHumans() }}</td>
                         <td class="px-4 py-3 text-zinc-600 dark:text-zinc-300">{{ $event->received_at->diffForHumans() }}</td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5" class="px-4 py-8 text-center text-zinc-500 dark:text-zinc-400">No events yet.</td>
+                        <td colspan="6" class="px-4 py-8 text-center text-zinc-500 dark:text-zinc-400">No events yet.</td>
                     </tr>
                 @endforelse
             </tbody>

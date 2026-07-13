@@ -16,7 +16,10 @@ class DeviceController extends Controller
     public function show(Device $device): View
     {
         $device->load([
-            'telemetryEvents' => fn ($query) => $query->latest('received_at')->limit(50),
+            'user',
+            'sessions.user',
+            'pushToken',
+            'telemetryEvents' => fn ($query) => $query->with(['user', 'deviceSession'])->latest('received_at')->limit(50),
         ]);
 
         return view('devices.show', ['device' => $device]);

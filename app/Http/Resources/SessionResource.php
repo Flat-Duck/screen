@@ -2,16 +2,12 @@
 
 namespace App\Http\Resources;
 
+use App\Models\DeviceSession;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Laravel\Sanctum\PersonalAccessToken;
 
 /**
- * A Sanctum personal access token, presented as a "session/device" — its `name` column
- * is whatever `device_name` the client sent at register/login/social sign-in (see
- * authentication Actions), which is why it's exposed here as `device_name`.
- *
- * @mixin PersonalAccessToken
+ * @mixin DeviceSession
  */
 class SessionResource extends JsonResource
 {
@@ -21,11 +17,27 @@ class SessionResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id' => $this->id,
-            'device_name' => $this->name,
-            'last_used_at' => $this->last_used_at,
-            'created_at' => $this->created_at,
-            'is_current' => $this->id === $request->user()?->currentAccessToken()?->id,
+            'session_id' => $this->uuid,
+            'login_method' => $this->login_method,
+            'device' => [
+                'device_uuid' => $this->device->device_uuid,
+                'manufacturer' => $this->device->manufacturer,
+                'brand' => $this->device->brand,
+                'model' => $this->device->model,
+                'os_name' => $this->device->os_name,
+                'os_version' => $this->os_version,
+                'app_version_name' => $this->app_version_name,
+                'app_version_code' => $this->app_version_code,
+            ],
+            'last_seen_at' => $this->last_seen_at,
+            'started_at' => $this->started_at,
+            'ended_at' => $this->ended_at,
+            'end_reason' => $this->end_reason,
+            'two_factor_verified_at' => $this->two_factor_verified_at,
+            'revoked_at' => $this->revoked_at,
+            'status' => $this->ended_at === null ? 'active' : 'ended',
+            'is_revoked' => $this->revoked_at !== null,
+            'is_current' => $this->personal_access_token_id === $request->user()?->currentAccessToken()?->id,
         ];
     }
 }

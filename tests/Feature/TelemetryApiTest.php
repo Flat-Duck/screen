@@ -2,207 +2,204 @@
 
 namespace Tests\Feature;
 
+use App\Actions\Auth\CloseDeviceSession;
+use App\Enums\SessionEndReason;
 use App\Models\Device;
+use App\Models\TelemetryEvent;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\PersonalAccessToken;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class TelemetryApiTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function registerPayload(?string $deviceId = null): array
+    /** @return array<string, mixed> */
+    private function enrollmentPayload(?string $uuid = null): array
     {
         return [
-            'device_id' => $deviceId ?? (string) Str::uuid(),
+            'device_uuid' => $uuid ?? (string) Str::uuid(),
             'manufacturer' => 'Google',
             'brand' => 'google',
             'model' => 'Pixel 8',
             'os_name' => 'Android',
             'os_version' => '14',
             'sdk_int' => 34,
-            'app_version_name' => '1.0',
-            'app_version_code' => 1,
+            'app_version_name' => '3.0',
+            'app_version_code' => 30,
         ];
     }
 
-    public function test_registering_a_new_device_creates_it_and_returns_a_token(): void
+    /** @return array<string, mixed> */
+    private function telemetryPayload(array $events): array
     {
-        $response = $this->postJson('/api/telemetry/register', $this->registerPayload());
-
-        $response->assertCreated();
-        $response->assertJsonStructure(['device_id', 'token']);
-        $this->assertDatabaseCount('devices', 1);
-        $this->assertDatabaseCount('personal_access_tokens', 1);
+        return [
+            'app' => ['version_name' => '3.0', 'version_code' => 30, 'build_type' => 'release'],
+            'os_version' => '14',
+            'events' => $events,
+        ];
     }
 
-    public function test_re_registering_the_same_device_with_its_current_token_reissues_a_token_without_duplicating_the_device(): void
+    /** @return array<string, mixed> */
+    private function crashEvent(array $overrides = []): array
     {
-        $deviceId = (string) Str::uuid();
+        return array_replace_recursive([
+            'event_id' => (string) Str::uuid(),
+            'kind' => 'fatal_crash',
+            'name' => 'fatal_crash',
+            'occurred_at' => now()->toIso8601String(),
+            'extras' => [],
+            'breadcrumbs' => [],
+            'error' => [
+                'tag' => 'FatalCrashHandler.uncaughtException',
+                'exception_class' => 'java.lang.IllegalStateException',
+                'message' => 'boom',
+                'stack_trace' => "java.lang.IllegalStateException: boom\n at Foo.bar(Foo.kt:42)",
+                'thread_name' => 'main',
+                'is_fatal' => true,
+            ],
+        ], $overrides);
+    }
 
-        $first = $this->postJson('/api/telemetry/register', $this->registerPayload($deviceId));
-        $first->assertCreated();
+    public function test_new_installation_enrols_and_receives_restricted_device_token(): void
+    {
+        $response = $this->postJson('/api/v1/devices/enroll', $this->enrollmentPayload());
 
-        $second = $this->withHeader('Authorization', "Bearer {$first->json('token')}")
-            ->postJson('/api/telemetry/register', $this->registerPayload($deviceId));
-        $second->assertOk();
+        $response->assertCreated()->assertJsonStructure(['device_uuid', 'token']);
+        $token = PersonalAccessToken::findToken($response->json('token'));
+        $this->assertSame(['device:manage', 'telemetry:write', 'push-token:write'], $token?->abilities);
+    }
+
+    public function test_existing_installation_requires_and_rotates_its_current_credential(): void
+    {
+        $uuid = (string) Str::uuid();
+        $first = $this->postJson('/api/v1/devices/enroll', $this->enrollmentPayload($uuid))->assertCreated();
+
+        $this->postJson('/api/v1/devices/enroll', $this->enrollmentPayload($uuid))->assertUnauthorized();
+        $second = $this->withHeader('Authorization', 'Bearer '.$first->json('token'))
+            ->postJson('/api/v1/devices/enroll', $this->enrollmentPayload($uuid))
+            ->assertOk();
 
         $this->assertDatabaseCount('devices', 1);
         $this->assertDatabaseCount('personal_access_tokens', 1);
         $this->assertNotSame($first->json('token'), $second->json('token'));
     }
 
-    /**
-     * Without proof of possession, re-registering an already-enrolled device_uuid would let
-     * anyone who learns/guesses it steal that device's identity: the old token gets deleted
-     * and a fresh one handed to whoever asked. Knowing the UUID alone must not be enough.
-     */
-    public function test_re_registering_an_already_enrolled_device_without_its_token_is_rejected(): void
+    public function test_pre_login_device_can_report_a_crash(): void
     {
-        $deviceId = (string) Str::uuid();
+        $device = $this->authenticateDevice();
+        $event = $this->crashEvent();
 
-        $first = $this->postJson('/api/telemetry/register', $this->registerPayload($deviceId));
-        $first->assertCreated();
+        $this->postJson('/api/v1/telemetry/events', $this->telemetryPayload([$event]))
+            ->assertOk()
+            ->assertJson(['accepted_event_ids' => [$event['event_id']]]);
 
-        $second = $this->postJson('/api/telemetry/register', $this->registerPayload($deviceId));
-
-        $second->assertUnauthorized();
-        $this->assertDatabaseCount('personal_access_tokens', 1);
-
-        // The rejected attempt didn't revoke the legitimate device's original token — it
-        // still resolves via Sanctum's own token lookup, unchanged.
-        $token = PersonalAccessToken::findToken($first->json('token'));
-        $this->assertNotNull($token);
+        $this->assertDatabaseHas('telemetry_events', ['device_id' => $device->id, 'user_id' => null]);
     }
 
-    public function test_re_registering_an_already_enrolled_device_with_a_different_devices_token_is_rejected(): void
-    {
-        $deviceId = (string) Str::uuid();
-        $this->postJson('/api/telemetry/register', $this->registerPayload($deviceId))->assertCreated();
-
-        $otherDevice = $this->postJson('/api/telemetry/register', $this->registerPayload());
-        $otherDevice->assertCreated();
-
-        $response = $this->withHeader('Authorization', "Bearer {$otherDevice->json('token')}")
-            ->postJson('/api/telemetry/register', $this->registerPayload($deviceId));
-
-        $response->assertUnauthorized();
-        $this->assertDatabaseCount('personal_access_tokens', 2);
-    }
-
-    /**
-     * A device with no live token (e.g. deliberately revoked by support after a
-     * compromise) must NOT be unauthenticated-reclaimable — that would let anyone
-     * silently take over exactly the kind of device a revocation was meant to lock
-     * out. There is no unauthenticated recovery path for an existing device_uuid once
-     * its token is gone; a real reinstall produces a new device_uuid instead.
-     */
-    public function test_re_registering_a_device_with_no_existing_token_is_still_rejected(): void
-    {
-        $deviceId = (string) Str::uuid();
-        $this->postJson('/api/telemetry/register', $this->registerPayload($deviceId))->assertCreated();
-
-        Device::where('device_uuid', $deviceId)->first()->tokens()->delete();
-
-        $second = $this->postJson('/api/telemetry/register', $this->registerPayload($deviceId));
-
-        $second->assertUnauthorized();
-        $this->assertDatabaseCount('personal_access_tokens', 0);
-    }
-
-    public function test_events_endpoint_rejects_unauthenticated_requests(): void
-    {
-        $response = $this->postJson('/api/telemetry/events', [
-            'device' => $this->registerPayload(),
-            'events' => [],
-        ]);
-
-        $response->assertUnauthorized();
-    }
-
-    public function test_events_endpoint_accepts_a_batch_and_updates_device_metadata(): void
-    {
-        $device = Device::factory()->create(['app_version_code' => 1]);
-        Sanctum::actingAs($device);
-
-        $eventId = (string) Str::uuid();
-        $crashId = (string) Str::uuid();
-
-        $response = $this->postJson('/api/telemetry/events', [
-            'device' => array_merge($this->registerPayload($device->device_uuid), ['app_version_code' => 2]),
-            'events' => [
-                [
-                    'event_id' => $eventId,
-                    'kind' => 'event',
-                    'name' => 'screenshot_detected',
-                    'occurred_at' => now()->toIso8601String(),
-                    'extras' => ['relative_path' => 'Pictures/Screenshots/'],
-                    'breadcrumbs' => [],
-                ],
-                [
-                    'event_id' => $crashId,
-                    'kind' => 'fatal_crash',
-                    'name' => 'fatal_crash',
-                    'occurred_at' => now()->toIso8601String(),
-                    'error' => [
-                        'tag' => 'FatalCrashHandler.uncaughtException',
-                        'exception_class' => 'java.lang.IllegalStateException',
-                        'message' => 'boom',
-                        'stack_trace' => "java.lang.IllegalStateException: boom\n\tat Foo.bar(Foo.kt:1)",
-                        'thread_name' => 'main',
-                        'is_fatal' => true,
-                    ],
-                ],
-            ],
-        ]);
-
-        $response->assertOk();
-        $response->assertJson(['accepted_event_ids' => [$eventId, $crashId]]);
-        $this->assertDatabaseCount('telemetry_events', 2);
-        $this->assertDatabaseHas('telemetry_events', ['event_uuid' => $crashId, 'is_fatal' => true]);
-        $this->assertSame(2, $device->fresh()->app_version_code);
-    }
-
-    public function test_resending_the_same_event_uuid_does_not_duplicate_the_row(): void
+    public function test_valid_session_attributes_crash_to_user_and_session(): void
     {
         $device = Device::factory()->create();
-        Sanctum::actingAs($device);
+        $user = User::factory()->create();
+        $session = $this->startUserSession($user, $device)->session;
+        $this->authenticateDevice($device);
+        $event = $this->crashEvent(['session_id' => $session->uuid]);
 
-        $eventId = (string) Str::uuid();
-        $payload = [
-            'device' => $this->registerPayload($device->device_uuid),
-            'events' => [[
-                'event_id' => $eventId,
-                'kind' => 'event',
-                'name' => 'screenshot_detected',
-                'occurred_at' => now()->toIso8601String(),
-            ]],
-        ];
+        $this->postJson('/api/v1/telemetry/events', $this->telemetryPayload([$event]))->assertOk();
 
-        $this->postJson('/api/telemetry/events', $payload)->assertOk();
-        $this->postJson('/api/telemetry/events', $payload)->assertOk();
+        $this->assertDatabaseHas('telemetry_events', [
+            'device_id' => $device->id,
+            'user_id' => $user->id,
+            'device_session_id' => $session->id,
+        ]);
+    }
 
+    public function test_cross_device_session_reference_falls_back_to_anonymous_device_attribution(): void
+    {
+        $foreignSession = $this->startUserSession(User::factory()->create())->session;
+        $device = $this->authenticateDevice();
+
+        $this->postJson('/api/v1/telemetry/events', $this->telemetryPayload([
+            $this->crashEvent(['session_id' => $foreignSession->uuid]),
+        ]))->assertOk();
+
+        $this->assertDatabaseHas('telemetry_events', ['device_id' => $device->id, 'user_id' => null, 'device_session_id' => null]);
+    }
+
+    public function test_delayed_crash_inside_a_closed_session_window_keeps_attribution(): void
+    {
+        $device = Device::factory()->create();
+        $user = User::factory()->create();
+        $session = $this->startUserSession($user, $device)->session;
+        app(CloseDeviceSession::class)($session, SessionEndReason::Logout);
+        $this->authenticateDevice($device);
+
+        $this->postJson('/api/v1/telemetry/events', $this->telemetryPayload([
+            $this->crashEvent(['session_id' => $session->uuid, 'occurred_at' => $session->started_at->addSecond()->toIso8601String()]),
+        ]))->assertOk();
+
+        $this->assertDatabaseHas('telemetry_events', ['user_id' => $user->id, 'device_session_id' => $session->id]);
+    }
+
+    public function test_sensitive_context_is_redacted_and_crashes_are_fingerprinted(): void
+    {
+        $this->authenticateDevice();
+        $event = $this->crashEvent([
+            'extras' => ['authorization' => 'Bearer secret-token', 'email' => 'ada@example.com'],
+            'error' => ['message' => 'contact ada@example.com'],
+        ]);
+
+        $this->postJson('/api/v1/telemetry/events', $this->telemetryPayload([$event]))->assertOk();
+        $stored = TelemetryEvent::firstOrFail();
+
+        $this->assertSame('[REDACTED]', $stored->extras['authorization']);
+        $this->assertStringNotContainsString('ada@example.com', $stored->error_message);
+        $this->assertNotNull($stored->crash_fingerprint);
+        $this->assertSame(30, $stored->app_version_code);
+    }
+
+    public function test_batch_is_limited_to_fifty_events(): void
+    {
+        $this->authenticateDevice();
+        $events = array_map(fn () => $this->crashEvent(), range(1, 51));
+
+        $this->postJson('/api/v1/telemetry/events', $this->telemetryPayload($events))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['events']);
+    }
+
+    public function test_payload_is_limited_to_512_kilobytes(): void
+    {
+        $this->authenticateDevice();
+        $payload = $this->telemetryPayload([$this->crashEvent(['extras' => ['blob' => str_repeat('x', 530_000)]])]);
+
+        $this->postJson('/api/v1/telemetry/events', $payload)->assertStatus(413);
+    }
+
+    public function test_resending_event_uuid_is_idempotent(): void
+    {
+        $this->authenticateDevice();
+        $payload = $this->telemetryPayload([$this->crashEvent()]);
+
+        $this->postJson('/api/v1/telemetry/events', $payload)->assertOk();
+        $this->postJson('/api/v1/telemetry/events', $payload)->assertOk();
         $this->assertDatabaseCount('telemetry_events', 1);
     }
 
-    public function test_invalid_kind_is_rejected(): void
+    public function test_event_uuid_deduplication_is_scoped_to_the_authenticated_device(): void
     {
-        $device = Device::factory()->create();
-        Sanctum::actingAs($device);
+        $event = $this->crashEvent();
+        $payload = $this->telemetryPayload([$event]);
 
-        $response = $this->postJson('/api/telemetry/events', [
-            'device' => $this->registerPayload($device->device_uuid),
-            'events' => [[
-                'event_id' => (string) Str::uuid(),
-                'kind' => 'not_a_real_kind',
-                'name' => 'x',
-                'occurred_at' => now()->toIso8601String(),
-            ]],
-        ]);
+        $this->authenticateDevice();
+        $this->postJson('/api/v1/telemetry/events', $payload)->assertOk();
 
-        $response->assertUnprocessable();
-        $response->assertJsonValidationErrors(['events.0.kind']);
+        $this->authenticateDevice();
+        $this->postJson('/api/v1/telemetry/events', $payload)->assertOk();
+
+        $this->assertDatabaseCount('telemetry_events', 2);
+        $this->assertSame(2, TelemetryEvent::query()->where('event_uuid', $event['event_id'])->distinct('device_id')->count('device_id'));
     }
 }

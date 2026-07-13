@@ -2,11 +2,15 @@
 
 namespace App\Services;
 
+use App\Actions\Auth\RevokeUserSessions;
+use App\Enums\SessionEndReason;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 class AccountService
 {
+    public function __construct(private readonly RevokeUserSessions $revokeSessions) {}
+
     /**
      * Soft-deletes the account and everything that needs to disappear from other
      * users' view immediately (not just at final purge, which is `users:prune-deleted`'s
@@ -38,7 +42,8 @@ class AccountService
                 'deleted_at' => now(),
                 'account_deleted_at' => now(),
             ]);
-            $user->tokens()->delete();
+            ($this->revokeSessions)($user, SessionEndReason::AccountDeleted);
+            $user->devices()->update(['user_id' => null]);
             $user->delete();
         });
     }

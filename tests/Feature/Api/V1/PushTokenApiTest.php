@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api\V1;
 
+use App\Models\Device;
 use App\Models\DevicePushToken;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -12,58 +13,55 @@ class PushTokenApiTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_registering_a_push_token_creates_a_row_for_the_current_user(): void
+    public function test_pre_login_device_can_register_its_push_token(): void
     {
-        $user = User::factory()->create();
-        Sanctum::actingAs($user);
+        $device = $this->authenticateDevice();
 
-        $response = $this->postJson('/api/v1/devices/push-token', ['fcm_token' => 'token-abc']);
+        $this->putJson('/api/v1/devices/push-token', ['fcm_token' => 'token-abc'])->assertNoContent();
 
-        $response->assertNoContent();
-        $this->assertDatabaseHas('device_push_tokens', ['user_id' => $user->id, 'fcm_token' => 'token-abc']);
+        $this->assertDatabaseHas('device_push_tokens', ['device_id' => $device->id, 'fcm_token' => 'token-abc']);
     }
 
-    public function test_registering_the_same_token_again_re_points_it_to_the_new_owner(): void
+    public function test_rotating_a_token_keeps_one_row_for_the_device(): void
     {
-        $previousOwner = User::factory()->create();
-        DevicePushToken::create(['user_id' => $previousOwner->id, 'fcm_token' => 'token-abc']);
+        $device = $this->authenticateDevice();
+        DevicePushToken::factory()->for($device)->create(['fcm_token' => 'old-token']);
 
-        $newOwner = User::factory()->create();
-        Sanctum::actingAs($newOwner);
-
-        $this->postJson('/api/v1/devices/push-token', ['fcm_token' => 'token-abc'])->assertNoContent();
+        $this->putJson('/api/v1/devices/push-token', ['fcm_token' => 'new-token'])->assertNoContent();
 
         $this->assertDatabaseCount('device_push_tokens', 1);
-        $this->assertDatabaseHas('device_push_tokens', ['user_id' => $newOwner->id, 'fcm_token' => 'token-abc']);
+        $this->assertDatabaseHas('device_push_tokens', ['device_id' => $device->id, 'fcm_token' => 'new-token']);
     }
 
-    public function test_deleting_a_push_token_removes_only_the_current_users_row(): void
+    public function test_a_global_fcm_token_moves_to_the_current_installation(): void
     {
-        $user = User::factory()->create();
-        DevicePushToken::create(['user_id' => $user->id, 'fcm_token' => 'token-abc']);
+        $oldDevice = Device::factory()->create();
+        DevicePushToken::factory()->for($oldDevice)->create(['fcm_token' => 'shared-token']);
+        $newDevice = $this->authenticateDevice();
 
-        $otherUser = User::factory()->create();
-        DevicePushToken::create(['user_id' => $otherUser->id, 'fcm_token' => 'token-xyz']);
+        $this->putJson('/api/v1/devices/push-token', ['fcm_token' => 'shared-token'])->assertNoContent();
 
-        Sanctum::actingAs($user);
-
-        $response = $this->deleteJson('/api/v1/devices/push-token', ['fcm_token' => 'token-abc']);
-
-        $response->assertNoContent();
-        $this->assertDatabaseMissing('device_push_tokens', ['fcm_token' => 'token-abc']);
-        $this->assertDatabaseHas('device_push_tokens', ['fcm_token' => 'token-xyz']);
+        $this->assertDatabaseCount('device_push_tokens', 1);
+        $this->assertDatabaseHas('device_push_tokens', ['device_id' => $newDevice->id, 'fcm_token' => 'shared-token']);
     }
 
-    public function test_deleting_someone_elses_token_by_guessing_its_value_does_nothing(): void
+    public function test_deleting_push_registration_clears_only_the_authenticated_device(): void
     {
-        $owner = User::factory()->create();
-        DevicePushToken::create(['user_id' => $owner->id, 'fcm_token' => 'token-abc']);
+        $device = $this->authenticateDevice();
+        DevicePushToken::factory()->for($device)->create(['fcm_token' => 'token-abc']);
+        $other = Device::factory()->create();
+        DevicePushToken::factory()->for($other)->create(['fcm_token' => 'token-xyz']);
 
-        $attacker = User::factory()->create();
-        Sanctum::actingAs($attacker);
+        $this->deleteJson('/api/v1/devices/push-token')->assertNoContent();
 
-        $this->deleteJson('/api/v1/devices/push-token', ['fcm_token' => 'token-abc'])->assertNoContent();
+        $this->assertDatabaseMissing('device_push_tokens', ['device_id' => $device->id]);
+        $this->assertDatabaseHas('device_push_tokens', ['device_id' => $other->id]);
+    }
 
-        $this->assertDatabaseHas('device_push_tokens', ['fcm_token' => 'token-abc', 'user_id' => $owner->id]);
+    public function test_user_session_token_cannot_manage_device_push_registration(): void
+    {
+        Sanctum::actingAs(User::factory()->create(), ['user:*']);
+
+        $this->putJson('/api/v1/devices/push-token', ['fcm_token' => 'token'])->assertForbidden();
     }
 }

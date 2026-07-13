@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\TelemetryKind;
 use App\Models\Device;
 use App\Models\TelemetryEvent;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -21,7 +22,7 @@ class TelemetryEventFactory extends Factory
         return [
             'device_id' => Device::factory(),
             'event_uuid' => $this->faker->uuid(),
-            'kind' => TelemetryEvent::KIND_EVENT,
+            'kind' => TelemetryKind::Event->value,
             'name' => 'screenshot_detected',
             'occurred_at' => now(),
             'received_at' => now(),
@@ -33,7 +34,7 @@ class TelemetryEventFactory extends Factory
     public function fatalCrash(): static
     {
         return $this->state(fn () => [
-            'kind' => TelemetryEvent::KIND_FATAL_CRASH,
+            'kind' => TelemetryKind::FatalCrash->value,
             'name' => 'fatal_crash',
             'error_tag' => 'FatalCrashHandler.uncaughtException',
             'exception_class' => 'java.lang.IllegalStateException',

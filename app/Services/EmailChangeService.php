@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Actions\Auth\RevokeUserSessions;
 use App\Actions\Security\EnqueueSecurityMail;
 use App\Enums\SecurityOutboxType;
+use App\Enums\SessionEndReason;
 use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
@@ -19,7 +21,10 @@ use Illuminate\Validation\ValidationException;
  */
 class EmailChangeService
 {
-    public function __construct(private readonly EnqueueSecurityMail $enqueueSecurityMail) {}
+    public function __construct(
+        private readonly EnqueueSecurityMail $enqueueSecurityMail,
+        private readonly RevokeUserSessions $revokeSessions,
+    ) {}
 
     /**
      * ChangeEmailRequest's `unique:users,pending_email` rule already catches the common
@@ -110,7 +115,7 @@ class EmailChangeService
                 // no session of its own to exempt. A token that changed the account's
                 // email is exactly the kind of thing worth forcing a fresh login on
                 // every device for.
-                $user->tokens()->delete();
+                ($this->revokeSessions)($user, SessionEndReason::EmailChanged);
 
                 ($this->enqueueSecurityMail)(
                     SecurityOutboxType::EmailChangedNotification,

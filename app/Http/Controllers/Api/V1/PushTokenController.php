@@ -2,32 +2,31 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Http\Requests\DestroyPushTokenRequest;
+use App\Actions\Devices\ClearDevicePushToken;
+use App\Actions\Devices\SetDevicePushToken;
 use App\Http\Requests\StorePushTokenRequest;
-use App\Models\User;
-use App\Services\PushTokenService;
+use App\Models\Device;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class PushTokenController extends Controller
 {
-    public function __construct(private readonly PushTokenService $pushTokens) {}
-
-    public function store(StorePushTokenRequest $request): JsonResponse
+    public function store(StorePushTokenRequest $request, SetDevicePushToken $setPushToken): JsonResponse
     {
-        /** @var User $user */
-        $user = $request->user();
+        /** @var Device $device */
+        $device = $request->user();
 
-        $this->pushTokens->register($user, $request->string('fcm_token')->toString());
+        $setPushToken($device, $request->string('fcm_token')->toString());
 
         return response()->json(null, 204);
     }
 
-    public function destroy(DestroyPushTokenRequest $request): JsonResponse
+    public function destroy(Request $request, ClearDevicePushToken $clearPushToken): JsonResponse
     {
-        /** @var User $user */
-        $user = $request->user();
+        /** @var Device $device */
+        $device = $request->user();
 
-        $this->pushTokens->unregister($user, $request->string('fcm_token')->toString());
+        $clearPushToken($device);
 
         return response()->json(null, 204);
     }

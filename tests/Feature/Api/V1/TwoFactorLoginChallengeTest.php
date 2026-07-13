@@ -3,6 +3,8 @@
 namespace Tests\Feature\Api\V1;
 
 use App\Actions\Auth\CompleteSocialLogin;
+use App\Data\Auth\DeviceSessionContext;
+use App\Models\Device;
 use App\Models\User;
 use App\Services\Auth\TwoFactorRequired;
 use App\Services\SocialAuth\SocialUserPayload;
@@ -17,6 +19,14 @@ use Tests\TestCase;
 class TwoFactorLoginChallengeTest extends TestCase
 {
     use RefreshDatabase;
+
+    private Device $device;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->device = $this->authenticateDevice();
+    }
 
     /**
      * TOTP codes are deterministic per 30-second window — reusing the exact same code
@@ -76,8 +86,14 @@ class TwoFactorLoginChallengeTest extends TestCase
         ]);
 
         $response->assertOk();
-        $response->assertJsonStructure(['user' => ['id'], 'token', 'profile_completion']);
+        $response->assertJsonStructure(['user' => ['id'], 'token', 'session_id', 'profile_completion']);
         $this->assertSame($user->id, $response->json('user.id'));
+        $this->assertDatabaseHas('device_sessions', [
+            'user_id' => $user->id,
+            'device_id' => $this->device->id,
+            'login_method' => 'password',
+        ]);
+        $this->assertNotNull($user->deviceSessions()->firstOrFail()->two_factor_verified_at);
     }
 
     public function test_completing_the_challenge_with_the_wrong_code_fails_and_the_token_stays_usable(): void
@@ -276,8 +292,28 @@ class TwoFactorLoginChallengeTest extends TestCase
         // exercised at the service level (not a full HTTP round trip through Google's
         // real JWKS) since the point here is the 2FA gate, not token verification
         // (already covered by SocialAuthTest).
-        $result = app(CompleteSocialLogin::class)($payload, 'mobile');
+        $result = app(CompleteSocialLogin::class)(
+            $this->device,
+            $payload,
+            new DeviceSessionContext('mobile', '127.0.0.1', 'phpunit'),
+        );
 
         $this->assertInstanceOf(TwoFactorRequired::class, $result);
+    }
+
+    public function test_two_factor_challenge_cannot_be_completed_from_another_device(): void
+    {
+        $user = $this->makeTwoFactorUser();
+        $secret = Fortify::currentEncrypter()->decrypt($user->two_factor_secret);
+        $login = $this->postJson('/api/v1/auth/login', [
+            'login' => $user->username,
+            'password' => 'password123!',
+        ]);
+
+        $this->authenticateDevice(Device::factory()->create());
+        $this->postJson('/api/v1/auth/two-factor-challenge', [
+            'two_factor_token' => $login->json('two_factor_token'),
+            'code' => $this->codeAt($secret, 1),
+        ])->assertUnprocessable()->assertJsonValidationErrors(['two_factor_token']);
     }
 }

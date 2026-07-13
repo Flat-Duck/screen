@@ -99,12 +99,16 @@ class User extends Authenticatable implements PasskeyUser
         return $this->hasMany(SocialAccount::class);
     }
 
-    /**
-     * @return HasMany<DevicePushToken, $this>
-     */
-    public function pushTokens(): HasMany
+    /** @return HasMany<Device, $this> */
+    public function devices(): HasMany
     {
-        return $this->hasMany(DevicePushToken::class);
+        return $this->hasMany(Device::class);
+    }
+
+    /** @return HasMany<DeviceSession, $this> */
+    public function deviceSessions(): HasMany
+    {
+        return $this->hasMany(DeviceSession::class);
     }
 
     /**

@@ -2,7 +2,8 @@
 
 ## Context
 
-The Android app (`~/devSpace/kotlin/screenshot-detector`) already talks to this backend for telemetry (`Device` model, `/api/telemetry/*`). We're adding the social layer — sign up, post screenshots, follow, like, comment — using the `/api/v1/*` API built for that purpose (see `CLAUDE.md` and `postman/Screenshot-Social-API.postman_collection.json`).
+The Android app uses one `/api/v1` backend for social features and device-scoped crash telemetry.
+Every installation must enrol through `POST /api/v1/devices/enroll` before registration or login.
 
 A Stitch design export ("Snap Vault", `stitch_snap_vault_app_design_system.zip`) exists for this, but it designs a considerably larger product than the v1 API supports: alongside screens that map cleanly (Sign Up, Profile Setup, Home Feed, Screenshot Detail, User Profile), it also includes **Groups** (shared albums), **Discover** (a public content grid), and a PIN/biometric-locked **Vault** — none of which the API has endpoints for, plus a few UI details (per-comment likes, threaded replies, tags, a feed-card "source badge") that don't match any field the API returns.
 
@@ -90,11 +91,16 @@ No wiring — implement exactly as designed, purely client-side. Vault's PIN/bio
 
 ## Cross-cutting Android architecture
 
-### Auth & token storage — the two-token gotcha
-This app now holds **two separate Sanctum tokens that must never cross**: the existing `Device` token (telemetry, `/api/telemetry/*`) and the new `User` token (social API, `/api/v1/*`). The backend's `EnsureSanctumPrincipalIsUser` middleware will reject a Device token on any `/v1/*` route with a `403` — so this isn't just a style preference, a mixed-up token actively breaks. Store them under distinct keys (e.g. separate `EncryptedSharedPreferences`/DataStore entries, or two independent OkHttp clients each with its own auth interceptor) and never let the telemetry client's token leak into social-API requests or vice versa.
+### Auth and token storage
+Store two credentials under distinct encrypted keys. The Device token calls enrollment rotation,
+FCM, authentication, 2FA completion, and telemetry endpoints. The User token calls social/account
+APIs. Authentication responses also return `session_id`; record that UUID with each crash so delayed
+uploads retain the correct user attribution after logout or account switching.
 
 ### Networking
-Retrofit + OkHttp, one interceptor attaching `Authorization: Bearer <user_token>` + `Accept: application/json` to all `/v1/*` calls. Use the Postman collection (`postman/Screenshot-Social-API.postman_collection.json`) as the source of truth for exact request/response shapes while building the Retrofit interfaces.
+Use separate OkHttp clients/interceptors for Device and User credentials. Both target `/api/v1`, so
+route path alone cannot choose the credential; the Retrofit service interface must use the correct
+client explicitly.
 
 ### Pagination
 Every list endpoint (`feed`, `users/{id}/posts`, `followers`, `following`, `posts/{id}/comments`) is cursor-paginated (`meta.next_cursor`, `links.next`). Use Jetpack Paging 3 with a `PagingSource` keyed on the cursor param, not page numbers.

@@ -13,6 +13,7 @@ class RateLimitApiTest extends TestCase
 
     public function test_unauthenticated_route_is_throttled_by_ip(): void
     {
+        $this->authenticateDevice();
         for ($i = 0; $i < 10; $i++) {
             $this->postJson('/api/v1/auth/login', ['login' => 'nobody', 'password' => 'wrong'])
                 ->assertUnprocessable();

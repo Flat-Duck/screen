@@ -25,7 +25,7 @@ class StorePushTokenRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'fcm_token' => ['nullable', 'string', 'max:255'],
+            'fcm_token' => ['required', 'string', 'max:255'],
         ];
     }
 }

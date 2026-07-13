@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Requests\RevokeOtherSessionsRequest;
 use App\Http\Resources\SessionResource;
+use App\Models\DeviceSession;
 use App\Models\User;
 use App\Services\SessionService;
 use Illuminate\Http\JsonResponse;
@@ -23,12 +24,12 @@ class SessionController extends Controller
         return SessionResource::collection($this->sessions->listFor($user));
     }
 
-    public function destroy(Request $request, int $tokenId): JsonResponse
+    public function destroy(Request $request, string $sessionId): JsonResponse
     {
         /** @var User $user */
         $user = $request->user();
 
-        $this->sessions->revoke($user, $tokenId);
+        $this->sessions->revoke($user, $sessionId);
 
         return response()->json(null, 204);
     }
@@ -40,8 +41,9 @@ class SessionController extends Controller
 
         /** @var PersonalAccessToken $currentToken */
         $currentToken = $user->currentAccessToken();
+        $currentSession = DeviceSession::query()->where('personal_access_token_id', $currentToken->id)->firstOrFail();
 
-        $this->sessions->revokeOthers($user, $currentToken->id);
+        $this->sessions->revokeOthers($user, $currentSession->id);
 
         return response()->json(null, 204);
     }

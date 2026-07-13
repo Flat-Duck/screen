@@ -14,7 +14,9 @@ return new class extends Migration
         Schema::create('telemetry_events', function (Blueprint $table) {
             $table->id();
             $table->foreignId('device_id')->constrained()->cascadeOnDelete();
-            $table->uuid('event_uuid')->unique();
+            $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('device_session_id')->nullable()->constrained()->nullOnDelete();
+            $table->uuid('event_uuid');
             $table->string('kind'); // event | error | fatal_crash
             $table->string('name');
             $table->timestamp('occurred_at'); // device-reported
@@ -28,10 +30,18 @@ return new class extends Migration
             $table->text('stack_trace')->nullable();
             $table->string('thread_name')->nullable();
             $table->boolean('is_fatal')->nullable();
+            $table->string('app_version_name')->nullable();
+            $table->unsignedInteger('app_version_code')->nullable();
+            $table->string('build_type')->nullable();
+            $table->string('os_version')->nullable();
+            $table->string('crash_fingerprint', 64)->nullable();
             $table->timestamps();
 
             $table->index(['device_id', 'kind']);
+            $table->unique(['device_id', 'event_uuid']);
             $table->index('occurred_at');
+            $table->index(['crash_fingerprint', 'app_version_code']);
+            $table->index(['user_id', 'received_at']);
         });
     }
 

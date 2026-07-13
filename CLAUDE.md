@@ -4,12 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A Laravel + Livewire (Flux) app that ingests telemetry (events, non-fatal errors, fatal crashes)
-from an Android client and presents it in an admin dashboard. It's built on the official
-`laravel/livewire-starter-kit` (Fortify auth, passkeys, 2FA, settings pages all come from that
-starter kit's `pages::` view namespace under `resources/views/pages/`) with a telemetry-specific
-domain layered on top: `Device`, `TelemetryEvent`, the `/api/telemetry/*` ingestion endpoints, and
-the dashboard/devices/events Livewire tables.
+A screenshot-sharing social platform whose Android installation, user sessions, FCM registration,
+and crash telemetry share one device domain. `Device` tracks the current nullable user,
+`DeviceSession` preserves immutable login history, and crash telemetry is one `/api/v1` feature.
 
 ## Commands
 
@@ -38,14 +35,13 @@ routes exactly like it would a `User` on web routes — the two never mix becaus
 belongs to exactly one tokenable model. Don't assume `$request->user()` on API routes is a `User`;
 in `TelemetryController` it is always a `Device`.
 
-### Telemetry ingestion flow (`routes/api.php` → `App\Http\Controllers\Api\TelemetryController` →
-`App\Actions\Telemetry\{RegisterDevice,IngestTelemetryBatch}`)
+### Canonical device lifecycle
 
-The controller itself is now just request validation + delegation; enrollment/token-rotation
-logic lives in `RegisterDevice` (returns an immutable `DeviceRegistration` result), and batch
-persistence lives in `IngestTelemetryBatch`.
+Android first calls `POST /api/v1/devices/enroll`, then retains the restricted Device credential
+for FCM and telemetry. User authentication requires that Device credential and returns a separate
+User token plus a durable `session_id`.
 
-- `POST /api/telemetry/register` (throttled 20/min): creates a `Device` by `device_uuid` and mints
+- `POST /api/v1/devices/enroll` (throttled 20/min): creates a `Device` by `device_uuid` and mints
   a fresh Sanctum token — unauthenticated, since that's the only way a device can get a token in
   the first place. Re-registering an **existing** `device_uuid` is different: it always requires
   that exact device's current token via `Authorization: Bearer` to rotate it (proof of possession,
@@ -60,9 +56,9 @@ persistence lives in `IngestTelemetryBatch`.
   generates a new UUID and registers fresh, same as any new device — this restriction only ever
   bites a `device_uuid` that somehow persists independently of the token, or a genuine attack
   attempt.
-- `POST /api/telemetry/events` (`auth:sanctum`, throttled 120/min): batch-ingests events. The
-  `device` block in the payload body is informational only (used to refresh app version / last seen)
-  — identity comes solely from the Sanctum token, never from the body. Insertion is
+- `POST /api/v1/telemetry/events` (`auth:sanctum`, Device-only, throttled 120/min): batch-ingests
+  events. Identity comes solely from the Device token. Optional per-event session UUIDs are
+  server-validated and snapshot `user_id`/`device_session_id`. Insertion is
   `firstOrCreate` keyed on `event_uuid`, making resends after an ambiguous network failure safe.
 - `TelemetryEvent` has three `kind`s (`KIND_EVENT`, `KIND_ERROR`, `KIND_FATAL_CRASH`); error-specific
   columns (`exception_class`, `stack_trace`, etc.) are nullable and populated only for the latter two
@@ -70,8 +66,8 @@ persistence lives in `IngestTelemetryBatch`.
 - Request validation in `StoreTelemetryEventsRequest` intentionally mirrors the Android client's
   `TelemetryBatchRequest`/`TelemetryEventPayload` field names exactly — keep them in sync if the
   client payload shape changes.
-- Stack traces are truncated to `IngestTelemetryBatch::MAX_STACK_TRACE_LENGTH` (4000 chars) before
-  storage.
+- Requests are limited to 50 events and 512 KB. Context is redacted, stack traces are truncated to
+  4000 characters, and crashes receive a release-indexed fingerprint.
 
 ### Dashboard (web, session auth)
 

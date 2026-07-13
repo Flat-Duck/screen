@@ -2,34 +2,41 @@
 
 namespace App\Services;
 
+use App\Actions\Auth\CloseDeviceSession;
+use App\Actions\Auth\RevokeUserSessions;
+use App\Enums\SessionEndReason;
+use App\Models\DeviceSession;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
-use Laravel\Sanctum\PersonalAccessToken;
 
 class SessionService
 {
+    public function __construct(
+        private readonly CloseDeviceSession $closeSession,
+        private readonly RevokeUserSessions $revokeSessions,
+    ) {}
+
     /**
-     * @return Collection<int, PersonalAccessToken>
+     * @return Collection<int, DeviceSession>
      */
     public function listFor(User $user): Collection
     {
-        return $user->tokens()->latest('last_used_at')->get();
+        return $user->deviceSessions()->with('device')->latest('started_at')->get();
     }
 
-    /**
-     * Scoped to the user's own tokens — never a bare PersonalAccessToken::find(), so one
-     * user can't revoke another's session by guessing an ID. Idempotent: revoking a
-     * token that doesn't exist (or isn't yours) is a silent no-op, matching this API's
-     * existing unlike/unfollow convention.
-     */
-    public function revoke(User $user, int $tokenId): void
+    /** Scoped to the user's sessions and addressed only by its public UUID. */
+    public function revoke(User $user, string $sessionUuid): void
     {
-        $user->tokens()->where('id', $tokenId)->delete();
+        $session = $user->deviceSessions()->where('uuid', $sessionUuid)->first();
+
+        if ($session) {
+            ($this->closeSession)($session, SessionEndReason::Revoked);
+        }
     }
 
     /** Leaves the token used for this very request untouched. */
-    public function revokeOthers(User $user, int $currentTokenId): void
+    public function revokeOthers(User $user, int $currentSessionId): void
     {
-        $user->tokens()->where('id', '!=', $currentTokenId)->delete();
+        ($this->revokeSessions)($user, SessionEndReason::Revoked, $currentSessionId);
     }
 }

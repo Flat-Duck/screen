@@ -4,7 +4,9 @@ namespace App\Models;
 
 use Database\Factories\DeviceFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Laravel\Sanctum\HasApiTokens;
 
@@ -21,6 +23,7 @@ class Device extends Authenticatable
 
     protected $fillable = [
         'device_uuid',
+        'user_id',
         'manufacturer',
         'brand',
         'model',
@@ -41,6 +44,24 @@ class Device extends Authenticatable
             'first_seen_at' => 'datetime',
             'last_seen_at' => 'datetime',
         ];
+    }
+
+    /** @return BelongsTo<User, $this> */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    /** @return HasMany<DeviceSession, $this> */
+    public function sessions(): HasMany
+    {
+        return $this->hasMany(DeviceSession::class);
+    }
+
+    /** @return HasOne<DevicePushToken, $this> */
+    public function pushToken(): HasOne
+    {
+        return $this->hasOne(DevicePushToken::class);
     }
 
     /** @return HasMany<TelemetryEvent, $this> */

@@ -8,10 +8,12 @@ use App\Actions\Security\DispatchPendingSecurityOutbox;
 use App\Actions\Telemetry\IngestTelemetryBatch;
 use App\Actions\Telemetry\PersistTelemetryEvent;
 use App\Contracts\MediaFileStore;
+use App\Data\Auth\DeviceSessionContext;
 use App\Data\Telemetry\TelemetryBatchData;
 use App\Data\Telemetry\TelemetryEventData;
 use App\Enums\SecurityOutboxStatus;
 use App\Enums\SecurityOutboxType;
+use App\Enums\TelemetryKind;
 use App\Jobs\DeliverSecurityOutboxMessage;
 use App\Jobs\ImportSocialAvatar;
 use App\Mail\EmailChangedNotificationMail;
@@ -91,7 +93,11 @@ class WorkflowDurabilityTest extends TestCase
         Queue::fake();
         $payload = new SocialUserPayload('google', 'provider-1', 'new@example.com', true, 'New User', 'https://example.com/avatar.jpg');
 
-        app(CompleteSocialLogin::class)($payload, 'mobile');
+        app(CompleteSocialLogin::class)(
+            Device::factory()->create(),
+            $payload,
+            new DeviceSessionContext('mobile', '127.0.0.1', 'phpunit'),
+        );
 
         $this->assertDatabaseHas('social_accounts', ['provider_user_id' => 'provider-1']);
         Queue::assertPushed(ImportSocialAvatar::class, fn ($job): bool => $job->queue === 'media');
@@ -117,8 +123,8 @@ class WorkflowDurabilityTest extends TestCase
     public function test_telemetry_metadata_rolls_back_when_event_persistence_fails(): void
     {
         $device = Device::factory()->create(['app_version_name' => 'old', 'last_seen_at' => null]);
-        $event = new TelemetryEventData('event-1', 'event', 'opened', now()->toIso8601String(), [], [], null, null, null, null, null, false);
-        $batch = new TelemetryBatchData($device->device_uuid, 'new', 2, [$event]);
+        $event = new TelemetryEventData('event-1', null, TelemetryKind::Event, 'opened', now()->toImmutable(), [], [], null, null, null, null, null, false);
+        $batch = new TelemetryBatchData('new', 2, 'release', '14', [$event]);
         $persist = Mockery::mock(PersistTelemetryEvent::class);
         $persist->shouldReceive('__invoke')->once()->andThrow(new RuntimeException('insert failed'));
 
@@ -133,7 +139,7 @@ class WorkflowDurabilityTest extends TestCase
 
     public function test_maintenance_schedules_are_single_server_and_non_overlapping(): void
     {
-        $commands = ['posts:prune-deleted', 'users:prune-deleted', 'media:clean-orphans', 'security-outbox:dispatch', 'posts:refresh-trending'];
+        $commands = ['posts:prune-deleted', 'users:prune-deleted', 'media:clean-orphans', 'security-outbox:dispatch', 'telemetry:prune', 'sessions:expire', 'posts:refresh-trending'];
         $events = app(Schedule::class)->events();
 
         foreach ($commands as $command) {

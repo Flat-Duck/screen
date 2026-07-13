@@ -25,16 +25,19 @@ class AuthApiTest extends TestCase
 
     public function test_registering_creates_a_user_and_returns_a_token(): void
     {
+        $this->authenticateDevice();
         $response = $this->postJson('/api/v1/auth/register', $this->registerPayload());
 
         $response->assertCreated();
-        $response->assertJsonStructure(['user' => ['id', 'username'], 'token']);
+        $response->assertJsonStructure(['user' => ['id', 'username'], 'token', 'session_id']);
+        $this->assertDatabaseHas('device_sessions', ['login_method' => 'registration']);
         $this->assertDatabaseCount('users', 1);
         $this->assertDatabaseHas('users', ['username' => 'ada']);
     }
 
     public function test_registering_with_a_duplicate_username_fails_validation(): void
     {
+        $this->authenticateDevice();
         User::factory()->create(['username' => 'ada']);
 
         $response = $this->postJson('/api/v1/auth/register', $this->registerPayload());
@@ -45,6 +48,7 @@ class AuthApiTest extends TestCase
 
     public function test_login_with_correct_credentials_returns_a_token(): void
     {
+        $device = $this->authenticateDevice();
         $user = User::factory()->create(['username' => 'ada', 'password' => 'password123!']);
 
         $response = $this->postJson('/api/v1/auth/login', [
@@ -53,12 +57,15 @@ class AuthApiTest extends TestCase
         ]);
 
         $response->assertOk();
-        $response->assertJsonStructure(['user' => ['id'], 'token']);
+        $response->assertJsonStructure(['user' => ['id'], 'token', 'session_id']);
         $this->assertSame($user->id, $response->json('user.id'));
+        $this->assertSame($user->id, $device->fresh()->user_id);
+        $this->assertDatabaseHas('device_sessions', ['user_id' => $user->id, 'login_method' => 'password']);
     }
 
     public function test_login_with_wrong_password_is_rejected(): void
     {
+        $this->authenticateDevice();
         User::factory()->create(['username' => 'ada', 'password' => 'password123!']);
 
         $response = $this->postJson('/api/v1/auth/login', [
@@ -96,6 +103,7 @@ class AuthApiTest extends TestCase
 
     public function test_registering_with_a_device_name_names_the_token(): void
     {
+        $this->authenticateDevice();
         $this->postJson('/api/v1/auth/register', $this->registerPayload(['device_name' => 'pixel-8']))
             ->assertCreated();
 
@@ -104,6 +112,7 @@ class AuthApiTest extends TestCase
 
     public function test_registering_without_a_device_name_defaults_the_token_name(): void
     {
+        $this->authenticateDevice();
         $this->postJson('/api/v1/auth/register', $this->registerPayload())->assertCreated();
 
         $this->assertDatabaseHas('personal_access_tokens', ['name' => 'mobile']);
@@ -111,6 +120,7 @@ class AuthApiTest extends TestCase
 
     public function test_login_with_a_device_name_names_the_token(): void
     {
+        $this->authenticateDevice();
         User::factory()->create(['username' => 'ada', 'password' => 'password123!']);
 
         $this->postJson('/api/v1/auth/login', [

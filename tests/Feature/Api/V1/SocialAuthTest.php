@@ -22,6 +22,7 @@ class SocialAuthTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->authenticateDevice();
 
         config([
             'services.google.client_id' => self::GOOGLE_CLIENT_ID,
@@ -63,6 +64,7 @@ class SocialAuthTest extends TestCase
             'provider' => SocialAccount::PROVIDER_GOOGLE,
             'provider_user_id' => 'google-user-1',
         ]);
+        $this->assertDatabaseHas('device_sessions', ['login_method' => 'google']);
 
         $user = User::query()->where('email', 'newuser@example.com')->firstOrFail();
         $this->assertNull($user->username);
@@ -167,6 +169,7 @@ class SocialAuthTest extends TestCase
         $response->assertCreated();
         $this->assertDatabaseHas('users', ['email' => 'fbuser@example.com']);
         $this->assertDatabaseHas('social_accounts', ['provider' => 'facebook', 'provider_user_id' => 'fb-user-1']);
+        $this->assertDatabaseHas('device_sessions', ['login_method' => 'facebook']);
     }
 
     public function test_facebook_sign_in_rejects_a_token_issued_for_a_different_app(): void
@@ -202,6 +205,7 @@ class SocialAuthTest extends TestCase
 
         $response->assertCreated();
         $this->assertDatabaseHas('users', ['email' => 'appleuser@example.com', 'name' => 'Grace Hopper']);
+        $this->assertDatabaseHas('device_sessions', ['login_method' => 'apple']);
     }
 
     public function test_login_against_a_social_only_account_without_a_password_is_rejected(): void

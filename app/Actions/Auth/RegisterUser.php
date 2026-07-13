@@ -2,23 +2,26 @@
 
 namespace App\Actions\Auth;
 
+use App\Data\Auth\DeviceSessionContext;
+use App\Data\Auth\RegisterUserData;
+use App\Enums\LoginMethod;
+use App\Models\Device;
 use App\Models\User;
 use App\Services\Auth\IssuedAccessToken;
 
 class RegisterUser
 {
-    public function __construct(private readonly IssueAccessToken $issueToken) {}
+    public function __construct(private readonly StartDeviceSession $startSession) {}
 
-    /** @param array<string, string> $data */
-    public function __invoke(array $data): IssuedAccessToken
+    public function __invoke(Device $device, RegisterUserData $data, DeviceSessionContext $context): IssuedAccessToken
     {
         $user = User::create([
-            'name' => $data['name'],
-            'username' => $data['username'],
-            'email' => $data['email'],
-            'password' => $data['password'],
+            'name' => $data->name,
+            'username' => $data->username,
+            'email' => $data->email,
+            'password' => $data->password,
         ]);
 
-        return ($this->issueToken)($user, $data['device_name'] ?? 'mobile');
+        return ($this->startSession)($user, $device, LoginMethod::Registration, $context, isNewAccount: true);
     }
 }

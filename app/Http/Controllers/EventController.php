@@ -15,7 +15,7 @@ class EventController extends Controller
 
     public function show(TelemetryEvent $event): View
     {
-        $event->load('device');
+        $event->load(['device', 'user', 'deviceSession']);
 
         return view('events.show', ['event' => $event]);
     }

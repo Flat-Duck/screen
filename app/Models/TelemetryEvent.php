@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\TelemetryKind;
 use Database\Factories\TelemetryEventFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -27,6 +28,8 @@ class TelemetryEvent extends Model
 
     protected $fillable = [
         'device_id',
+        'user_id',
+        'device_session_id',
         'event_uuid',
         'kind',
         'name',
@@ -40,6 +43,11 @@ class TelemetryEvent extends Model
         'stack_trace',
         'thread_name',
         'is_fatal',
+        'app_version_name',
+        'app_version_code',
+        'build_type',
+        'os_version',
+        'crash_fingerprint',
     ];
 
     protected function casts(): array
@@ -50,6 +58,7 @@ class TelemetryEvent extends Model
             'extras' => 'array',
             'breadcrumbs' => 'array',
             'is_fatal' => 'boolean',
+            'app_version_code' => 'integer',
         ];
     }
 
@@ -59,12 +68,24 @@ class TelemetryEvent extends Model
         return $this->belongsTo(Device::class);
     }
 
+    /** @return BelongsTo<User, $this> */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    /** @return BelongsTo<DeviceSession, $this> */
+    public function deviceSession(): BelongsTo
+    {
+        return $this->belongsTo(DeviceSession::class);
+    }
+
     /**
      * @param  Builder<TelemetryEvent>  $query
      * @return Builder<TelemetryEvent>
      */
     public function scopeCrashes(Builder $query): Builder
     {
-        return $query->where('kind', '!=', self::KIND_EVENT);
+        return $query->where('kind', '!=', TelemetryKind::Event->value);
     }
 }

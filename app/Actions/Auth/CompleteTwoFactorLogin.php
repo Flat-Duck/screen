@@ -2,6 +2,8 @@
 
 namespace App\Actions\Auth;
 
+use App\Data\Auth\PendingLoginData;
+use App\Models\Device;
 use App\Models\User;
 use App\Services\Auth\IssuedAccessToken;
 use Illuminate\Support\Facades\Cache;
@@ -13,14 +15,14 @@ class CompleteTwoFactorLogin
 {
     public function __construct(
         private readonly TwoFactorAuthenticationProvider $twoFactor,
-        private readonly IssueAccessToken $issueToken,
+        private readonly StartDeviceSession $startSession,
     ) {}
 
     public function __invoke(
+        Device $device,
         string $challengeToken,
         ?string $code,
         ?string $recoveryCode,
-        string $deviceName,
     ): IssuedAccessToken {
         $cacheKey = "two-factor-challenge:{$challengeToken}";
         $lock = Cache::lock("{$cacheKey}:lock", 10);
@@ -32,20 +34,34 @@ class CompleteTwoFactorLogin
         }
 
         try {
-            /** @var int|null $userId */
-            $userId = Cache::get($cacheKey);
+            /** @var array<string, mixed>|null $payload */
+            $payload = Cache::get($cacheKey);
 
-            if (! $userId) {
+            if (! $payload) {
                 throw ValidationException::withMessages([
                     'two_factor_token' => __('This two-factor challenge has expired or is invalid. Please log in again.'),
                 ]);
             }
 
-            $user = User::query()->findOrFail($userId);
+            $pending = PendingLoginData::fromArray($payload);
+
+            if ($pending->deviceId !== $device->id) {
+                throw ValidationException::withMessages([
+                    'two_factor_token' => __('This two-factor challenge belongs to a different device.'),
+                ]);
+            }
+
+            $user = User::query()->findOrFail($pending->userId);
             $this->verifyCode($user, $code, $recoveryCode);
             Cache::forget($cacheKey);
 
-            return ($this->issueToken)($user, $deviceName);
+            return ($this->startSession)(
+                $user,
+                $device,
+                $pending->loginMethod,
+                $pending->context,
+                twoFactorVerified: true,
+            );
         } finally {
             $lock->release();
         }

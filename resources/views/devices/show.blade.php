@@ -29,6 +29,11 @@
             </div>
         </div>
 
+        <div class="rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">
+            <div class="text-xs uppercase text-zinc-500 dark:text-zinc-400">Current account / Push</div>
+            <div class="mt-1 text-sm">{{ $device->user?->email ?? 'Logged out' }} · {{ $device->pushToken ? 'FCM registered' : 'No FCM token' }}</div>
+        </div>
+
         <div class="rounded-xl border border-zinc-200 dark:border-zinc-700">
             <div class="border-b border-zinc-200 p-4 dark:border-zinc-800">
                 <h2 class="text-sm font-semibold text-zinc-700 dark:text-zinc-200">Recent activity (last 50)</h2>

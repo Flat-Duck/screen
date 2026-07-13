@@ -18,6 +18,10 @@ Schedule::command('media:clean-orphans')->everyTenMinutes()->onOneServer()->with
 
 Schedule::command('security-outbox:dispatch')->everyMinute()->onOneServer()->withoutOverlapping();
 
+Schedule::command('telemetry:prune')->daily()->onOneServer()->withoutOverlapping();
+
+Schedule::command('sessions:expire')->everyFifteenMinutes()->onOneServer()->withoutOverlapping();
+
 // Recomputes the trending/discovery pool FeedService blends into first-page feed loads.
 // Requires Redis; safe to skip a run or have Redis blip — the published set carries its
 // own safety TTL (config('social.trending.safety_ttl_minutes')) and the feed fails open.

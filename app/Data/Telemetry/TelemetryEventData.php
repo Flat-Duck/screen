@@ -2,6 +2,9 @@
 
 namespace App\Data\Telemetry;
 
+use App\Enums\TelemetryKind;
+use Carbon\CarbonImmutable;
+
 final readonly class TelemetryEventData
 {
     /**
@@ -10,9 +13,10 @@ final readonly class TelemetryEventData
      */
     public function __construct(
         public string $eventUuid,
-        public string $kind,
+        public ?string $sessionUuid,
+        public TelemetryKind $kind,
         public string $name,
-        public string $occurredAt,
+        public CarbonImmutable $occurredAt,
         public array $extras,
         public array $breadcrumbs,
         public ?string $errorTag,

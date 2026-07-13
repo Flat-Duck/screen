@@ -13,11 +13,7 @@ return new class extends Migration
     {
         Schema::create('device_push_tokens', function (Blueprint $table) {
             $table->id();
-            // Android only ever calls the registering endpoint while authenticated (right
-            // after login/register/social auth, or from onNewToken while a session
-            // exists) — so unlike the Android-side request doc's original nullable
-            // suggestion, this is simplified to always require a user.
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('device_id')->unique()->constrained()->cascadeOnDelete();
             $table->string('fcm_token')->unique();
             $table->string('platform')->default('android');
             $table->timestamps();

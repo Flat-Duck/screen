@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Device;
 use App\Models\DevicePushToken;
 use App\Models\User;
 use App\Notifications\NewFollowerNotification;
@@ -31,7 +32,7 @@ class FcmPushNotificationTest extends TestCase
     {
         // No config('services.fcm.*') set — default test env state.
         $user = User::factory()->create();
-        DevicePushToken::create(['user_id' => $user->id, 'fcm_token' => 'token-abc']);
+        $this->pushTokenFor($user, 'token-abc');
 
         Http::fake();
 
@@ -58,8 +59,8 @@ class FcmPushNotificationTest extends TestCase
         $this->configureFcm();
 
         $user = User::factory()->create();
-        DevicePushToken::create(['user_id' => $user->id, 'fcm_token' => 'token-1']);
-        DevicePushToken::create(['user_id' => $user->id, 'fcm_token' => 'token-2']);
+        $this->pushTokenFor($user, 'token-1');
+        $this->pushTokenFor($user, 'token-2');
 
         Http::fake([
             'oauth2.googleapis.com/*' => Http::response(['access_token' => 'fake-access-token']),
@@ -83,7 +84,7 @@ class FcmPushNotificationTest extends TestCase
         $this->configureFcm();
 
         $user = User::factory()->create();
-        $token = DevicePushToken::create(['user_id' => $user->id, 'fcm_token' => 'stale-token']);
+        $token = $this->pushTokenFor($user, 'stale-token');
 
         Http::fake([
             'oauth2.googleapis.com/*' => Http::response(['access_token' => 'fake-access-token']),
@@ -100,7 +101,7 @@ class FcmPushNotificationTest extends TestCase
         $this->configureFcm();
 
         $user = User::factory()->create();
-        $token = DevicePushToken::create(['user_id' => $user->id, 'fcm_token' => 'good-token']);
+        $token = $this->pushTokenFor($user, 'good-token');
 
         Http::fake([
             'oauth2.googleapis.com/*' => Http::response(['access_token' => 'fake-access-token']),
@@ -118,6 +119,13 @@ class FcmPushNotificationTest extends TestCase
             'services.fcm.project_id' => 'demo-project',
             'services.fcm.credentials_path' => $this->fakeCredentialsFile(),
         ]);
+    }
+
+    private function pushTokenFor(User $user, string $token): DevicePushToken
+    {
+        $device = Device::factory()->for($user)->create();
+
+        return DevicePushToken::factory()->for($device)->create(['fcm_token' => $token]);
     }
 
     private function fakeCredentialsFile(): string

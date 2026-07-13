@@ -26,6 +26,16 @@
             </a>
         </div>
 
+        <div class="grid gap-4 md:grid-cols-3">
+            <div class="rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">User: {{ $event->user?->email ?? 'Anonymous' }}</div>
+            <div class="rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">Session: {{ $event->deviceSession?->uuid ?? 'None' }}</div>
+            <div class="rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">Release: {{ $event->app_version_name ?? '—' }} ({{ $event->app_version_code ?? '—' }})</div>
+        </div>
+
+        @if ($event->crash_fingerprint)
+            <div class="rounded-xl border border-zinc-200 p-4 font-mono text-xs dark:border-zinc-700">Fingerprint: {{ $event->crash_fingerprint }}</div>
+        @endif
+
         @if (! empty($event->extras))
             <div class="rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">
                 <h2 class="mb-2 text-sm font-semibold text-zinc-700 dark:text-zinc-200">Extras</h2>

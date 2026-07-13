@@ -2,14 +2,28 @@
 
 namespace App\Services;
 
+use App\Actions\Auth\CloseDeviceSession;
+use App\Enums\SessionEndReason;
+use App\Models\DeviceSession;
 use App\Models\User;
 
 class AuthService
 {
+    public function __construct(private readonly CloseDeviceSession $closeSession) {}
+
     /** Revokes only the current token — a login on another device stays valid. */
     public function logout(User $user): void
     {
-        $user->currentAccessToken()->delete();
+        $token = $user->currentAccessToken();
+        $session = DeviceSession::query()->where('personal_access_token_id', $token->id)->first();
+
+        if ($session) {
+            ($this->closeSession)($session, SessionEndReason::Logout);
+
+            return;
+        }
+
+        $token->delete();
     }
 
     /**

@@ -117,6 +117,7 @@ class DeleteAccountApiTest extends TestCase
             ->deleteJson('/api/v1/account', ['current_password' => 'password123!'])
             ->assertNoContent();
 
+        $this->authenticateDevice();
         $this->postJson('/api/v1/auth/login', ['login' => 'deleteme', 'password' => 'password123!'])
             ->assertUnprocessable();
     }

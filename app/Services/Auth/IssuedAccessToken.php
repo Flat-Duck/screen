@@ -2,6 +2,7 @@
 
 namespace App\Services\Auth;
 
+use App\Models\DeviceSession;
 use App\Models\User;
 
 /**
@@ -17,6 +18,7 @@ final readonly class IssuedAccessToken
     public function __construct(
         public User $user,
         public string $token,
+        public DeviceSession $session,
         public bool $isNewAccount = false,
     ) {}
 }

@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Actions\Telemetry;
+namespace App\Data\Devices;
 
 use App\Models\Device;
 
-final readonly class DeviceRegistration
+final readonly class DeviceEnrollment
 {
     public function __construct(
         public Device $device,

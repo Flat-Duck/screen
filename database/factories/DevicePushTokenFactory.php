@@ -2,8 +2,8 @@
 
 namespace Database\Factories;
 
+use App\Models\Device;
 use App\Models\DevicePushToken;
-use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -19,7 +19,7 @@ class DevicePushTokenFactory extends Factory
     public function definition(): array
     {
         return [
-            'user_id' => User::factory(),
+            'device_id' => Device::factory(),
             'fcm_token' => fake()->uuid(),
             'platform' => 'android',
         ];

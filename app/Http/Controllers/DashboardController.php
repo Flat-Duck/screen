@@ -17,7 +17,7 @@ class DashboardController extends Controller
             'crashesToday' => TelemetryEvent::crashes()
                 ->whereDate('received_at', today())->count(),
             'recentCrashes' => TelemetryEvent::crashes()
-                ->with('device')
+                ->with(['device', 'user', 'deviceSession'])
                 ->latest('received_at')
                 ->limit(5)
                 ->get(),

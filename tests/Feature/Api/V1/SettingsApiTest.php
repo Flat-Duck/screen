@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api\V1;
 
+use App\Models\Device;
 use App\Models\DevicePushToken;
 use App\Models\Post;
 use App\Models\User;
@@ -79,7 +80,8 @@ class SettingsApiTest extends TestCase
         $recipient = User::factory()->create();
         $recipient->settings = ['notifications' => ['likes' => false]];
         $recipient->save();
-        DevicePushToken::factory()->for($recipient)->create();
+        $device = Device::factory()->for($recipient)->create();
+        DevicePushToken::factory()->for($device)->create();
 
         $liker = User::factory()->create();
         $post = Post::factory()->for($recipient)->create();
@@ -97,7 +99,8 @@ class SettingsApiTest extends TestCase
     public function test_leaving_a_notification_type_enabled_still_sends_the_push(): void
     {
         $recipient = User::factory()->create();
-        DevicePushToken::factory()->for($recipient)->create(['fcm_token' => 'token-abc']);
+        $device = Device::factory()->for($recipient)->create();
+        DevicePushToken::factory()->for($device)->create(['fcm_token' => 'token-abc']);
 
         $liker = User::factory()->create();
         $post = Post::factory()->for($recipient)->create();

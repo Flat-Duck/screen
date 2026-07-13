@@ -6,6 +6,7 @@ use App\Actions\Auth\CompleteSocialLogin;
 use App\Actions\Auth\CompleteTwoFactorLogin;
 use App\Actions\Auth\PasswordLogin;
 use App\Actions\Auth\RegisterUser;
+use App\Data\Auth\DeviceSessionContext;
 use App\Http\Requests\AppleLoginRequest;
 use App\Http\Requests\FacebookLoginRequest;
 use App\Http\Requests\GoogleLoginRequest;
@@ -14,6 +15,7 @@ use App\Http\Requests\RegisterUserRequest;
 use App\Http\Requests\SetPasswordRequest;
 use App\Http\Requests\TwoFactorChallengeRequest;
 use App\Http\Responses\AuthResponseFactory;
+use App\Models\Device;
 use App\Models\User;
 use App\Services\Auth\IssuedAccessToken;
 use App\Services\AuthService;
@@ -33,15 +35,19 @@ class AuthController extends Controller
 
     public function register(RegisterUserRequest $request, RegisterUser $registerUser): JsonResponse
     {
-        return $this->responses->make($registerUser($request->validated()), successStatus: 201);
+        return $this->responses->make(
+            $registerUser($this->device($request), $request->toData(), $this->context($request)),
+            successStatus: 201,
+        );
     }
 
     public function login(LoginRequest $request, PasswordLogin $passwordLogin): JsonResponse
     {
         $result = $passwordLogin(
+            $this->device($request),
             $request->string('login')->toString(),
             $request->string('password')->toString(),
-            $request->string('device_name', 'mobile')->toString(),
+            $this->context($request),
         );
 
         return $this->responses->make($result);
@@ -51,14 +57,14 @@ class AuthController extends Controller
     {
         $payload = $verifier->verify($request->string('id_token')->toString());
 
-        return $this->respondToSocialLogin($socialLogin, $payload, $request->string('device_name', 'mobile')->toString());
+        return $this->respondToSocialLogin($request, $socialLogin, $payload);
     }
 
     public function facebook(FacebookLoginRequest $request, FacebookTokenVerifier $verifier, CompleteSocialLogin $socialLogin): JsonResponse
     {
         $payload = $verifier->verify($request->string('access_token')->toString());
 
-        return $this->respondToSocialLogin($socialLogin, $payload, $request->string('device_name', 'mobile')->toString());
+        return $this->respondToSocialLogin($request, $socialLogin, $payload);
     }
 
     public function apple(AppleLoginRequest $request, AppleTokenVerifier $verifier, CompleteSocialLogin $socialLogin): JsonResponse
@@ -72,7 +78,7 @@ class AuthController extends Controller
             $payload = $payload->withName($name);
         }
 
-        return $this->respondToSocialLogin($socialLogin, $payload, $request->string('device_name', 'mobile')->toString());
+        return $this->respondToSocialLogin($request, $socialLogin, $payload);
     }
 
     /**
@@ -82,10 +88,10 @@ class AuthController extends Controller
     public function twoFactorChallenge(TwoFactorChallengeRequest $request, CompleteTwoFactorLogin $completeLogin): JsonResponse
     {
         $result = $completeLogin(
+            $this->device($request),
             $request->string('two_factor_token')->toString(),
             $request->input('code'),
             $request->input('recovery_code'),
-            $request->string('device_name', 'mobile')->toString(),
         );
 
         return $this->responses->make($result);
@@ -113,14 +119,31 @@ class AuthController extends Controller
         return response()->json(null, 204);
     }
 
-    private function respondToSocialLogin(CompleteSocialLogin $socialLogin, SocialUserPayload $payload, string $deviceName): JsonResponse
+    private function respondToSocialLogin(Request $request, CompleteSocialLogin $socialLogin, SocialUserPayload $payload): JsonResponse
     {
-        $result = $socialLogin($payload, $deviceName);
+        $result = $socialLogin($this->device($request), $payload, $this->context($request));
 
         return $this->responses->make(
             $result,
             successStatus: $result instanceof IssuedAccessToken && $result->isNewAccount ? 201 : 200,
             includeIsNewAccount: true,
+        );
+    }
+
+    private function device(Request $request): Device
+    {
+        /** @var Device $device */
+        $device = $request->user();
+
+        return $device;
+    }
+
+    private function context(Request $request): DeviceSessionContext
+    {
+        return new DeviceSessionContext(
+            deviceName: $request->string('device_name', 'mobile')->toString(),
+            ipAddress: $request->ip(),
+            userAgent: $request->userAgent(),
         );
     }
 }

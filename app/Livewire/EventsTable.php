@@ -61,7 +61,7 @@ class EventsTable extends Component
         $sortDirection = $this->sortDirection === 'asc' ? 'asc' : 'desc';
 
         $events = TelemetryEvent::query()
-            ->with('device')
+            ->with(['device', 'user', 'deviceSession'])
             ->when($kind !== '', fn ($query) => $query->where('kind', $kind))
             ->when($this->search !== '', function ($query) {
                 $query->where(function ($query) {

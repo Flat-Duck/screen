@@ -80,7 +80,7 @@ jobs:
       - name: Run Tests
         run: php artisan test
 
-      - name: Run PostgreSQL workflow tests
+      - name: Run PostgreSQL device and workflow tests
         if: matrix.php-version == '8.3'
         env:
           DB_CONNECTION: pgsql
@@ -89,4 +89,16 @@ jobs:
           DB_DATABASE: screenshut_test
           DB_USERNAME: postgres
           DB_PASSWORD: postgres
-        run: php artisan test tests/Feature/PostgresSocialConcurrencyTest.php tests/Feature/WorkflowDurabilityTest.php tests/Feature/Api/V1/SocialAuthTest.php tests/Feature/Api/V1/ChangeEmailApiTest.php
+        run: |
+          php artisan migrate:fresh --force
+          php artisan test \
+            tests/Feature/PostgresSocialConcurrencyTest.php \
+            tests/Feature/UnifiedDeviceLifecycleTest.php \
+            tests/Feature/TelemetryApiTest.php \
+            tests/Feature/WorkflowDurabilityTest.php \
+            tests/Feature/Api/V1/AuthApiTest.php \
+            tests/Feature/Api/V1/ChangeEmailApiTest.php \
+            tests/Feature/Api/V1/PushTokenApiTest.php \
+            tests/Feature/Api/V1/SessionApiTest.php \
+            tests/Feature/Api/V1/SocialAuthTest.php \
+            tests/Feature/Api/V1/TwoFactorLoginChallengeTest.php

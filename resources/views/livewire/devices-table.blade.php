@@ -17,6 +17,7 @@
                 <tr>
                     <th class="cursor-pointer px-4 py-3" wire:click="sortBy('model')">Device</th>
                     <th class="px-4 py-3">OS</th>
+                    <th class="px-4 py-3">Current User</th>
                     <th class="px-4 py-3">App Version</th>
                     <th class="cursor-pointer px-4 py-3" wire:click="sortBy('events_count')">Events</th>
                     <th class="cursor-pointer px-4 py-3" wire:click="sortBy('crashes_count')">Crashes</th>
@@ -33,6 +34,7 @@
                             <div class="text-xs text-zinc-500 dark:text-zinc-400">{{ $device->device_uuid }}</div>
                         </td>
                         <td class="px-4 py-3 text-zinc-600 dark:text-zinc-300">{{ $device->os_name }} {{ $device->os_version }} (SDK {{ $device->sdk_int }})</td>
+                        <td class="px-4 py-3 text-zinc-600 dark:text-zinc-300">{{ $device->user?->email ?? 'Logged out' }}</td>
                         <td class="px-4 py-3 text-zinc-600 dark:text-zinc-300">{{ $device->app_version_name }} ({{ $device->app_version_code }})</td>
                         <td class="px-4 py-3">{{ $device->events_count }}</td>
                         <td class="px-4 py-3">
@@ -50,7 +52,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="px-4 py-8 text-center text-zinc-500 dark:text-zinc-400">No devices yet.</td>
+                        <td colspan="7" class="px-4 py-8 text-center text-zinc-500 dark:text-zinc-400">No devices yet.</td>
                     </tr>
                 @endforelse
             </tbody>
