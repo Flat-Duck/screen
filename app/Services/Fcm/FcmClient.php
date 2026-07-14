@@ -30,11 +30,15 @@ class FcmClient
     /**
      * @param  array<string, string>  $data  String-only key/value pairs — FCM's data
      *                                       payload requires every value to be a string.
+     * @param  string|null  $imageUrl  Optional large-image URL shown in the expanded
+     *                                 notification — used by the admin dashboard's ad-hoc
+     *                                 push tester; none of the app's own Notification
+     *                                 classes send one today.
      * @return string 'ok', 'invalid_token' (caller should stop sending to this token —
      *                it's been uninstalled/unregistered), or 'error' (transient, not the
      *                token's fault, safe to retry on the next notification).
      */
-    public function send(string $fcmToken, string $title, string $body, array $data = []): string
+    public function send(string $fcmToken, string $title, string $body, array $data = [], ?string $imageUrl = null): string
     {
         $response = Http::withToken($this->accessToken())
             ->post(sprintf(
@@ -43,7 +47,11 @@ class FcmClient
             ), [
                 'message' => [
                     'token' => $fcmToken,
-                    'notification' => ['title' => $title, 'body' => $body],
+                    'notification' => [
+                        'title' => $title,
+                        'body' => $body,
+                        ...($imageUrl !== null ? ['image' => $imageUrl] : []),
+                    ],
                     'data' => $data,
                 ],
             ]);

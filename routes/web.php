@@ -26,6 +26,8 @@ Route::middleware(['auth', 'verified', 'can:viewTelemetry'])->group(function () 
 
     Route::get('events', [EventController::class, 'index'])->name('events.index');
     Route::get('events/{event}', [EventController::class, 'show'])->name('events.show');
+
+    Route::view('notifications', 'notifications')->name('notifications.index');
 });
 
 require __DIR__.'/settings.php';

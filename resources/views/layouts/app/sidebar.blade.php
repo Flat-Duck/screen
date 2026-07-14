@@ -21,6 +21,9 @@
                     <flux:sidebar.item icon="bolt" :href="route('events.index')" :current="request()->routeIs('events.*')" wire:navigate>
                         {{ __('Events & Crashes') }}
                     </flux:sidebar.item>
+                    <flux:sidebar.item icon="bell" :href="route('notifications.index')" :current="request()->routeIs('notifications.*')" wire:navigate>
+                        {{ __('Notifications') }}
+                    </flux:sidebar.item>
                 </flux:sidebar.group>
             </flux:sidebar.nav>
 
