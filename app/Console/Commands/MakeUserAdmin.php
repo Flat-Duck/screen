@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Actions\Accounts\SetUserAdminState;
 use App\Models\User;
 use Illuminate\Console\Command;
 
@@ -13,7 +14,7 @@ class MakeUserAdmin extends Command
     /** @var string */
     protected $description = 'Grants (or revokes) telemetry-dashboard access for a user, by email.';
 
-    public function handle(): int
+    public function handle(SetUserAdminState $setAdminState): int
     {
         $user = User::query()->where('email', $this->argument('email'))->first();
 
@@ -23,8 +24,7 @@ class MakeUserAdmin extends Command
             return self::FAILURE;
         }
 
-        $user->is_admin = ! $this->option('revoke');
-        $user->save();
+        $setAdminState($user, ! $this->option('revoke'));
 
         $this->info($this->option('revoke')
             ? "Revoked telemetry-dashboard access from {$user->email}."
