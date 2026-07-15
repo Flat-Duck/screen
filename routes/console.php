@@ -26,3 +26,9 @@ Schedule::command('sessions:expire')->everyFifteenMinutes()->onOneServer()->with
 // Requires Redis; safe to skip a run or have Redis blip — the published set carries its
 // own safety TTL (config('social.trending.safety_ttl_minutes')) and the feed fails open.
 Schedule::command('posts:refresh-trending')->everyTenMinutes()->onOneServer()->withoutOverlapping();
+
+// Telescope records every request/exception in every environment (see
+// TelescopeServiceProvider::register()), not just failures, so telescope_entries
+// grows continuously. 48h is short-lived debugging data, not the app's durable
+// telemetry — that's TelemetryEvent's own TELEMETRY_RETENTION_DAYS-based pruning.
+Schedule::command('telescope:prune --hours=48')->daily()->onOneServer()->withoutOverlapping();

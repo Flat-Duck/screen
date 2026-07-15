@@ -29,7 +29,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        DevCommands::artisan('queue:listen --queue=security,media,default --tries=1 --timeout=0', 'queue');
+        DevCommands::artisan('horizon', 'queue');
         $this->configureDefaults();
         $this->configureGates();
         URL::forceScheme('https');

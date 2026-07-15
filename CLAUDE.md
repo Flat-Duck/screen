@@ -92,6 +92,36 @@ grant/revoke it via `php artisan users:make-admin {email} [--revoke]`.
   telemetry-specific pages and their Livewire table partials.
 - `resources/views/flux/**` — local overrides/extensions of Flux UI components.
 
+### Operational monitoring (Horizon, Telescope)
+
+- `QUEUE_CONNECTION` is `redis` (not `database`) — required for Horizon to manage queues.
+  Three supervisors in `config/horizon.php` (`supervisor-default`, `supervisor-security`,
+  `supervisor-media`) map 1:1 to the queues jobs already declare via `onQueue()`; per-job
+  `$tries`/`timeout`/`backoff()` (e.g. `DeliverSecurityOutboxMessage`) take precedence over
+  the supervisor-level fallbacks. `composer dev` now boots `php artisan horizon` instead of
+  `queue:listen`, so local dev requires Redis running (already true for the trending feed).
+- Both `/horizon` and `/telescope` are gated by admin-only Gates (`viewHorizon`,
+  `viewTelescope` in their respective `app/Providers/*ServiceProvider::gate()`) checking
+  `User::$is_admin` — same boundary as `viewTelemetry`, since both dashboards expose
+  data (job payloads; full request/response bodies and query bindings) at least as
+  sensitive as the telemetry they're meant to help debug.
+- Both packages also depend on `laravel/sentinel`, which wraps their routes in
+  `SentinelMiddleware` for IP/tunnel-based checks. Its default `Laravel` driver only
+  restricts access when `APP_ENV=local` (guarding against accidentally exposing a local
+  dev server via ngrok/expose) and authorizes unconditionally in every other environment
+  — it is **not** the production authorization boundary. That boundary is the Gate-based
+  `Horizon::auth()`/`Telescope::auth()` checks wired into each package's own controller
+  middleware, independent of Sentinel and of `config('horizon.middleware')` /
+  `config('telescope.middleware')`.
+- Telescope's `register()` filter records every request/exception in every environment
+  (not just failures) — this is deliberate, so production request monitoring actually
+  works, not just crash capture. That means `telescope_entries` grows continuously;
+  `telescope:prune --hours=48` runs daily via `routes/console.php`, separate from
+  `TelemetryEvent`'s own `TELEMETRY_RETENTION_DAYS`-based retention (different data,
+  different lifecycle — Telescope is short-lived debugging data, not durable telemetry).
+  `config/telescope.php`'s `ignore_paths` excludes `horizon*`/`telescope*` so each
+  dashboard's own polling doesn't flood the other's (or its own) entries.
+
 ### Notable non-obvious packages
 
 - `livewire/flux` — the paid Flux UI Pro component kit (requires the composer.fluxui.dev credentials
