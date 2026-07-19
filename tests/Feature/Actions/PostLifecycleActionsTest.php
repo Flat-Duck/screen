@@ -6,6 +6,7 @@ use App\Actions\Posts\CreatePost;
 use App\Actions\Posts\PurgePost;
 use App\Actions\Posts\StagePostMedia;
 use App\Actions\Posts\SyncPostHashtags;
+use App\Actions\Posts\SyncPostMentions;
 use App\Contracts\MediaFileStore;
 use App\Data\Posts\CreatePostData;
 use App\Enums\PostPurgeOutcome;
@@ -42,6 +43,7 @@ class PostLifecycleActionsTest extends TestCase
         $action = new CreatePost(
             new StagePostMedia($images, app(MediaFileStore::class)),
             app(SyncPostHashtags::class),
+            app(SyncPostMentions::class),
         );
 
         $post = $action(User::factory()->create(), new CreatePostData(null, [UploadedFile::fake()->image('shot.jpg')]));
@@ -56,7 +58,7 @@ class PostLifecycleActionsTest extends TestCase
         Queue::fake();
         $hashtags = Mockery::mock(SyncPostHashtags::class);
         $hashtags->shouldReceive('__invoke')->once()->andThrow(new RuntimeException('database workflow failed'));
-        $action = new CreatePost(app(StagePostMedia::class), $hashtags);
+        $action = new CreatePost(app(StagePostMedia::class), $hashtags, app(SyncPostMentions::class));
 
         try {
             $action(User::factory()->create(), new CreatePostData('#tag', [UploadedFile::fake()->image('shot.jpg', 800, 800)]));
@@ -77,7 +79,7 @@ class PostLifecycleActionsTest extends TestCase
         $hashtags->shouldReceive('__invoke')->once()->andThrow(new RuntimeException('workflow failed'));
         $files = Mockery::mock(MediaFileStore::class);
         $files->shouldReceive('deleteDirectory')->once()->andThrow(new RuntimeException('storage unavailable'));
-        $action = new CreatePost(new StagePostMedia(app(ImageProcessingService::class), $files), $hashtags);
+        $action = new CreatePost(new StagePostMedia(app(ImageProcessingService::class), $files), $hashtags, app(SyncPostMentions::class));
 
         try {
             $action(User::factory()->create(), new CreatePostData(null, [UploadedFile::fake()->image('shot.jpg')]));

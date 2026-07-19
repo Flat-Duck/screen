@@ -7,8 +7,9 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * Callers must `loadCount(['likes', 'comments'])` and set `is_liked` on the model
- * for the current viewer (see LikeService/PostQueryService) before resourcing.
+ * Callers must `loadCount(['likes', 'comments'])` and set `is_liked`/`is_saved` on the
+ * model for the current viewer (see LikeService/SavedPostService/PostQueryService) before
+ * resourcing.
  *
  * @mixin Post
  */
@@ -28,6 +29,7 @@ class PostResource extends JsonResource
             'likes_count' => $this->likes_count,
             'comments_count' => $this->comments_count,
             'is_liked' => (bool) ($this->is_liked ?? false),
+            'is_saved' => (bool) ($this->is_saved ?? false),
             'created_at' => $this->created_at,
             'edited_at' => $this->edited_at,
         ];

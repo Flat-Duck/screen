@@ -21,6 +21,9 @@ class SettingsService
                 'likes' => true,
                 'comments' => true,
                 'follows' => true,
+                'mentions' => true,
+                'reposts' => true,
+                'messages' => true,
             ],
         ];
     }

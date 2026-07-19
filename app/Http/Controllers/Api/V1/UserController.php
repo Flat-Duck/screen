@@ -9,6 +9,7 @@ use App\Services\BlockService;
 use App\Services\LikeService;
 use App\Services\PostQueryService;
 use App\Services\ProfileService;
+use App\Services\SavedPostService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -20,6 +21,7 @@ class UserController extends Controller
         private readonly PostQueryService $posts,
         private readonly LikeService $likes,
         private readonly BlockService $blocks,
+        private readonly SavedPostService $savedPosts,
     ) {}
 
     public function show(Request $request, User $user): UserResource
@@ -52,6 +54,7 @@ class UserController extends Controller
 
         $posts = $this->posts->postsForUser($user);
         $this->likes->annotateIsLiked($posts->getCollection(), $viewer);
+        $this->savedPosts->annotateIsSaved($posts->getCollection(), $viewer);
 
         return PostResource::collection($posts);
     }

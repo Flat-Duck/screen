@@ -171,6 +171,24 @@ class User extends Authenticatable implements PasskeyUser
             ->withTimestamps();
     }
 
+    /**
+     * @return BelongsToMany<Hashtag, $this, Pivot, 'pivot'>
+     */
+    public function followedHashtags(): BelongsToMany
+    {
+        return $this->belongsToMany(Hashtag::class, 'hashtag_user')->withTimestamps();
+    }
+
+    /**
+     * @return BelongsToMany<Conversation, $this, Pivot, 'pivot'>
+     */
+    public function conversations(): BelongsToMany
+    {
+        return $this->belongsToMany(Conversation::class, 'conversation_participants')
+            ->withPivot('last_read_at')
+            ->withTimestamps();
+    }
+
     public function avatarUrl(): ?string
     {
         return $this->avatar_path

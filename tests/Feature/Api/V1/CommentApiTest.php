@@ -94,6 +94,114 @@ class CommentApiTest extends TestCase
         $response->assertNotFound();
     }
 
+    public function test_replying_to_a_top_level_comment_succeeds(): void
+    {
+        $post = Post::factory()->create();
+        $parent = Comment::factory()->create(['post_id' => $post->id]);
+        $replier = User::factory()->create();
+        Sanctum::actingAs($replier);
+
+        $response = $this->postJson("/api/v1/posts/{$post->id}/comments", [
+            'body' => 'Totally agree',
+            'parent_id' => $parent->id,
+        ]);
+
+        $response->assertCreated();
+        $response->assertJsonPath('data.parent_id', $parent->id);
+        $this->assertDatabaseHas('comments', ['id' => $response->json('data.id'), 'parent_id' => $parent->id]);
+    }
+
+    public function test_replying_to_a_comment_from_a_different_post_is_rejected(): void
+    {
+        $post = Post::factory()->create();
+        $otherPost = Post::factory()->create();
+        $parent = Comment::factory()->create(['post_id' => $otherPost->id]);
+        Sanctum::actingAs(User::factory()->create());
+
+        $response = $this->postJson("/api/v1/posts/{$post->id}/comments", [
+            'body' => 'Wrong thread',
+            'parent_id' => $parent->id,
+        ]);
+
+        $response->assertUnprocessable();
+        $response->assertJsonValidationErrors(['parent_id']);
+    }
+
+    public function test_replying_to_a_reply_is_rejected(): void
+    {
+        $post = Post::factory()->create();
+        $parent = Comment::factory()->create(['post_id' => $post->id]);
+        $reply = Comment::factory()->create(['post_id' => $post->id, 'parent_id' => $parent->id]);
+        Sanctum::actingAs(User::factory()->create());
+
+        $response = $this->postJson("/api/v1/posts/{$post->id}/comments", [
+            'body' => 'Nested too deep',
+            'parent_id' => $reply->id,
+        ]);
+
+        $response->assertUnprocessable();
+        $response->assertJsonValidationErrors(['parent_id']);
+    }
+
+    public function test_listing_a_posts_comments_only_returns_top_level_comments(): void
+    {
+        $post = Post::factory()->create();
+        $parent = Comment::factory()->create(['post_id' => $post->id]);
+        Comment::factory()->create(['post_id' => $post->id, 'parent_id' => $parent->id]);
+        Sanctum::actingAs(User::factory()->create());
+
+        $response = $this->getJson("/api/v1/posts/{$post->id}/comments");
+
+        $response->assertOk();
+        $response->assertJsonCount(1, 'data');
+        $response->assertJsonPath('data.0.id', $parent->id);
+        $response->assertJsonPath('data.0.replies_count', 1);
+    }
+
+    public function test_listing_replies_to_a_comment(): void
+    {
+        $post = Post::factory()->create();
+        $parent = Comment::factory()->create(['post_id' => $post->id]);
+        $reply = Comment::factory()->create(['post_id' => $post->id, 'parent_id' => $parent->id]);
+        Sanctum::actingAs(User::factory()->create());
+
+        $response = $this->getJson("/api/v1/comments/{$parent->id}/replies");
+
+        $response->assertOk();
+        $response->assertJsonCount(1, 'data');
+        $response->assertJsonPath('data.0.id', $reply->id);
+    }
+
+    public function test_deleting_a_parent_comment_cascades_to_its_replies(): void
+    {
+        $post = Post::factory()->create();
+        $owner = $post->user;
+        $parent = Comment::factory()->create(['post_id' => $post->id, 'user_id' => $owner->id]);
+        Comment::factory()->create(['post_id' => $post->id, 'parent_id' => $parent->id]);
+        Sanctum::actingAs($owner);
+
+        $this->deleteJson("/api/v1/comments/{$parent->id}")->assertNoContent();
+
+        $this->assertDatabaseCount('comments', 0);
+    }
+
+    public function test_replying_notifies_the_parent_comments_author_not_the_post_owner(): void
+    {
+        $post = Post::factory()->create();
+        $parentAuthor = User::factory()->create();
+        $parent = Comment::factory()->create(['post_id' => $post->id, 'user_id' => $parentAuthor->id]);
+        $replier = User::factory()->create();
+        Sanctum::actingAs($replier);
+
+        $this->postJson("/api/v1/posts/{$post->id}/comments", [
+            'body' => 'Totally agree',
+            'parent_id' => $parent->id,
+        ])->assertCreated();
+
+        $this->assertDatabaseHas('notifications', ['notifiable_id' => $parentAuthor->id]);
+        $this->assertDatabaseMissing('notifications', ['notifiable_id' => $post->user_id]);
+    }
+
     public function test_comment_resource_returns_the_full_expected_shape(): void
     {
         $user = User::factory()->create();

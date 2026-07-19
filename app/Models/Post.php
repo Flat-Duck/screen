@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
@@ -21,6 +22,7 @@ use Illuminate\Support\Carbon;
  *                                           soft-deleted as part of the whole account being deleted (AccountService), not when the
  *                                           user deleted this specific post on its own — see RestoreDeletedUser.
  * @property bool|null $is_liked Set per-request by LikeService for the current viewer — not a DB column.
+ * @property bool|null $is_saved Set per-request by SavedPostService for the current viewer — not a DB column.
  */
 class Post extends Model
 {
@@ -69,9 +71,12 @@ class Post extends Model
     /**
      * @return HasMany<Like, $this>
      */
-    public function likes(): HasMany
+    /**
+     * @return MorphMany<Like, $this>
+     */
+    public function likes(): MorphMany
     {
-        return $this->hasMany(Like::class);
+        return $this->morphMany(Like::class, 'likeable');
     }
 
     /**

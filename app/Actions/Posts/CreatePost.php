@@ -21,6 +21,7 @@ class CreatePost
     public function __construct(
         private readonly StagePostMedia $stageMedia,
         private readonly SyncPostHashtags $syncHashtags,
+        private readonly SyncPostMentions $syncMentions,
     ) {}
 
     public function __invoke(User $user, CreatePostData $data): Post
@@ -28,7 +29,7 @@ class CreatePost
         $batch = ($this->stageMedia)($data);
 
         try {
-            return DB::transaction(function () use ($user, $data, $batch): Post {
+            $post = DB::transaction(function () use ($user, $data, $batch): Post {
                 $post = Post::create([
                     'user_id' => $user->id,
                     'caption' => $data->caption,
@@ -46,6 +47,14 @@ class CreatePost
 
                 return $post->load('media');
             });
+
+            // Outside the transaction, not inside like syncHashtags — mentions can fire a
+            // queued notification, and this app's queue connections don't defer dispatch
+            // until commit (config/queue.php's after_commit => false), so a worker could
+            // otherwise pick the job up before the post/mention rows are actually visible.
+            ($this->syncMentions)($post, $data->caption);
+
+            return $post;
         } catch (Throwable $exception) {
             $this->stageMedia->cleanup($batch);
 

@@ -5,12 +5,22 @@
 The Android app uses one `/api/v1` backend for social features and device-scoped crash telemetry.
 Every installation must enrol through `POST /api/v1/devices/enroll` before registration or login.
 
-A Stitch design export ("Snap Vault", `stitch_snap_vault_app_design_system.zip`) exists for this, but it designs a considerably larger product than the v1 API supports: alongside screens that map cleanly (Sign Up, Profile Setup, Home Feed, Screenshot Detail, User Profile), it also includes **Groups** (shared albums), **Discover** (a public content grid), and a PIN/biometric-locked **Vault** — none of which the API has endpoints for, plus a few UI details (per-comment likes, threaded replies, tags, a feed-card "source badge") that don't match any field the API returns.
+A Stitch design export ("Snap Vault", `stitch_snap_vault_app_design_system.zip`) exists for this, but it designs a considerably larger product than the v1 API supports: alongside screens that map cleanly (Sign Up, Profile Setup, Home Feed, Screenshot Detail, User Profile), it also includes **Groups** (shared albums), **Discover** (a public content grid), and a PIN/biometric-locked **Vault** — none of which the API had endpoints for at the time this plan was written, plus a few UI details (per-comment likes, threaded replies, tags, a feed-card "source badge") that didn't match any field the API returned then. **As of 2026-07-19, Discover, per-comment likes, and threaded replies are all built** — see `docs/frontend-handoff.md` for the running log of what's shipped since this plan was written; Groups and Vault sync remain unbuilt.
 
-Decisions already made (confirmed with the app owner):
-- **This plan wires up only what the v1 API already supports.** Groups, Discover, and syncing Vault to a server are out of scope here — see [Phase 2 backlog](#phase-2--v2-backlog) for what they'd need later.
+Decisions already made (confirmed with the app owner) — **note: this list reflects the API
+as it existed when this plan was originally written. Discover, per-comment likes, and
+threaded replies were built later (2026-07-19) and are no longer out of scope — see
+`docs/frontend-handoff.md`.**
+- ~~**This plan wires up only what the v1 API already supports.** Groups, Discover, and
+  syncing Vault to a server are out of scope here~~ — Discover shipped 2026-07-19 as
+  `GET /v1/explore`; Groups and Vault sync remain out of scope, see
+  [Phase 2 backlog](#phase-2--v2-backlog).
 - **Vault is fully local** — PIN/biometric gating and its private-collection storage live entirely on-device (Android Keystore / BiometricPrompt / local encrypted storage). No backend calls, ever, for Vault content.
-- **Screenshot Detail's comment thread is simplified to match the API** — flat comments, no per-comment like button, no "Reply" affordance. A real "like the post" action (which the API *does* support) should be added near the share/download actions instead, since the mockup doesn't show one.
+- ~~**Screenshot Detail's comment thread is simplified to match the API** — flat comments, no
+  per-comment like button, no "Reply" affordance~~ — both now exist
+  (`POST /v1/comments/{id}/like`, replies via `parent_id`, built 2026-07-19). A real
+  "like the post" action (which the API also supports) should still be added near the
+  share/download actions, since the mockup doesn't show one.
 
 ## Screen inventory & status
 
@@ -23,10 +33,10 @@ Decisions already made (confirmed with the app owner):
 | `profile_setup_light` | ✅ Maps (mostly) | Username/bio/avatar map directly; "Curation Interests" tags have no backing field — drop for v1 (see gaps). |
 | `permissions_light` | 🏠 Local | Android photo-library permission priming; no API call. |
 | `home_feed_light` | 🔧 Needs simplification | Maps to `GET /v1/feed`, but card fields (source badge, tags) don't exist on `Post` — see mapping below. |
-| `discover_grid_light` | 🚧 Phase 2 | No public/discover endpoint exists (v1 feed is following-only, by design). |
-| `screenshot_detail_light` | 🔧 Needs simplification | Maps to post detail + comments; drop per-comment likes/reply, add a post-level like button. |
+| `discover_grid_light` | ✅ Maps now | `GET /v1/explore` (2026-07-19) — page-number paginated, not cursor-paginated like everything else here. See `docs/frontend-handoff.md`'s Explore entry. |
+| `screenshot_detail_light` | 🔧 Needs simplification | Maps to post detail + comments; per-comment likes/reply are now backed by the API (2026-07-19, no longer need dropping) — add a post-level like button too. |
 | `share_screen_light` | 🔧 Needs simplification | Only the "Public Feed" destination is wired to the API; "Personal Vault" saves locally; "Private Groups" is hidden. |
-| `user_profile_light` | 🔧 Needs simplification | Follow + stats map directly; "Collections" and "Liked" tabs have no backing endpoint yet. |
+| `user_profile_light` | 🔧 Needs simplification | Follow + stats map directly; "Collections" tab has no backing endpoint. "Liked" tab still doesn't either — but a "Saved" tab (`GET /v1/saved-posts`) and a "Reposts" tab (`GET /v1/users/{id}/reposts`) can both be built now (2026-07-19). |
 | `groups_list_light` / `group_detail_light` | 🚧 Phase 2 | No Groups API at all. |
 | `vault_grid_light` / `vault_locked_light` / `vault_pin_setup_light` | 🏠 Local | Fully on-device per the decision above. |
 
@@ -51,9 +61,12 @@ Card-level changes needed vs. the mockup: drop the "source badge" (TWITTER/FIGMA
 
 ### Screenshot Detail → `GET /v1/posts/{id}` + comments endpoints
 - Hero image / gallery: `media[]`, `caption`, `user`.
-- Add a **post-level like button** (not in the mockup — needed because the API only supports liking posts, not comments): `POST /v1/posts/{id}/like` / `DELETE .../like`, toggling on `is_liked`, updating the count from the response's `likes_count`.
-- Comment thread: `GET /v1/posts/{id}/comments` (cursor-paginated, oldest-first), `POST /v1/posts/{id}/comments` (body: `{"body": "..."}`) to add, `DELETE /v1/comments/{id}` to remove (only show the delete affordance when `comment.user.id == currentUserId` **or** `post.user.id == currentUserId` — the API allows either, matching a post owner's ability to moderate their own post's comments).
-- **Drop**: per-comment like button (`thumb_up` + count) and "Reply" — no backing endpoints.
+- Add a **post-level like button** (not in the mockup): `POST /v1/posts/{id}/like` / `DELETE .../like`, toggling on `is_liked`, updating the count from the response's `likes_count`.
+- Comment thread: `GET /v1/posts/{id}/comments` (cursor-paginated, oldest-first, **top-level only as of the 2026-07-19 hand-off**), `POST /v1/posts/{id}/comments` (body: `{"body": "..."}`, optional `parent_id` to reply) to add, `DELETE /v1/comments/{id}` to remove (only show the delete affordance when `comment.user.id == currentUserId` **or** `post.user.id == currentUserId` — the API allows either, matching a post owner's ability to moderate their own post's comments).
+- **Per-comment like button and "Reply" are now both backed by the API** — see
+  `docs/frontend-handoff.md`'s 2026-07-19 entry for the exact endpoints/response shape
+  (`POST /v1/comments/{id}/like`, `GET /v1/comments/{id}/replies`, one level of nesting
+  only). This supersedes the "drop" guidance that used to be here.
 - "Download Original" — just fetch `media[].original_url` directly, no API endpoint needed.
 - Overflow menu (`more_vert`): show "Delete Post" only when the current user owns the post, wired to `DELETE /v1/posts/{id}`.
 - "Share" (top bar icon): native Android share sheet with the image/deep link — not an API call.
@@ -71,8 +84,14 @@ Card-level changes needed vs. the mockup: drop the "source badge" (TWITTER/FIGMA
 - Stats: `posts_count` → "Snapshots", `following_count` → "Following", `followers_count` → the mockup's third stat is labeled **"Curators"** — confirm with design whether that's intentional terminology or should just read "Followers"; either way it's `followers_count` under the hood.
 - Follow button: `POST /v1/users/{id}/follow` / `DELETE .../follow`, reflecting `is_following` from the response (only present when viewing someone else's profile).
 - "Latest Snapshots" tab → `GET /v1/users/{id}/posts` (cursor-paginated, same `PostResource` shape as the feed).
-- "Collections" and "Liked" tabs → no backing endpoint. Hide both for v1 (see [Phase 2](#phase-2--v2-backlog) — "Liked" in particular is a small addition later).
-- `mail` icon (DM) and the `verified` badge overlay → no messaging API and no verified-account field exist; drop both for v1.
+- "Collections" tab → no backing endpoint, still hide for v1. A **"Saved" tab** (not in the
+  original mockup, but the natural analog) can now be built against `GET /v1/saved-posts`
+  (`POST`/`DELETE /v1/posts/{id}/save` to toggle) — see `docs/frontend-handoff.md`'s
+  2026-07-19 entry. The "Liked" tab specifically (`GET /v1/users/{id}/liked-posts`) is still
+  not built.
+- `mail` icon (DM) → **now has a backing API** (`POST /v1/conversations`, built 2026-07-19,
+  see `docs/frontend-handoff.md`) — no longer needs dropping, can be wired up. The
+  `verified` badge overlay still has no backing field; keep dropping that one.
 
 ### Followers / Following lists
 If/where the design needs them: `GET /v1/users/{id}/followers` and `GET /v1/users/{id}/following` (cursor-paginated `UserSummaryResource[]`).
@@ -118,11 +137,19 @@ Use Coil (Kotlin-first, simpler than Glide for this). Load `media[].url` for fee
 
 Not part of this plan — listed so nothing gets lost:
 - **Groups**: shared albums, membership, invites, group-scoped uploads, activity feed.
-- **Discover**: public/global content grid with search + category filters, separate from the personal following-feed.
-- **Comment likes + threaded replies**: would need a `comment_likes` table/endpoints and a `parent_id` on `comments`.
-- **"Liked" profile tab**: a small addition — `GET /v1/users/{id}/liked-posts`.
-- **Tags/hashtags**: on posts, for the feed-card chips and Discover's category filters.
-- **Direct messages**: the `mail` icon on User Profile.
+- ~~**Discover**: public/global content grid~~ — built 2026-07-19 as `GET /v1/explore`,
+  and `GET /v1/search/*` + `GET /v1/hashtags/{name}/posts` (also 2026-07-19) cover
+  search and category/tag filtering respectively. See `docs/frontend-handoff.md`.
+- ~~**Comment likes + threaded replies**~~ — built 2026-07-19, see `docs/frontend-handoff.md`.
+- **"Liked" profile tab**: a small addition — `GET /v1/users/{id}/liked-posts`. Still open —
+  don't confuse with the *Saved* posts feature (`GET /v1/saved-posts`) built 2026-07-19,
+  which is a different, already-built concept (bookmarks, not likes).
+- **Tags/hashtags**: browsing/searching by tag is now built (`GET /v1/hashtags/{name}/posts`,
+  `GET /v1/search/hashtags`, both 2026-07-19) — but `PostResource` still has no `hashtags`
+  array field, so a feed-card hashtag-chips UI still has nothing to render from a plain
+  `GET /v1/feed` response. Still open specifically for that piece.
+- ~~**Direct messages**~~ — built 2026-07-19 (`POST /v1/conversations` etc.), see
+  `docs/frontend-handoff.md`.
 - **Vault sync**: only if the local-only decision is revisited later — encrypted-blob backup/restore, keys never leaving the device.
 
 ## Suggested build order

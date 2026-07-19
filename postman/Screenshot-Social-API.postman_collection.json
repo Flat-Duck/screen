@@ -55,6 +55,11 @@
       "key": "session_id",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "conversation_id",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
@@ -2561,6 +2566,317 @@
           ]
         },
         {
+          "name": "Search",
+          "item": [
+            {
+              "name": "Search Users",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/v1/search/users?q=alice",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "search",
+                    "users"
+                  ],
+                  "query": [
+                    {
+                      "key": "q",
+                      "value": "alice"
+                    }
+                  ]
+                },
+                "description": "Excludes inactive accounts, the viewer themselves, and anyone blocked either-way. Rate limited to 20 requests/min."
+              },
+              "response": []
+            },
+            {
+              "name": "Search Posts",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/v1/search/posts?q=bug",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "search",
+                    "posts"
+                  ],
+                  "query": [
+                    {
+                      "key": "q",
+                      "value": "bug"
+                    }
+                  ]
+                },
+                "description": "Matches post captions. Rate limited to 20 requests/min."
+              },
+              "response": []
+            },
+            {
+              "name": "Search Hashtags",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/v1/search/hashtags?q=bug",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "search",
+                    "hashtags"
+                  ],
+                  "query": [
+                    {
+                      "key": "q",
+                      "value": "bug"
+                    }
+                  ]
+                },
+                "description": "Case-insensitive. Rate limited to 20 requests/min."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Hashtags",
+          "item": [
+            {
+              "name": "Get Hashtag",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/v1/hashtags/bug",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "hashtags",
+                    "bug"
+                  ]
+                },
+                "description": "Route-bound by name (case-insensitive, leading '#' tolerated), not id. 404 if no posts have ever used this tag."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Hashtag Posts",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/v1/hashtags/bug/posts",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "hashtags",
+                    "bug",
+                    "posts"
+                  ]
+                },
+                "description": "Cursor-paginated, excludes posts from blocked-either-way authors."
+              },
+              "response": []
+            },
+            {
+              "name": "Follow Hashtag",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/v1/hashtags/bug/follow",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "hashtags",
+                    "bug",
+                    "follow"
+                  ]
+                },
+                "description": "Idempotent. Bookmark-only in v1 \u2014 doesn't notify on new tagged posts or inject into the main feed."
+              },
+              "response": []
+            },
+            {
+              "name": "Unfollow Hashtag",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/v1/hashtags/bug/follow",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "hashtags",
+                    "bug",
+                    "follow"
+                  ]
+                },
+                "description": "Idempotent."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Followed Hashtags",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/v1/hashtags/followed",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "hashtags",
+                    "followed"
+                  ]
+                },
+                "description": "Always the authenticated user's own followed hashtags."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
           "name": "Users",
           "item": [
             {
@@ -2780,6 +3096,42 @@
                   "body": "{\n  \"data\": [\n    { \"name\": \"screenshot\", \"posts_count\": 12 },\n    { \"name\": \"bug\", \"posts_count\": 5 }\n  ]\n}"
                 }
               ]
+            },
+            {
+              "name": "Get User Reposts",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/v1/users/{{user_b_id}}/reposts",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "users",
+                    "{{user_b_id}}",
+                    "reposts"
+                  ]
+                },
+                "description": "Cursor-paginated repost events (id, comment, created_at, and the wrapped original post) for the given user. Rate limited to 60 requests/min."
+              },
+              "response": []
             },
             {
               "name": "Follow User",
@@ -3571,6 +3923,46 @@
           ]
         },
         {
+          "name": "Explore",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/explore?page=1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "explore"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Standalone trending/discovery feed \u2014 offset-paginated by `page` (not cursor-paginated like every other list endpoint, since the ranked set lives in a Redis sorted set, not a SQL table). Excludes only the viewer's own posts and anyone blocked either-way; unlike the feed's inline discovery splice, this does include posts from accounts you already follow."
+          },
+          "response": []
+        },
+        {
           "name": "Posts",
           "item": [
             {
@@ -3853,6 +4245,197 @@
               "response": []
             },
             {
+              "name": "Save Post",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/v1/posts/{{post_id}}/save",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "posts",
+                    "{{post_id}}",
+                    "save"
+                  ]
+                },
+                "description": "Bookmark a post privately \u2014 never visible to anyone but you. Idempotent. Rate limited to 60 requests/min."
+              },
+              "response": []
+            },
+            {
+              "name": "Unsave Post",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/v1/posts/{{post_id}}/save",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "posts",
+                    "{{post_id}}",
+                    "save"
+                  ]
+                },
+                "description": "Idempotent. Rate limited to 60 requests/min."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Saved Posts",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/v1/saved-posts",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "saved-posts"
+                  ]
+                },
+                "description": "Always the authenticated user's own saved posts \u2014 cursor-paginated, ordered by post creation time. Rate limited to 60 requests/min."
+              },
+              "response": []
+            },
+            {
+              "name": "Repost Post",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"comment\": \"Look at this\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/v1/posts/{{post_id}}/repost",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "posts",
+                    "{{post_id}}",
+                    "repost"
+                  ]
+                },
+                "description": "Optional `comment` for a quote-repost. Idempotent (re-reposting doesn't update an existing comment). Cannot repost your own post (422). Surfaces only on the reposting user's own profile (GET /users/{id}/reposts) in v1 \u2014 never blended into followers' feeds. Rate limited to 30 requests/min."
+              },
+              "response": []
+            },
+            {
+              "name": "Unrepost Post",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/v1/posts/{{post_id}}/repost",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "posts",
+                    "{{post_id}}",
+                    "repost"
+                  ]
+                },
+                "description": "Idempotent. Rate limited to 30 requests/min."
+              },
+              "response": []
+            },
+            {
               "name": "Delete Post",
               "request": {
                 "auth": {
@@ -4095,6 +4678,78 @@
                   "body": "{\n  \"likes_count\": 0\n}"
                 }
               ]
+            },
+            {
+              "name": "Like Comment",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/v1/comments/{{comment_id}}/like",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "comments",
+                    "{{comment_id}}",
+                    "like"
+                  ]
+                },
+                "description": "Idempotent. `likes` is shared between posts and comments (polymorphic). Rate limited to 60 requests/min."
+              },
+              "response": []
+            },
+            {
+              "name": "Unlike Comment",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/v1/comments/{{comment_id}}/like",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "comments",
+                    "{{comment_id}}",
+                    "like"
+                  ]
+                },
+                "description": "Idempotent. Rate limited to 60 requests/min."
+              },
+              "response": []
             }
           ]
         },
@@ -4180,6 +4835,42 @@
               ]
             },
             {
+              "name": "Get Comment Replies",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/v1/comments/{{comment_id}}/replies",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "comments",
+                    "{{comment_id}}",
+                    "replies"
+                  ]
+                },
+                "description": "Cursor-paginated replies to a top-level comment. Rate limited to 60 requests/min."
+              },
+              "response": []
+            },
+            {
               "name": "Add Comment",
               "request": {
                 "auth": {
@@ -4205,7 +4896,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"body\": \"lol classic NPE\"\n}",
+                  "raw": "{\n  \"body\": \"lol classic NPE\",\n  \"parent_id\": null\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -4224,7 +4915,7 @@
                     "comments"
                   ]
                 },
-                "description": "Rate limited to 30 requests/min."
+                "description": "Optional `parent_id` replies to a top-level comment (one level of nesting only \u2014 replying to a reply is rejected). Rate limited to 30 requests/min."
               },
               "event": [
                 {
@@ -4372,6 +5063,226 @@
                   "body": "{\n  \"message\": \"This action is unauthorized.\"\n}"
                 }
               ]
+            }
+          ]
+        },
+        {
+          "name": "Conversations",
+          "item": [
+            {
+              "name": "Start Conversation",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/v1/conversations",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "conversations"
+                  ]
+                },
+                "description": "Idempotent find-or-create \u2014 starting a conversation you already have with this user just returns the existing thread. 422 if user_id is yourself or a blocked-either-way user.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"user_id\": 2\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 201) {",
+                      "    pm.collectionVariables.set('conversation_id', pm.response.json().data.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "List Conversations",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/v1/conversations",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "conversations"
+                  ]
+                },
+                "description": "Cursor-paginated, always your own conversations. Each item includes `other_participant` and an `unread` flag."
+              },
+              "response": []
+            },
+            {
+              "name": "Mark Conversation Read",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/v1/conversations/{{conversation_id}}/read",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "conversations",
+                    "{{conversation_id}}",
+                    "read"
+                  ]
+                },
+                "description": "Updates only your own read marker on this conversation."
+              },
+              "response": []
+            },
+            {
+              "name": "List Messages",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/v1/conversations/{{conversation_id}}/messages",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "conversations",
+                    "{{conversation_id}}",
+                    "messages"
+                  ]
+                },
+                "description": "Default: cursor-paginated, newest first (loading history). Pass `?after=<message_id>` to switch to the lightweight polling view instead \u2014 everything newer than that id, oldest first, capped (not cursor-paginated) \u2014 intended for a client polling an open thread."
+              },
+              "response": []
+            },
+            {
+              "name": "Send Message",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/v1/conversations/{{conversation_id}}/messages",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "conversations",
+                    "{{conversation_id}}",
+                    "messages"
+                  ]
+                },
+                "description": "403 if the other participant is now blocked either-way (history remains visible via List Messages even after a block \u2014 only sending is blocked). Rate limited to 60 requests/min (looser than the general writes-moderate bucket).",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"body\": \"Hello there\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
             }
           ]
         }

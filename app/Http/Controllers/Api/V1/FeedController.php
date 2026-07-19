@@ -6,6 +6,7 @@ use App\Http\Resources\PostResource;
 use App\Models\User;
 use App\Services\FeedService;
 use App\Services\LikeService;
+use App\Services\SavedPostService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
@@ -14,6 +15,7 @@ class FeedController extends Controller
     public function __construct(
         private readonly FeedService $feed,
         private readonly LikeService $likes,
+        private readonly SavedPostService $savedPosts,
     ) {}
 
     public function index(Request $request): AnonymousResourceCollection
@@ -31,6 +33,7 @@ class FeedController extends Controller
         }
 
         $this->likes->annotateIsLiked($posts->getCollection(), $user);
+        $this->savedPosts->annotateIsSaved($posts->getCollection(), $user);
 
         return PostResource::collection($posts);
     }

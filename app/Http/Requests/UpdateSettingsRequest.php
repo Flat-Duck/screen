@@ -30,6 +30,9 @@ class UpdateSettingsRequest extends FormRequest
             'notifications.likes' => ['sometimes', 'boolean'],
             'notifications.comments' => ['sometimes', 'boolean'],
             'notifications.follows' => ['sometimes', 'boolean'],
+            'notifications.mentions' => ['sometimes', 'boolean'],
+            'notifications.reposts' => ['sometimes', 'boolean'],
+            'notifications.messages' => ['sometimes', 'boolean'],
         ];
     }
 }

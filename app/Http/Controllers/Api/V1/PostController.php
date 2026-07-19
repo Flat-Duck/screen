@@ -11,12 +11,16 @@ use App\Http\Resources\PostResource;
 use App\Models\Post;
 use App\Models\User;
 use App\Services\BlockService;
+use App\Services\SavedPostService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class PostController extends Controller
 {
-    public function __construct(private readonly BlockService $blocks) {}
+    public function __construct(
+        private readonly BlockService $blocks,
+        private readonly SavedPostService $savedPosts,
+    ) {}
 
     public function store(StorePostRequest $request, CreatePost $createPost): JsonResponse
     {
@@ -25,6 +29,7 @@ class PostController extends Controller
 
         $post = $createPost($user, $request->toData());
         $post->is_liked = false;
+        $post->is_saved = false;
         $post->loadCount(['likes', 'comments'])->load('user');
 
         return (new PostResource($post))->response()->setStatusCode(201);
@@ -42,6 +47,7 @@ class PostController extends Controller
         }
 
         $post->is_liked = $post->likes()->where('user_id', $viewer->id)->exists();
+        $post->is_saved = $this->savedPosts->isSaved($viewer, $post);
 
         return new PostResource($post);
     }
@@ -56,6 +62,7 @@ class PostController extends Controller
         $post = $updatePost($post, $request->validated());
         $post->load(['user', 'media'])->loadCount(['likes', 'comments']);
         $post->is_liked = $post->likes()->where('user_id', $viewer->id)->exists();
+        $post->is_saved = $this->savedPosts->isSaved($viewer, $post);
 
         return new PostResource($post);
     }

@@ -43,7 +43,15 @@ class RateLimiterServiceProvider extends ServiceProvider
 
         RateLimiter::for('reads', fn (Request $request) => $this->byUser($request, 60));
 
+        // Tighter than 'reads' — a LIKE-based search is a heavier query per request than
+        // a typical indexed list fetch.
+        RateLimiter::for('search', fn (Request $request) => $this->byUser($request, 20));
+
         RateLimiter::for('writes-moderate', fn (Request $request) => $this->byUser($request, 30));
+
+        // Looser than 'writes-moderate' — a real chat back-and-forth needs more headroom
+        // than the general write-actions bucket.
+        RateLimiter::for('messages-send', fn (Request $request) => $this->byUser($request, 60));
 
         RateLimiter::for('posts-store', fn (Request $request) => $this->byUser($request, 10));
 

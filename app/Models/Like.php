@@ -4,21 +4,23 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 /** No factory — tests create likes via the API endpoints or plain DB inserts. */
 class Like extends Model
 {
     protected $fillable = [
-        'post_id',
+        'likeable_type',
+        'likeable_id',
         'user_id',
     ];
 
     /**
-     * @return BelongsTo<Post, $this>
+     * @return MorphTo<Model, $this>
      */
-    public function post(): BelongsTo
+    public function likeable(): MorphTo
     {
-        return $this->belongsTo(Post::class);
+        return $this->morphTo();
     }
 
     /**

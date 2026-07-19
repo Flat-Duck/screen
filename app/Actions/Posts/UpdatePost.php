@@ -6,7 +6,10 @@ use App\Models\Post;
 
 class UpdatePost
 {
-    public function __construct(private readonly SyncPostHashtags $syncHashtags) {}
+    public function __construct(
+        private readonly SyncPostHashtags $syncHashtags,
+        private readonly SyncPostMentions $syncMentions,
+    ) {}
 
     /** @param array{caption?: string|null} $data */
     public function __invoke(Post $post, array $data): Post
@@ -16,9 +19,12 @@ class UpdatePost
             $post->edited_at = now();
             $post->save();
 
-            // Hashtags derive from the caption, so an edit must re-sync them — not just
-            // append new ones — the same action creation uses.
+            // Hashtags/mentions both derive from the caption, so an edit must re-sync
+            // them — not just append new ones — the same actions creation uses. Mentions
+            // only notify newly-added users, not everyone still mentioned (see
+            // SyncPostMentions).
             ($this->syncHashtags)($post, $post->caption);
+            ($this->syncMentions)($post, $post->caption);
         }
 
         return $post;

@@ -5,9 +5,13 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BlockController;
 use App\Http\Controllers\Api\V1\CommentController;
 use App\Http\Controllers\Api\V1\ConnectedAccountController;
+use App\Http\Controllers\Api\V1\ConversationController;
+use App\Http\Controllers\Api\V1\ConversationMessageController;
 use App\Http\Controllers\Api\V1\DeviceController;
+use App\Http\Controllers\Api\V1\ExploreController;
 use App\Http\Controllers\Api\V1\FeedController;
 use App\Http\Controllers\Api\V1\FollowController;
+use App\Http\Controllers\Api\V1\HashtagController;
 use App\Http\Controllers\Api\V1\LikeController;
 use App\Http\Controllers\Api\V1\MuteController;
 use App\Http\Controllers\Api\V1\NotificationController;
@@ -15,6 +19,9 @@ use App\Http\Controllers\Api\V1\PostController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\PushTokenController;
 use App\Http\Controllers\Api\V1\ReportController;
+use App\Http\Controllers\Api\V1\RepostController;
+use App\Http\Controllers\Api\V1\SavedPostController;
+use App\Http\Controllers\Api\V1\SearchController;
 use App\Http\Controllers\Api\V1\SessionController;
 use App\Http\Controllers\Api\V1\SettingsController;
 use App\Http\Controllers\Api\V1\TelemetryController;
@@ -67,6 +74,7 @@ Route::middleware(['auth:sanctum', 'auth.user', 'session.touch'])->group(functio
     Route::post('two-factor/recovery-codes', [TwoFactorController::class, 'regenerateRecoveryCodes'])->middleware('throttle:two-factor-manage');
 
     Route::get('feed', [FeedController::class, 'index'])->middleware('throttle:reads');
+    Route::get('explore', [ExploreController::class, 'index'])->middleware('throttle:reads');
 
     Route::patch('profile', [ProfileController::class, 'update'])->middleware('throttle:writes-moderate');
 
@@ -74,9 +82,22 @@ Route::middleware(['auth:sanctum', 'auth.user', 'session.touch'])->group(functio
     Route::delete('sessions/{sessionId}', [SessionController::class, 'destroy'])->whereUuid('sessionId')->middleware('throttle:sessions-manage');
     Route::post('sessions/revoke-others', [SessionController::class, 'revokeOthers'])->middleware('throttle:sessions-manage');
 
+    Route::get('search/users', [SearchController::class, 'users'])->middleware('throttle:search');
+    Route::get('search/posts', [SearchController::class, 'posts'])->middleware('throttle:search');
+    Route::get('search/hashtags', [SearchController::class, 'hashtags'])->middleware('throttle:search');
+
+    // 'followed' must be registered before the {hashtag} wildcard route below, otherwise
+    // Laravel would try to resolve "followed" as a hashtag name.
+    Route::get('hashtags/followed', [HashtagController::class, 'followed'])->middleware('throttle:reads');
+    Route::get('hashtags/{hashtag}', [HashtagController::class, 'show'])->middleware('throttle:reads');
+    Route::get('hashtags/{hashtag}/posts', [HashtagController::class, 'posts'])->middleware('throttle:reads');
+    Route::post('hashtags/{hashtag}/follow', [HashtagController::class, 'follow'])->middleware('throttle:writes-moderate');
+    Route::delete('hashtags/{hashtag}/follow', [HashtagController::class, 'unfollow'])->middleware('throttle:writes-moderate');
+
     Route::get('users/{user}', [UserController::class, 'show'])->middleware('throttle:reads');
     Route::get('users/{user}/posts', [UserController::class, 'posts'])->middleware('throttle:reads');
     Route::get('users/{user}/top-tags', [UserController::class, 'topTags'])->middleware('throttle:reads');
+    Route::get('users/{user}/reposts', [RepostController::class, 'forUser'])->middleware('throttle:reads');
 
     Route::post('users/{user}/follow', [FollowController::class, 'store'])->middleware('throttle:writes-moderate');
     Route::delete('users/{user}/follow', [FollowController::class, 'destroy'])->middleware('throttle:writes-moderate');
@@ -99,8 +120,19 @@ Route::middleware(['auth:sanctum', 'auth.user', 'session.touch'])->group(functio
     Route::post('posts/{post}/like', [LikeController::class, 'store'])->middleware('throttle:reads');
     Route::delete('posts/{post}/like', [LikeController::class, 'destroy'])->middleware('throttle:reads');
 
+    Route::post('comments/{comment}/like', [LikeController::class, 'storeComment'])->middleware('throttle:reads');
+    Route::delete('comments/{comment}/like', [LikeController::class, 'destroyComment'])->middleware('throttle:reads');
+
+    Route::post('posts/{post}/save', [SavedPostController::class, 'store'])->middleware('throttle:reads');
+    Route::delete('posts/{post}/save', [SavedPostController::class, 'destroy'])->middleware('throttle:reads');
+    Route::get('saved-posts', [SavedPostController::class, 'index'])->middleware('throttle:reads');
+
+    Route::post('posts/{post}/repost', [RepostController::class, 'store'])->middleware('throttle:writes-moderate');
+    Route::delete('posts/{post}/repost', [RepostController::class, 'destroy'])->middleware('throttle:writes-moderate');
+
     Route::get('posts/{post}/comments', [CommentController::class, 'index'])->middleware('throttle:reads');
     Route::post('posts/{post}/comments', [CommentController::class, 'store'])->middleware('throttle:writes-moderate');
+    Route::get('comments/{comment}/replies', [CommentController::class, 'replies'])->middleware('throttle:reads');
     Route::delete('comments/{comment}', [CommentController::class, 'destroy'])->middleware('throttle:writes-moderate');
 
     Route::get('notifications', [NotificationController::class, 'index'])->middleware('throttle:notifications-read');
@@ -108,4 +140,10 @@ Route::middleware(['auth:sanctum', 'auth.user', 'session.touch'])->group(functio
     Route::patch('notifications/{notification}/read', [NotificationController::class, 'markRead'])->middleware('throttle:notifications-read');
 
     Route::post('reports', [ReportController::class, 'store'])->middleware('throttle:reports');
+
+    Route::post('conversations', [ConversationController::class, 'store'])->middleware('throttle:writes-moderate');
+    Route::get('conversations', [ConversationController::class, 'index'])->middleware('throttle:reads');
+    Route::patch('conversations/{conversation}/read', [ConversationController::class, 'markRead'])->middleware('throttle:writes-moderate');
+    Route::get('conversations/{conversation}/messages', [ConversationMessageController::class, 'index'])->middleware('throttle:reads');
+    Route::post('conversations/{conversation}/messages', [ConversationMessageController::class, 'store'])->middleware('throttle:messages-send');
 });

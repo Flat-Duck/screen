@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Models\Comment;
 use App\Models\Post;
 use App\Models\User;
 use App\Services\BlockService;
@@ -38,5 +39,31 @@ class LikeController extends Controller
         $this->likes->unlike($user, $post);
 
         return response()->json(['likes_count' => $post->likes()->count()]);
+    }
+
+    public function storeComment(Request $request, Comment $comment): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        // Checked against the comment's author, not the post owner — that's who the
+        // liker is actually interacting with here.
+        if ($this->blocks->isBlockedEitherWay($user, $comment->user)) {
+            abort(403);
+        }
+
+        $this->likes->like($user, $comment);
+
+        return response()->json(['likes_count' => $comment->likes()->count()]);
+    }
+
+    public function destroyComment(Request $request, Comment $comment): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        $this->likes->unlike($user, $comment);
+
+        return response()->json(['likes_count' => $comment->likes()->count()]);
     }
 }

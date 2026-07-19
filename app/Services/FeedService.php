@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Post;
 use App\Models\User;
 use Illuminate\Pagination\CursorPaginator;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Redis;
 use Throwable;
@@ -115,5 +116,54 @@ class FeedService
             ->sortBy(fn (Post $post): int => $rank[(string) $post->id] ?? PHP_INT_MAX)
             ->take($limit)
             ->values();
+    }
+
+    /**
+     * A standalone, browsable version of the same `trending:posts` ranking
+     * discoveryCandidates() splices into the feed — unlike that method, this isn't capped
+     * to a handful of posts and isn't restricted to out-of-network authors (Explore is a
+     * "what's popular right now" surface, not specifically a not-already-in-my-feed one;
+     * only the viewer's own posts are excluded).
+     *
+     * Deliberately offset-paginated, not cursor-paginated, unlike every other list endpoint
+     * in this codebase — the ranked set lives in a Redis sorted set, not a SQL table with a
+     * stable orderable column, so there's no cursor to encode. `ZREVRANGE` naturally supports
+     * offset/limit, so plain page-number pagination is the honest fit here rather than
+     * forcing a cursor abstraction onto a data source that doesn't have one.
+     *
+     * @return Paginator<int, Post>
+     */
+    public function explore(User $user, int $page = 1, int $perPage = 15): Paginator
+    {
+        $offset = ($page - 1) * $perPage;
+
+        try {
+            // One extra beyond $perPage — Laravel's simple Paginator computes
+            // hasMorePages() from whether more than $perPage items were handed to it,
+            // avoiding a separate ZCARD call just to know if there's a next page.
+            $ids = Redis::zrevrange(config('social.trending.redis_key', 'trending:posts'), $offset, $offset + $perPage);
+        } catch (Throwable $e) {
+            report($e);
+
+            return new Paginator([], $perPage, $page);
+        }
+
+        if (empty($ids)) {
+            return new Paginator([], $perPage, $page);
+        }
+
+        $query = Post::query()
+            ->whereIn('id', $ids)
+            ->where('user_id', '!=', $user->id)
+            ->with(['user', 'media'])
+            ->withCount(['likes', 'comments']);
+
+        $posts = $this->blocks->excludeBlocked($query, $user, 'user_id')->get();
+
+        $rank = array_flip($ids);
+
+        $posts = $posts->sortBy(fn (Post $post): int => $rank[(string) $post->id] ?? PHP_INT_MAX)->values();
+
+        return new Paginator($posts, $perPage, $page);
     }
 }
