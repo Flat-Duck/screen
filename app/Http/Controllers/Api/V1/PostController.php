@@ -4,15 +4,20 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Actions\Posts\CreatePost;
 use App\Actions\Posts\DeletePost;
+use App\Actions\Posts\UpdatePost;
 use App\Http\Requests\StorePostRequest;
+use App\Http\Requests\UpdatePostRequest;
 use App\Http\Resources\PostResource;
 use App\Models\Post;
 use App\Models\User;
+use App\Services\BlockService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class PostController extends Controller
 {
+    public function __construct(private readonly BlockService $blocks) {}
+
     public function store(StorePostRequest $request, CreatePost $createPost): JsonResponse
     {
         /** @var User $user */
@@ -30,6 +35,25 @@ class PostController extends Controller
         /** @var User $viewer */
         $viewer = $request->user();
 
+        $post->load(['user', 'media'])->loadCount(['likes', 'comments']);
+
+        if ($this->blocks->isBlockedEitherWay($viewer, $post->user)) {
+            abort(404);
+        }
+
+        $post->is_liked = $post->likes()->where('user_id', $viewer->id)->exists();
+
+        return new PostResource($post);
+    }
+
+    public function update(UpdatePostRequest $request, Post $post, UpdatePost $updatePost): PostResource
+    {
+        $this->authorize('update', $post);
+
+        /** @var User $viewer */
+        $viewer = $request->user();
+
+        $post = $updatePost($post, $request->validated());
         $post->load(['user', 'media'])->loadCount(['likes', 'comments']);
         $post->is_liked = $post->likes()->where('user_id', $viewer->id)->exists();
 

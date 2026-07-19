@@ -10,6 +10,8 @@ use Illuminate\Pagination\CursorPaginator;
 
 class CommentService
 {
+    public function __construct(private readonly MuteService $mutes) {}
+
     public function addComment(User $user, Post $post, string $body): Comment
     {
         $comment = $post->comments()->create([
@@ -17,7 +19,7 @@ class CommentService
             'body' => $body,
         ]);
 
-        if ($user->isNot($post->user)) {
+        if ($user->isNot($post->user) && $this->mutes->shouldNotify($post->user, $user)) {
             $post->user->notify(new PostCommentedNotification($post, $comment, $user));
         }
 

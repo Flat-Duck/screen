@@ -42,6 +42,14 @@ class UserResource extends JsonResource
                 $request->user() && $request->user()->isNot($this->resource),
                 fn (): bool => (bool) ($this->is_following ?? false),
             ),
+            'is_blocked' => $this->when(
+                $request->user() && $request->user()->isNot($this->resource),
+                fn (): bool => (bool) ($this->is_blocked ?? false),
+            ),
+            'is_blocked_by' => $this->when(
+                $request->user() && $request->user()->isNot($this->resource),
+                fn (): bool => (bool) ($this->is_blocked_by ?? false),
+            ),
             'created_at' => $this->created_at,
         ];
     }

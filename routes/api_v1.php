@@ -2,12 +2,14 @@
 
 use App\Http\Controllers\Api\V1\AccountController;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\BlockController;
 use App\Http\Controllers\Api\V1\CommentController;
 use App\Http\Controllers\Api\V1\ConnectedAccountController;
 use App\Http\Controllers\Api\V1\DeviceController;
 use App\Http\Controllers\Api\V1\FeedController;
 use App\Http\Controllers\Api\V1\FollowController;
 use App\Http\Controllers\Api\V1\LikeController;
+use App\Http\Controllers\Api\V1\MuteController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\PostController;
 use App\Http\Controllers\Api\V1\ProfileController;
@@ -81,8 +83,17 @@ Route::middleware(['auth:sanctum', 'auth.user', 'session.touch'])->group(functio
     Route::get('users/{user}/followers', [FollowController::class, 'followers'])->middleware('throttle:reads');
     Route::get('users/{user}/following', [FollowController::class, 'following'])->middleware('throttle:reads');
 
+    Route::post('users/{user}/block', [BlockController::class, 'store'])->middleware('throttle:writes-moderate');
+    Route::delete('users/{user}/block', [BlockController::class, 'destroy'])->middleware('throttle:writes-moderate');
+    Route::get('blocked-users', [BlockController::class, 'index'])->middleware('throttle:reads');
+
+    Route::post('users/{user}/mute', [MuteController::class, 'store'])->middleware('throttle:writes-moderate');
+    Route::delete('users/{user}/mute', [MuteController::class, 'destroy'])->middleware('throttle:writes-moderate');
+    Route::get('muted-users', [MuteController::class, 'index'])->middleware('throttle:reads');
+
     Route::post('posts', [PostController::class, 'store'])->middleware('throttle:posts-store');
     Route::get('posts/{post}', [PostController::class, 'show'])->middleware('throttle:reads');
+    Route::patch('posts/{post}', [PostController::class, 'update'])->middleware('throttle:writes-moderate');
     Route::delete('posts/{post}', [PostController::class, 'destroy'])->middleware('throttle:writes-moderate');
 
     Route::post('posts/{post}/like', [LikeController::class, 'store'])->middleware('throttle:reads');

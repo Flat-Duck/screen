@@ -11,19 +11,34 @@ use Throwable;
 
 class FeedService
 {
+    public function __construct(
+        private readonly BlockService $blocks,
+        private readonly MuteService $mutes,
+    ) {}
+
     /**
      * Posts from followed users only, reverse-chronological — excludes the viewer's own posts.
+     *
+     * Blocking already auto-unfollows both directions (BlockService::block()), so the block
+     * exclusion here is defense-in-depth rather than the primary mechanism — it covers any
+     * state that predates a block or reaches this query some other way. Muting, unlike
+     * blocking, doesn't touch the follow graph at all, so the mute exclusion here *is* the
+     * only mechanism — a muted author stays followed, just hidden from this feed.
      *
      * @return CursorPaginator<int, Post>
      */
     public function feedFor(User $user, int $perPage = 15): CursorPaginator
     {
-        return Post::query()
+        $query = Post::query()
             ->whereIn('user_id', $user->following()->pluck('users.id'))
             ->with(['user', 'media'])
             ->withCount(['likes', 'comments'])
-            ->latest('id')
-            ->cursorPaginate($perPage);
+            ->latest('id');
+
+        $query = $this->blocks->excludeBlocked($query, $user, 'user_id');
+        $query = $this->mutes->excludeMuted($query, $user, 'user_id');
+
+        return $query->cursorPaginate($perPage);
     }
 
     /**
@@ -83,13 +98,14 @@ class FeedService
             return collect();
         }
 
-        $posts = Post::query()
+        $query = Post::query()
             ->whereIn('id', $ids)
             ->where('user_id', '!=', $user->id)
             ->whereNotIn('user_id', $user->following()->pluck('users.id'))
             ->with(['user', 'media'])
-            ->withCount(['likes', 'comments'])
-            ->get();
+            ->withCount(['likes', 'comments']);
+
+        $posts = $this->blocks->excludeBlocked($query, $user, 'user_id')->get();
 
         // Redis returns ids in rank order (highest score first); preserve that ordering
         // since the DB query above doesn't.

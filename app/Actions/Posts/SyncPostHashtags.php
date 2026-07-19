@@ -7,9 +7,16 @@ use App\Models\Post;
 
 class SyncPostHashtags
 {
+    /**
+     * Always syncs (never returns early on "nothing to tag") so this is safe to re-invoke
+     * on an edited caption — a caption that dropped its hashtags entirely must clear the
+     * post's existing tags, not leave them stale from the original caption.
+     */
     public function __invoke(Post $post, ?string $caption): void
     {
         if (! $caption) {
+            $post->hashtags()->sync([]);
+
             return;
         }
 
@@ -19,10 +26,6 @@ class SyncPostHashtags
             ->map(fn (string $tag): string => Hashtag::normalize($tag))
             ->unique()
             ->values();
-
-        if ($names->isEmpty()) {
-            return;
-        }
 
         $hashtagIds = $names->map(
             fn (string $name): int => Hashtag::query()->firstOrCreate(['name' => $name])->id

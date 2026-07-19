@@ -4,18 +4,26 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Models\Post;
 use App\Models\User;
+use App\Services\BlockService;
 use App\Services\LikeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class LikeController extends Controller
 {
-    public function __construct(private readonly LikeService $likes) {}
+    public function __construct(
+        private readonly LikeService $likes,
+        private readonly BlockService $blocks,
+    ) {}
 
     public function store(Request $request, Post $post): JsonResponse
     {
         /** @var User $user */
         $user = $request->user();
+
+        if ($this->blocks->isBlockedEitherWay($user, $post->user)) {
+            abort(403);
+        }
 
         $this->likes->like($user, $post);
 

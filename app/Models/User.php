@@ -44,6 +44,8 @@ use Laravel\Sanctum\HasApiTokens;
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
  * @property bool|null $is_following Set per-request by ProfileService/UserController for the current viewer — not a DB column.
+ * @property bool|null $is_blocked Set per-request by UserController for the current viewer — not a DB column.
+ * @property bool|null $is_blocked_by Set per-request by UserController for the current viewer — not a DB column.
  */
 #[Fillable(['name', 'email', 'password', 'username', 'bio', 'avatar_path', 'birth_date', 'country_code'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
@@ -132,6 +134,40 @@ class User extends Authenticatable implements PasskeyUser
     public function followers(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'follows', 'followee_id', 'follower_id')
+            ->withTimestamps();
+    }
+
+    /**
+     * Users this user has blocked.
+     *
+     * @return BelongsToMany<User, $this, Pivot, 'pivot'>
+     */
+    public function blockedUsers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'blocks', 'blocker_id', 'blocked_id')
+            ->withTimestamps();
+    }
+
+    /**
+     * Users who have blocked this user.
+     *
+     * @return BelongsToMany<User, $this, Pivot, 'pivot'>
+     */
+    public function blockedBy(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'blocks', 'blocked_id', 'blocker_id')
+            ->withTimestamps();
+    }
+
+    /**
+     * Users this user has muted — one-directional, doesn't affect the muted user at all,
+     * only filters what the muter sees/gets notified about.
+     *
+     * @return BelongsToMany<User, $this, Pivot, 'pivot'>
+     */
+    public function mutedUsers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'mutes', 'muter_id', 'muted_id')
             ->withTimestamps();
     }
 

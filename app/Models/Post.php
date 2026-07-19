@@ -46,6 +46,7 @@ class Post extends Model
             'account_deleted_at' => 'datetime',
             'purge_status' => PostPurgeStatus::class,
             'purge_attempted_at' => 'datetime',
+            'edited_at' => 'datetime',
         ];
     }
 

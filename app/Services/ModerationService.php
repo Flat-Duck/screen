@@ -28,4 +28,30 @@ class ModerationService
             ],
         );
     }
+
+    /** Marks a report as reviewed — the report was looked at and, typically, acted on. */
+    public function markReviewed(Report $report, User $admin, ?string $note = null): Report
+    {
+        $report->update([
+            'status' => Report::STATUS_REVIEWED,
+            'reviewed_by' => $admin->id,
+            'reviewed_at' => now(),
+            'resolution_note' => $note,
+        ]);
+
+        return $report;
+    }
+
+    /** Marks a report as dismissed — looked at, no action warranted. */
+    public function dismiss(Report $report, User $admin, ?string $note = null): Report
+    {
+        $report->update([
+            'status' => Report::STATUS_DISMISSED,
+            'reviewed_by' => $admin->id,
+            'reviewed_at' => now(),
+            'resolution_note' => $note,
+        ]);
+
+        return $report;
+    }
 }

@@ -29,6 +29,7 @@ class PostResource extends JsonResource
             'comments_count' => $this->comments_count,
             'is_liked' => (bool) ($this->is_liked ?? false),
             'created_at' => $this->created_at,
+            'edited_at' => $this->edited_at,
         ];
     }
 }

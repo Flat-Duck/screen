@@ -10,6 +10,8 @@ use Illuminate\Validation\ValidationException;
 
 class FollowService
 {
+    public function __construct(private readonly MuteService $mutes) {}
+
     /** Idempotent — following an already-followed user is a no-op. */
     public function follow(User $follower, User $target): void
     {
@@ -21,7 +23,10 @@ class FollowService
 
         if (! $follower->following()->where('followee_id', $target->id)->exists()) {
             $follower->following()->attach($target->id);
-            $target->notify(new NewFollowerNotification($follower));
+
+            if ($this->mutes->shouldNotify($target, $follower)) {
+                $target->notify(new NewFollowerNotification($follower));
+            }
         }
     }
 

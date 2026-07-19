@@ -10,6 +10,8 @@ use Illuminate\Support\Collection;
 
 class LikeService
 {
+    public function __construct(private readonly MuteService $mutes) {}
+
     /** Idempotent — backed by the (post_id, user_id) unique constraint as a race-condition backstop. */
     public function like(User $user, Post $post): void
     {
@@ -18,7 +20,7 @@ class LikeService
             'user_id' => $user->id,
         ]);
 
-        if ($like->wasRecentlyCreated && $user->isNot($post->user)) {
+        if ($like->wasRecentlyCreated && $user->isNot($post->user) && $this->mutes->shouldNotify($post->user, $user)) {
             $post->user->notify(new PostLikedNotification($post, $user));
         }
     }

@@ -30,6 +30,8 @@ Route::middleware(['auth', 'verified', 'can:viewTelemetry'])->group(function () 
     Route::view('notifications', 'notifications')->name('notifications.index');
 
     Route::view('users', 'users')->name('users.index');
+
+    Route::view('reports', 'reports')->name('reports.index');
 });
 
 require __DIR__.'/settings.php';

@@ -33,7 +33,20 @@ class Report extends Model
         'reason',
         'details',
         'status',
+        'reviewed_by',
+        'reviewed_at',
+        'resolution_note',
     ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'reviewed_at' => 'datetime',
+        ];
+    }
 
     /**
      * @return BelongsTo<User, $this>
@@ -41,6 +54,14 @@ class Report extends Model
     public function reporter(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reporter_id');
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function reviewedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
     }
 
     /**

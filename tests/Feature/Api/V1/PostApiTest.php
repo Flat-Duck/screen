@@ -4,6 +4,7 @@ namespace Tests\Feature\Api\V1;
 
 use App\Jobs\GeneratePostMediaThumbnail;
 use App\Models\Comment;
+use App\Models\Hashtag;
 use App\Models\Post;
 use App\Models\PostMedia;
 use App\Models\User;
@@ -77,6 +78,74 @@ class PostApiTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonPath('data.media.0.url', $response->json('data.media.0.original_url'));
+    }
+
+    public function test_updating_own_posts_caption_succeeds_and_sets_edited_at(): void
+    {
+        $user = User::factory()->create();
+        $post = Post::factory()->for($user)->create(['caption' => 'original']);
+        Sanctum::actingAs($user);
+
+        $response = $this->patchJson("/api/v1/posts/{$post->id}", ['caption' => 'updated']);
+
+        $response->assertOk();
+        $response->assertJsonPath('data.caption', 'updated');
+        $this->assertNotNull($response->json('data.edited_at'));
+        $this->assertSame('updated', $post->fresh()->caption);
+        $this->assertNotNull($post->fresh()->edited_at);
+    }
+
+    public function test_updating_another_users_post_is_forbidden(): void
+    {
+        $owner = User::factory()->create();
+        $post = Post::factory()->for($owner)->create(['caption' => 'original']);
+
+        $intruder = User::factory()->create();
+        Sanctum::actingAs($intruder);
+
+        $response = $this->patchJson("/api/v1/posts/{$post->id}", ['caption' => 'hijacked']);
+
+        $response->assertForbidden();
+        $this->assertSame('original', $post->fresh()->caption);
+    }
+
+    public function test_updating_a_post_without_a_caption_key_leaves_it_unchanged(): void
+    {
+        $user = User::factory()->create();
+        $post = Post::factory()->for($user)->create(['caption' => 'original']);
+        Sanctum::actingAs($user);
+
+        $response = $this->patchJson("/api/v1/posts/{$post->id}", []);
+
+        $response->assertOk();
+        $this->assertSame('original', $post->fresh()->caption);
+        $this->assertNull($post->fresh()->edited_at);
+    }
+
+    public function test_updating_a_post_with_an_explicit_null_caption_clears_it(): void
+    {
+        $user = User::factory()->create();
+        $post = Post::factory()->for($user)->create(['caption' => 'original']);
+        Sanctum::actingAs($user);
+
+        $response = $this->patchJson("/api/v1/posts/{$post->id}", ['caption' => null]);
+
+        $response->assertOk();
+        $this->assertNull($post->fresh()->caption);
+    }
+
+    public function test_updating_a_posts_caption_re_syncs_hashtags(): void
+    {
+        $user = User::factory()->create();
+        $post = Post::factory()->for($user)->create(['caption' => 'a #bug post']);
+        $post->hashtags()->sync([Hashtag::query()->firstOrCreate(['name' => 'bug'])->id]);
+        Sanctum::actingAs($user);
+
+        $response = $this->patchJson("/api/v1/posts/{$post->id}", ['caption' => 'now about #screenshot only']);
+
+        $response->assertOk();
+        $post->refresh()->load('hashtags');
+        $this->assertSame(['screenshot'], $post->hashtags->pluck('name')->all());
     }
 
     public function test_deleting_own_post_soft_deletes_it_and_keeps_media_files_on_disk(): void
