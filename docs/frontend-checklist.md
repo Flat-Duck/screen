@@ -70,17 +70,17 @@ errors as `{"message": "...", "errors": {"field": ["..."]}}`; `429` rate-limited
 
 | Endpoint | Token | Description | Request | Response | Done | Notes |
 |---|---|---|---|---|:---:|---|
-| `POST /v1/devices/enroll` | none | Register/re-enroll a device, get a Device token. Re-enrolling an existing `device_uuid` requires that device's *current* token as Bearer auth (proof of possession). | `device_uuid` (uuid, required), `os_name` (required), `manufacturer`/`brand`/`model`/`os_version`/`sdk_int`/`app_version_name`/`app_version_code` (optional) | `{device_uuid, token}` — 201 if new, 200 if re-enrolled | ☐ | |
-| `PUT /v1/devices/push-token` | Device | Set this device's FCM token | `fcm_token` (required, string) | 204 | ☐ | |
-| `DELETE /v1/devices/push-token` | Device | Clear the FCM token | — | 204 | ☐ | |
-| `POST /v1/auth/register` | Device | Create a user account, get a User token | `name`, `username` (3-30, alpha_dash, unique), `email` (unique), `password` (+`password_confirmation`), `device_name` (optional) | 201: `{user: UserResource, token, session_id, profile_completion}` | ☐ | |
-| `POST /v1/auth/login` | Device | Email/username + password login | `login` (email or username), `password`, `device_name` (optional) | Same shape as register, or `{requires_two_factor: true, two_factor_token}` if 2FA is enabled | ☐ | |
-| `POST /v1/auth/social/google` | Device | Sign in with a Google ID token | `id_token`, `device_name` (optional) | Same as login; 201 + `is_new_account: true` if this created a new account | ☐ | |
-| `POST /v1/auth/social/facebook` | Device | Sign in with a Facebook access token | `access_token`, `device_name` (optional) | Same as Google | ☐ | |
-| `POST /v1/auth/social/apple` | Device | Sign in with Apple | `identity_token`, `given_name`/`family_name` (**only sent by Apple on first authorization** — capture and forward then, omit after), `device_name` (optional) | Same as Google | ☐ | |
-| `POST /v1/auth/two-factor-challenge` | Device | Step 2 of login when step 1 returned `requires_two_factor` | `two_factor_token`, exactly one of `code` (TOTP) or `recovery_code`, `device_name` (optional) | Same shape as login | ☐ | |
-| `POST /v1/auth/logout` | User | Revoke the current session/token | — | 204 | ☐ | |
-| `POST /v1/auth/password` | User | Set a password (social-only accounts setting one for the first time, or changing an existing one) | `current_password` (required only if a password already exists), `password` + `password_confirmation` | `{profile_completion}` | ☐ | |
+| `POST /v1/devices/enroll` | none | Register/re-enroll a device, get a Device token. Re-enrolling an existing `device_uuid` requires that device's *current* token as Bearer auth (proof of possession). | `device_uuid` (uuid, required), `os_name` (required), `manufacturer`/`brand`/`model`/`os_version`/`sdk_int`/`app_version_name`/`app_version_code` (optional) | `{device_uuid, token}` — 201 if new, 200 if re-enrolled | ☑ | |
+| `PUT /v1/devices/push-token` | Device | Set this device's FCM token | `fcm_token` (required, string) | 204 | ☑ | |
+| `DELETE /v1/devices/push-token` | Device | Clear the FCM token | — | 204 | ☑ | |
+| `POST /v1/auth/register` | Device | Create a user account, get a User token | `name`, `username` (3-30, alpha_dash, unique), `email` (unique), `password` (+`password_confirmation`), `device_name` (optional) | 201: `{user: UserResource, token, session_id, profile_completion}` | ☑ | |
+| `POST /v1/auth/login` | Device | Email/username + password login | `login` (email or username), `password`, `device_name` (optional) | Same shape as register, or `{requires_two_factor: true, two_factor_token}` if 2FA is enabled | ☑ | |
+| `POST /v1/auth/social/google` | Device | Sign in with a Google ID token | `id_token`, `device_name` (optional) | Same as login; 201 + `is_new_account: true` if this created a new account | ☑ | |
+| `POST /v1/auth/social/facebook` | Device | Sign in with a Facebook access token | `access_token`, `device_name` (optional) | Same as Google | ☐ | Client-side stub only (`FacebookAuthManagerImpl`) — fails closed with a "backend not supported" error, never actually calls this endpoint. |
+| `POST /v1/auth/social/apple` | Device | Sign in with Apple | `identity_token`, `given_name`/`family_name` (**only sent by Apple on first authorization** — capture and forward then, omit after), `device_name` (optional) | Same as Google | ☐ | Not offered anywhere in the sign-in UI at all; no client code exists. |
+| `POST /v1/auth/two-factor-challenge` | Device | Step 2 of login when step 1 returned `requires_two_factor` | `two_factor_token`, exactly one of `code` (TOTP) or `recovery_code`, `device_name` (optional) | Same shape as login | ☑ | |
+| `POST /v1/auth/logout` | User | Revoke the current session/token | — | 204 | ☑ | |
+| `POST /v1/auth/password` | User | Set a password (social-only accounts setting one for the first time, or changing an existing one) | `current_password` (required only if a password already exists), `password` + `password_confirmation` | `{profile_completion}` | ☐ | No client code and no "set/change password" screen exists at all — this is a real gap (social-only accounts have no way to add a password client-side). |
 
 ---
 
@@ -91,7 +91,7 @@ Device token as enrollment/push-token, not the User token.
 
 | Endpoint | Token | Description | Request | Response | Done | Notes |
 |---|---|---|---|---|:---:|---|
-| `POST /v1/telemetry/events` | Device | Batch-ingest crash/event reports. Resending after an ambiguous network failure is safe — insertion is keyed on `event_id`, resent duplicates are silently accepted again, not double-counted | See below | `{accepted_event_ids: [uuid, ...]}` — a partial batch can be accepted; compare against the `event_id`s you sent to see what was rejected | ☐ | |
+| `POST /v1/telemetry/events` | Device | Batch-ingest crash/event reports. Resending after an ambiguous network failure is safe — insertion is keyed on `event_id`, resent duplicates are silently accepted again, not double-counted | See below | `{accepted_event_ids: [uuid, ...]}` — a partial batch can be accepted; compare against the `event_id`s you sent to see what was rejected | ☑ | |
 
 **Request body**: `{app: {version_name, version_code, build_type}, os_version, events: [...]}` —
 `app`/`events` required, `os_version` optional. Each item in `events[]`:
@@ -107,10 +107,10 @@ batch.
 
 | Endpoint | Token | Description | Request | Response | Done | Notes |
 |---|---|---|---|---|:---:|---|
-| `PATCH /v1/profile` | User | Update your own profile | `name`, `username` (optional, unique), `bio` (nullable, ≤500), `avatar` (nullable, image file ≤5MB, min 100x100), `birth_date` (nullable, date, before today), `country_code` (nullable, 2-letter) — multipart if sending `avatar` | `UserResource` + `{profile_completion}` | ☐ | |
-| `POST /v1/account/email` | User | Request an email change — **does not change it immediately**, only sets `pending_email`; the live email changes only when the link mailed to the new address is clicked | `email` (unique, not your current one) + step-up field (see below) | `{pending_email}` | ☐ | |
-| `POST /v1/account/confirmation-code` | User | Send yourself a step-up email code — only works for accounts with neither a password nor 2FA | — | 204 | ☐ | |
-| `DELETE /v1/account` | User | Soft-delete your account | Step-up field | 204 | ☐ | |
+| `PATCH /v1/profile` | User | Update your own profile | `name`, `username` (optional, unique), `bio` (nullable, ≤500), `avatar` (nullable, image file ≤5MB, min 100x100), `birth_date` (nullable, date, before today), `country_code` (nullable, 2-letter) — multipart if sending `avatar` | `UserResource` + `{profile_completion}` | ☑ | |
+| `POST /v1/account/email` | User | Request an email change — **does not change it immediately**, only sets `pending_email`; the live email changes only when the link mailed to the new address is clicked | `email` (unique, not your current one) + step-up field (see below) | `{pending_email}` | ☑ | |
+| `POST /v1/account/confirmation-code` | User | Send yourself a step-up email code — only works for accounts with neither a password nor 2FA | — | 204 | ☑ | |
+| `DELETE /v1/account` | User | Soft-delete your account | Step-up field | 204 | ☑ | |
 
 **Step-up auth**: destructive/identity-changing actions (`account/email`, `account`, 2FA
 enable/disable/regenerate-codes, unlink connected account) require **one** of
@@ -125,14 +125,14 @@ must call `POST /v1/account/confirmation-code` first, then send `confirmation_co
 
 | Endpoint | Token | Description | Request | Response | Done | Notes |
 |---|---|---|---|---|:---:|---|
-| `GET /v1/sessions` | User | List your active/past sessions ("log out other devices" screen) | — | `{session_id, login_method, device: {...}, last_seen_at, started_at, ended_at, end_reason, two_factor_verified_at, revoked_at, status, is_revoked, is_current}[]` (not cursor-paginated) | ☐ | |
-| `DELETE /v1/sessions/{sessionId}` | User | Revoke one session (`sessionId` is a UUID, not the numeric id) | — | 204 | ☐ | |
-| `POST /v1/sessions/revoke-others` | User | Revoke every session except the current one | `current_password` (conditionally required, see Step-up above) | 204 | ☐ | |
-| `GET /v1/two-factor` | User | Check if 2FA is enabled | — | `{enabled: bool}` | ☐ | |
-| `POST /v1/two-factor` | User | Enable 2FA — returns everything in one call (not Fortify's usual multi-step web flow) | Step-up field | `{qr_code_svg, qr_code_url, recovery_codes}` | ☐ | |
-| `POST /v1/two-factor/confirm` | User | Confirm 2FA setup with a TOTP code (no step-up needed — the code itself is proof) | `code` (required) | `{enabled: true}` | ☐ | |
-| `DELETE /v1/two-factor` | User | Disable 2FA | Step-up field | 204 | ☐ | |
-| `POST /v1/two-factor/recovery-codes` | User | Regenerate recovery codes (invalidates old ones) | Step-up field | `{recovery_codes}` | ☐ | |
+| `GET /v1/sessions` | User | List your active/past sessions ("log out other devices" screen) | — | `{session_id, login_method, device: {...}, last_seen_at, started_at, ended_at, end_reason, two_factor_verified_at, revoked_at, status, is_revoked, is_current}[]` (not cursor-paginated) | ☑ | |
+| `DELETE /v1/sessions/{sessionId}` | User | Revoke one session (`sessionId` is a UUID, not the numeric id) | — | 204 | ☑ | |
+| `POST /v1/sessions/revoke-others` | User | Revoke every session except the current one | `current_password` (conditionally required, see Step-up above) | 204 | ☑ | |
+| `GET /v1/two-factor` | User | Check if 2FA is enabled | — | `{enabled: bool}` | ☑ | |
+| `POST /v1/two-factor` | User | Enable 2FA — returns everything in one call (not Fortify's usual multi-step web flow) | Step-up field | `{qr_code_svg, qr_code_url, recovery_codes}` | ☑ | |
+| `POST /v1/two-factor/confirm` | User | Confirm 2FA setup with a TOTP code (no step-up needed — the code itself is proof) | `code` (required) | `{enabled: true}` | ☑ | |
+| `DELETE /v1/two-factor` | User | Disable 2FA | Step-up field | 204 | ☑ | |
+| `POST /v1/two-factor/recovery-codes` | User | Regenerate recovery codes (invalidates old ones) | Step-up field | `{recovery_codes}` | ☑ | |
 
 ---
 
@@ -140,10 +140,10 @@ must call `POST /v1/account/confirmation-code` first, then send `confirmation_co
 
 | Endpoint | Token | Description | Request | Response | Done | Notes |
 |---|---|---|---|---|:---:|---|
-| `GET /v1/settings` | User | Get notification preferences | — | `{data: {notifications: {likes, comments, follows, mentions, reposts, messages}}}` (all bool) | ☐ | |
-| `PATCH /v1/settings` | User | Update preferences — partial updates only touch the keys you send | `{notifications: {<any subset of the above keys>: bool}}` | Same shape as GET | ☐ | |
-| `GET /v1/connected-accounts` | User | List linked social sign-in providers | — | `{provider, avatar_url, connected_at}[]` (not cursor-paginated) | ☐ | |
-| `DELETE /v1/connected-accounts/{provider}` | User | Unlink a provider | Step-up field | 204 | ☐ | |
+| `GET /v1/settings` | User | Get notification preferences | — | `{data: {notifications: {likes, comments, follows, mentions, reposts, messages}}}` (all bool) | ☐ | Client model only has 4 of 6 keys (`likes, comments, follows, mentions`) — `reposts`/`messages` are missing from `NotificationPreferences`/the settings screen entirely (expected — reposts/DMs aren't built client-side yet either). |
+| `PATCH /v1/settings` | User | Update preferences — partial updates only touch the keys you send | `{notifications: {<any subset of the above keys>: bool}}` | Same shape as GET | ☐ | Same root cause — `NotificationPreferencesPatch` can't send `reposts`/`messages`. |
+| `GET /v1/connected-accounts` | User | List linked social sign-in providers | — | `{provider, avatar_url, connected_at}[]` (not cursor-paginated) | ☑ | |
+| `DELETE /v1/connected-accounts/{provider}` | User | Unlink a provider | Step-up field | 204 | ☑ | |
 
 ---
 
@@ -151,20 +151,20 @@ must call `POST /v1/account/confirmation-code` first, then send `confirmation_co
 
 | Endpoint | Token | Description | Request | Response | Done | Notes |
 |---|---|---|---|---|:---:|---|
-| `GET /v1/users/{id}` | User | View a profile | — | `UserResource` — 404 if blocked-either-way | ☐ | |
-| `GET /v1/users/{id}/posts` | User | A user's posts | — | `PostResource[]` — 404 if blocked-either-way | ☐ | |
-| `GET /v1/users/{id}/top-tags` | User | That user's 5 most-used hashtags | — | `{data: {name, posts_count}[]}` (capped at 5, not cursor-paginated) | ☐ | |
-| `GET /v1/users/{id}/reposts` | User | That user's reposts (never blended into `.../posts`) | — | `RepostResource[]` — 404 if blocked-either-way | ☐ | |
-| `POST /v1/users/{id}/follow` | User | Follow (idempotent) | — | 204 — 403 if blocked-either-way | ☐ | |
-| `DELETE /v1/users/{id}/follow` | User | Unfollow (idempotent) | — | 204 | ☐ | |
-| `GET /v1/users/{id}/followers` | User | Followers list | — | `UserSummaryResource[]` | ☐ | |
-| `GET /v1/users/{id}/following` | User | Following list | — | `UserSummaryResource[]` | ☐ | |
-| `POST /v1/users/{id}/block` | User | Block (idempotent). Auto-unfollows both directions. `422` if targeting yourself | — | 204 | ☐ | |
-| `DELETE /v1/users/{id}/block` | User | Unblock (idempotent) | — | 204 | ☐ | |
-| `GET /v1/blocked-users` | User | Users you've blocked | — | `UserSummaryResource[]` | ☐ | |
-| `POST /v1/users/{id}/mute` | User | Mute (idempotent, `422` on self). One-directional — doesn't restrict the muted user at all, only filters *your* feed/notifications | — | 204 | ☐ | |
-| `DELETE /v1/users/{id}/mute` | User | Unmute (idempotent) | — | 204 | ☐ | |
-| `GET /v1/muted-users` | User | Users you've muted | — | `UserSummaryResource[]` | ☐ | |
+| `GET /v1/users/{id}` | User | View a profile | — | `UserResource` — 404 if blocked-either-way | ☐ | Real for your own profile and the numeric-id lookup screen (`UserLookupActivity`) — but the "view someone else's profile" screen (`UserProfileActivity`) is still a static mockup with hardcoded data, doesn't call this at all. |
+| `GET /v1/users/{id}/posts` | User | A user's posts | — | `PostResource[]` — 404 if blocked-either-way | ☑ | |
+| `GET /v1/users/{id}/top-tags` | User | That user's 5 most-used hashtags | — | `{data: {name, posts_count}[]}` (capped at 5, not cursor-paginated) | ☑ | UI only has 3 tag slots on the profile screen, so only 3 of the up-to-5 returned are ever shown — cosmetic, not a wiring gap. |
+| `GET /v1/users/{id}/reposts` | User | That user's reposts (never blended into `.../posts`) | — | `RepostResource[]` — 404 if blocked-either-way | ☐ | No client code — reposts aren't built at all yet (see Reposts section). |
+| `POST /v1/users/{id}/follow` | User | Follow (idempotent) | — | 204 — 403 if blocked-either-way | ☑ | |
+| `DELETE /v1/users/{id}/follow` | User | Unfollow (idempotent) | — | 204 | ☑ | |
+| `GET /v1/users/{id}/followers` | User | Followers list | — | `UserSummaryResource[]` | ☑ | |
+| `GET /v1/users/{id}/following` | User | Following list | — | `UserSummaryResource[]` | ☑ | |
+| `POST /v1/users/{id}/block` | User | Block (idempotent). Auto-unfollows both directions. `422` if targeting yourself | — | 204 | ☑ | |
+| `DELETE /v1/users/{id}/block` | User | Unblock (idempotent) | — | 204 | ☑ | |
+| `GET /v1/blocked-users` | User | Users you've blocked | — | `UserSummaryResource[]` | ☐ | Repository/API call is correctly wired but nothing calls it — no "Blocked Users" management screen exists in the app yet. |
+| `POST /v1/users/{id}/mute` | User | Mute (idempotent, `422` on self). One-directional — doesn't restrict the muted user at all, only filters *your* feed/notifications | — | 204 | ☑ | |
+| `DELETE /v1/users/{id}/mute` | User | Unmute (idempotent) | — | 204 | ☑ | |
+| `GET /v1/muted-users` | User | Users you've muted | — | `UserSummaryResource[]` | ☐ | Same as blocked-users — repository exists, unused; no "Muted Users" screen yet. |
 
 **Note on Block's 404s**: viewing a blocked-either-way user's profile/posts/comments returns
 `404`, not `403` — this is deliberate, it doesn't reveal which of you initiated the block.
@@ -175,15 +175,15 @@ must call `POST /v1/account/confirmation-code` first, then send `confirmation_co
 
 | Endpoint | Token | Description | Request | Response | Done | Notes |
 |---|---|---|---|---|:---:|---|
-| `GET /v1/search/users?q=` | User | Search by username/name substring. Excludes inactive accounts, yourself, blocked-either-way | `q` (required, 1-100 chars) | `UserSummaryResource[]` | ☐ | |
-| `GET /v1/search/posts?q=` | User | Search post captions | `q` (required) | `PostResource[]` | ☐ | |
-| `GET /v1/search/hashtags?q=` | User | Search hashtag names (case-insensitive) | `q` (required) | `HashtagResource[]` | ☐ | |
-| `GET /v1/hashtags/{name}` | User | Hashtag detail. Case-insensitive, `#` tolerated. 404 if never used | — | `HashtagResource` | ☐ | |
-| `GET /v1/hashtags/{name}/posts` | User | Posts tagged with this hashtag | — | `PostResource[]` | ☐ | |
-| `POST /v1/hashtags/{name}/follow` | User | Follow a tag (idempotent). Bookmark-only — no notifications, not blended into feed | — | 204 | ☐ | |
-| `DELETE /v1/hashtags/{name}/follow` | User | Unfollow a tag (idempotent) | — | 204 | ☐ | |
-| `GET /v1/hashtags/followed` | User | Your followed hashtags | — | `HashtagResource[]` | ☐ | |
-| `GET /v1/explore?page=` | User | Standalone trending feed. **Page-number paginated, not cursor** — the only endpoint like this in the API | `page` (optional, default 1) | `PostResource[]` | ☐ | |
+| `GET /v1/search/users?q=` | User | Search by username/name substring. Excludes inactive accounts, yourself, blocked-either-way | `q` (required, 1-100 chars) | `UserSummaryResource[]` | ☐ | No client code at all — the app still substitutes a lookup-by-numeric-id flow instead of real search. |
+| `GET /v1/search/posts?q=` | User | Search post captions | `q` (required) | `PostResource[]` | ☐ | No client code. |
+| `GET /v1/search/hashtags?q=` | User | Search hashtag names (case-insensitive) | `q` (required) | `HashtagResource[]` | ☐ | No client code. |
+| `GET /v1/hashtags/{name}` | User | Hashtag detail. Case-insensitive, `#` tolerated. 404 if never used | — | `HashtagResource` | ☐ | No client code — no `HashtagResource`/`HashtagApi` model exists anywhere. |
+| `GET /v1/hashtags/{name}/posts` | User | Posts tagged with this hashtag | — | `PostResource[]` | ☐ | No client code. |
+| `POST /v1/hashtags/{name}/follow` | User | Follow a tag (idempotent). Bookmark-only — no notifications, not blended into feed | — | 204 | ☐ | No client code. |
+| `DELETE /v1/hashtags/{name}/follow` | User | Unfollow a tag (idempotent) | — | 204 | ☐ | No client code. |
+| `GET /v1/hashtags/followed` | User | Your followed hashtags | — | `HashtagResource[]` | ☐ | No client code. |
+| `GET /v1/explore?page=` | User | Standalone trending feed. **Page-number paginated, not cursor** — the only endpoint like this in the API | `page` (optional, default 1) | `PostResource[]` | ☐ | No client code — the closest UI, `TrendingActivity`, is an explicit static placeholder ("no backend wired up yet") reached from the Tags nav tab. |
 
 ---
 
@@ -191,11 +191,11 @@ must call `POST /v1/account/confirmation-code` first, then send `confirmation_co
 
 | Endpoint | Token | Description | Request | Response | Done | Notes |
 |---|---|---|---|---|:---:|---|
-| `GET /v1/feed` | User | Following feed, reverse-chronological. First page (no `cursor` param) blends in a couple of trending out-of-network posts | — | `PostResource[]` | ☐ | |
-| `POST /v1/posts` | User | Create a post (multipart) | `caption` (nullable, ≤2200), `images[]` (1-10 files, jpeg/png/webp, ≤10MB each, min 200x200) | 201: `PostResource` (`status: "processing"` — show it immediately, `media[].url` already has a fallback) | ☐ | |
-| `GET /v1/posts/{id}` | User | Post detail | — | `PostResource` — 404 if blocked-either-way | ☐ | |
-| `PATCH /v1/posts/{id}` | User | Edit caption. **Omit `caption` key = unchanged; send `caption: null` = clear it.** Media can't be edited | `caption` (optional, nullable, ≤2200) | `PostResource` (sets `edited_at`) | ☐ | |
-| `DELETE /v1/posts/{id}` | User | Delete your own post | — | 204 — 403 if not yours | ☐ | |
+| `GET /v1/feed` | User | Following feed, reverse-chronological. First page (no `cursor` param) blends in a couple of trending out-of-network posts | — | `PostResource[]` | ☑ | |
+| `POST /v1/posts` | User | Create a post (multipart) | `caption` (nullable, ≤2200), `images[]` (1-10 files, jpeg/png/webp, ≤10MB each, min 200x200) | 201: `PostResource` (`status: "processing"` — show it immediately, `media[].url` already has a fallback) | ☑ | Wiring correctly supports the 1-10 `images[]` array, but the only posting UI never lets the user pick more than one image — untested in practice beyond a single file. |
+| `GET /v1/posts/{id}` | User | Post detail | — | `PostResource` — 404 if blocked-either-way | ☐ | No client code — there's no single-post detail screen at all; posts only ever render inline in the feed/saved-posts lists. |
+| `PATCH /v1/posts/{id}` | User | Edit caption. **Omit `caption` key = unchanged; send `caption: null` = clear it.** Media can't be edited | `caption` (optional, nullable, ≤2200) | `PostResource` (sets `edited_at`) | ☑ | |
+| `DELETE /v1/posts/{id}` | User | Delete your own post | — | 204 — 403 if not yours | ☑ | |
 
 ---
 
@@ -203,13 +203,13 @@ must call `POST /v1/account/confirmation-code` first, then send `confirmation_co
 
 | Endpoint | Token | Description | Request | Response | Done | Notes |
 |---|---|---|---|---|:---:|---|
-| `POST /v1/posts/{id}/like` | User | Like a post (idempotent) | — | `{likes_count}` — 403 if blocked-either-way with post owner | ☐ | |
-| `DELETE /v1/posts/{id}/like` | User | Unlike (idempotent) | — | `{likes_count}` | ☐ | |
-| `POST /v1/comments/{id}/like` | User | Like a comment (idempotent) | — | `{likes_count}` — 403 if blocked-either-way with the comment's author | ☐ | |
-| `DELETE /v1/comments/{id}/like` | User | Unlike a comment (idempotent) | — | `{likes_count}` | ☐ | |
-| `POST /v1/posts/{id}/save` | User | Bookmark a post privately (idempotent) | — | 204 | ☐ | |
-| `DELETE /v1/posts/{id}/save` | User | Unsave (idempotent) | — | 204 | ☐ | |
-| `GET /v1/saved-posts` | User | Your saved posts (private — no way to view anyone else's) | — | `PostResource[]` | ☐ | |
+| `POST /v1/posts/{id}/like` | User | Like a post (idempotent) | — | `{likes_count}` — 403 if blocked-either-way with post owner | ☑ | |
+| `DELETE /v1/posts/{id}/like` | User | Unlike (idempotent) | — | `{likes_count}` | ☑ | |
+| `POST /v1/comments/{id}/like` | User | Like a comment (idempotent) | — | `{likes_count}` — 403 if blocked-either-way with the comment's author | ☑ | |
+| `DELETE /v1/comments/{id}/like` | User | Unlike a comment (idempotent) | — | `{likes_count}` | ☑ | |
+| `POST /v1/posts/{id}/save` | User | Bookmark a post privately (idempotent) | — | 204 | ☑ | |
+| `DELETE /v1/posts/{id}/save` | User | Unsave (idempotent) | — | 204 | ☑ | |
+| `GET /v1/saved-posts` | User | Your saved posts (private — no way to view anyone else's) | — | `PostResource[]` | ☑ | |
 
 ---
 
@@ -217,8 +217,8 @@ must call `POST /v1/account/confirmation-code` first, then send `confirmation_co
 
 | Endpoint | Token | Description | Request | Response | Done | Notes |
 |---|---|---|---|---|:---:|---|
-| `POST /v1/posts/{id}/repost` | User | Repost, optionally with a quote comment (idempotent — re-reposting doesn't update an existing comment). `422` on reposting your own post | `comment` (optional, nullable, ≤2200) | 204 — 403 if blocked-either-way | ☐ | |
-| `DELETE /v1/posts/{id}/repost` | User | Un-repost (idempotent) | — | 204 | ☐ | |
+| `POST /v1/posts/{id}/repost` | User | Repost, optionally with a quote comment (idempotent — re-reposting doesn't update an existing comment). `422` on reposting your own post | `comment` (optional, nullable, ≤2200) | 204 — 403 if blocked-either-way | ☐ | No client code at all — no repost button anywhere. The feed's "Share" action opens a static mockup screen (`ShareToGroupActivity`) unrelated to reposting. |
+| `DELETE /v1/posts/{id}/repost` | User | Un-repost (idempotent) | — | 204 | ☐ | Same — not built. |
 
 (Listing reposts is `GET /v1/users/{id}/reposts`, in the Profile section above — v1 never
 blends reposts into anyone's home feed.)
@@ -229,10 +229,10 @@ blends reposts into anyone's home feed.)
 
 | Endpoint | Token | Description | Request | Response | Done | Notes |
 |---|---|---|---|---|:---:|---|
-| `GET /v1/posts/{id}/comments` | User | Top-level comments only (not replies) | — | `CommentResource[]` — 404 if blocked-either-way | ☐ | |
-| `POST /v1/posts/{id}/comments` | User | Add a comment, or a reply via `parent_id` (must be an existing **top-level** comment on the same post — replying to a reply is rejected, one level of nesting only) | `body` (required, ≤2200), `parent_id` (optional) | 201: `CommentResource` — 403 if blocked-either-way with post owner | ☐ | |
-| `GET /v1/comments/{id}/replies` | User | Replies to a top-level comment | — | `CommentResource[]` | ☐ | |
-| `DELETE /v1/comments/{id}` | User | Delete a comment — allowed if you're the comment's author **or** the post's owner. Deleting a top-level comment cascades to its replies | — | 204 — 403 if neither | ☐ | |
+| `GET /v1/posts/{id}/comments` | User | Top-level comments only (not replies) | — | `CommentResource[]` — 404 if blocked-either-way | ☑ | |
+| `POST /v1/posts/{id}/comments` | User | Add a comment, or a reply via `parent_id` (must be an existing **top-level** comment on the same post — replying to a reply is rejected, one level of nesting only) | `body` (required, ≤2200), `parent_id` (optional) | 201: `CommentResource` — 403 if blocked-either-way with post owner | ☑ | |
+| `GET /v1/comments/{id}/replies` | User | Replies to a top-level comment | — | `CommentResource[]` | ☑ | Only the first page is ever fetched (no "load more replies" pagination UI yet) — accepted v1 simplification, not a shape mismatch. |
+| `DELETE /v1/comments/{id}` | User | Delete a comment — allowed if you're the comment's author **or** the post's owner. Deleting a top-level comment cascades to its replies | — | 204 — 403 if neither | ☑ | |
 
 ---
 
@@ -240,10 +240,10 @@ blends reposts into anyone's home feed.)
 
 | Endpoint | Token | Description | Request | Response | Done | Notes |
 |---|---|---|---|---|:---:|---|
-| `GET /v1/notifications` | User | Your notifications, 20/page | — | `NotificationResource[]` | ☐ | |
-| `PATCH /v1/notifications/{id}/read` | User | Mark one read | — | 204 | ☐ | |
-| `PATCH /v1/notifications/read-all` | User | Mark all read | — | 204 | ☐ | |
-| `POST /v1/reports` | User | Report a post/comment/user | `reportable_type` (`post`\|`comment`\|`user`), `reportable_id`, `reason` (`spam`\|`harassment`\|`nudity`\|`other`), `details` (optional, ≤2000) | 201: `{id, reportable_type, reason, status, created_at}` — write-only, no way to list your own past reports | ☐ | |
+| `GET /v1/notifications` | User | Your notifications, 20/page | — | `NotificationResource[]` | ☑ | Rendering only has a real display case for 4 of 8 possible `type` values (`new_follower`, `post_liked`, `post_commented`, `mentioned`) — `comment_replied`/`comment_liked`/`post_reposted`/`new_message` all fall through to a generic "you have a new notification" line (expected: those features aren't built client-side yet either). |
+| `PATCH /v1/notifications/{id}/read` | User | Mark one read | — | 204 | ☑ | |
+| `PATCH /v1/notifications/read-all` | User | Mark all read | — | 204 | ☑ | |
+| `POST /v1/reports` | User | Report a post/comment/user | `reportable_type` (`post`\|`comment`\|`user`), `reportable_id`, `reason` (`spam`\|`harassment`\|`nudity`\|`other`), `details` (optional, ≤2000) | 201: `{id, reportable_type, reason, status, created_at}` — write-only, no way to list your own past reports | ☑ | `reportable_type: "user"` is modeled client-side but never actually used — there's no "Report User" action anywhere in the UI, only post and comment reporting. |
 
 ---
 
@@ -251,11 +251,11 @@ blends reposts into anyone's home feed.)
 
 | Endpoint | Token | Description | Request | Response | Done | Notes |
 |---|---|---|---|---|:---:|---|
-| `POST /v1/conversations` | User | Start (or find existing) 1:1 conversation. Idempotent — messaging someone you already have a thread with returns that same thread. `422` on self or blocked-either-way | `user_id` (required) | 201: `ConversationResource` | ☐ | |
-| `GET /v1/conversations` | User | Your conversations, most recent activity first | — | `ConversationResource[]` | ☐ | |
-| `PATCH /v1/conversations/{id}/read` | User | Mark **your** read marker on this conversation — 403 if you're not a participant | — | 204 | ☐ | |
-| `GET /v1/conversations/{id}/messages` | User | Two modes: no `after` param = cursor-paginated history, newest first. `?after=<message_id>` = flat array (no pagination meta) of everything newer, oldest first, capped at 100 — for polling an open thread. 403 if not a participant | `after` (optional) | `MessageResource[]` | ☐ | |
-| `POST /v1/conversations/{id}/messages` | User | Send a message. 403 if not a participant, or if the other participant is now blocked-either-way (history stays visible either way — only sending is blocked) | `body` (required, ≤2200) | 201: `MessageResource` | ☐ | |
+| `POST /v1/conversations` | User | Start (or find existing) 1:1 conversation. Idempotent — messaging someone you already have a thread with returns that same thread. `422` on self or blocked-either-way | `user_id` (required) | 201: `ConversationResource` | ☐ | Entirely unbuilt — no API interface, repository, ViewModel, or screen exists for DMs at all. |
+| `GET /v1/conversations` | User | Your conversations, most recent activity first | — | `ConversationResource[]` | ☐ | Not built. |
+| `PATCH /v1/conversations/{id}/read` | User | Mark **your** read marker on this conversation — 403 if you're not a participant | — | 204 | ☐ | Not built. |
+| `GET /v1/conversations/{id}/messages` | User | Two modes: no `after` param = cursor-paginated history, newest first. `?after=<message_id>` = flat array (no pagination meta) of everything newer, oldest first, capped at 100 — for polling an open thread. 403 if not a participant | `after` (optional) | `MessageResource[]` | ☐ | Not built. |
+| `POST /v1/conversations/{id}/messages` | User | Send a message. 403 if not a participant, or if the other participant is now blocked-either-way (history stays visible either way — only sending is blocked) | `body` (required, ≤2200) | 201: `MessageResource` | ☐ | Not built. |
 
 **No realtime socket** — this API has no WebSocket/Reverb infra. Poll `?after=` while a
 thread is open; rely on push notifications (`type: "new_message"`) for backgrounded delivery.
@@ -267,17 +267,19 @@ thread is open; rely on push notifications (`type: "new_message"`) for backgroun
 
 | Area | Endpoints | Done |
 |---|---|---|
-| Device & Auth | 11 | ☐ / 11 |
-| Telemetry | 1 | ☐ / 1 |
-| Profile & Account | 4 | ☐ / 4 |
-| Sessions & Two-Factor | 8 | ☐ / 8 |
-| Settings & Connected Accounts | 4 | ☐ / 4 |
-| Profile Viewing, Follow, Block, Mute | 14 | ☐ / 14 |
-| Search, Hashtags & Explore | 9 | ☐ / 9 |
-| Feed & Posts | 5 | ☐ / 5 |
-| Likes & Saves | 7 | ☐ / 7 |
-| Reposts | 2 | ☐ / 2 |
-| Comments | 4 | ☐ / 4 |
-| Notifications & Reports | 4 | ☐ / 4 |
-| Direct Messages | 5 | ☐ / 5 |
-| **Total** | **78** | |
+| Device & Auth | 11 | ☑ 8 / 11 |
+| Telemetry | 1 | ☑ 1 / 1 |
+| Profile & Account | 4 | ☑ 4 / 4 |
+| Sessions & Two-Factor | 8 | ☑ 8 / 8 |
+| Settings & Connected Accounts | 4 | ☑ 2 / 4 |
+| Profile Viewing, Follow, Block, Mute | 14 | ☑ 10 / 14 |
+| Search, Hashtags & Explore | 9 | ☑ 0 / 9 |
+| Feed & Posts | 5 | ☑ 4 / 5 |
+| Likes & Saves | 7 | ☑ 7 / 7 |
+| Reposts | 2 | ☑ 0 / 2 |
+| Comments | 4 | ☑ 4 / 4 |
+| Notifications & Reports | 4 | ☑ 4 / 4 |
+| Direct Messages | 5 | ☑ 0 / 5 |
+| **Total** | **78** | **52 / 78** |
+
+**Biggest remaining gaps, roughly in priority order:** Search/Hashtags/Explore (9 endpoints, nothing built — the app still can't find people/posts/tags except by numeric user id), Direct Messages (5 endpoints, nothing built), Reposts (2 endpoints + no UI affordance), a single-post detail screen (`GET /v1/posts/{id}` has no client screen at all), Blocked/Muted-users management screens (repository methods already correct, just no UI), `POST /v1/auth/password` (no way to set/change a password client-side), Facebook/Apple sign-in (Facebook is a stub that fails closed, Apple isn't offered at all), and the `reposts`/`messages` notification-preference toggles (blocked on Reposts/DMs existing first).
