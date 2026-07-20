@@ -46,6 +46,8 @@ class PostController extends Controller
             abort(404);
         }
 
+        abort_unless($post->isVisibleTo($viewer), 404);
+
         $post->is_liked = $post->likes()->where('user_id', $viewer->id)->exists();
         $post->is_saved = $this->savedPosts->isSaved($viewer, $post);
 

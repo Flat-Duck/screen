@@ -2,56 +2,65 @@
 
 namespace App\Services;
 
+use App\Enums\UserModerationState;
+use App\Enums\UserVisibilityState;
 use App\Models\Hashtag;
 use App\Models\Post;
 use App\Models\User;
-use Illuminate\Pagination\CursorPaginator;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
- * Plain `LIKE`-based matching, no dedicated search engine — driver-agnostic (prod runs
- * Postgres, the test suite runs sqlite in-memory, so a Postgres-only tsvector/GIN approach
- * would break test portability). Ordered by a stable column rather than a computed
- * relevance score, to keep cursor pagination well-defined; smarter ranking (e.g. prefix
- * matches ahead of substring matches) is an explicit v2 follow-up, not attempted here.
+ * Scout database search: PostgreSQL full-text relevance for screenshot posts and prefix
+ * matching for usernames/hashtags. Tests use Scout's collection engine so authorization
+ * and API behavior remain SQLite-testable; PostgreSQL integration tests own database-specific
+ * relevance/index behavior.
  */
 class SearchService
 {
-    public function __construct(private readonly BlockService $blocks) {}
-
-    /** @return CursorPaginator<int, User> */
-    public function users(string $query, User $viewer, int $perPage = 20): CursorPaginator
+    /** @return LengthAwarePaginator<int, User> */
+    public function users(string $query, User $viewer, int $perPage = 20): LengthAwarePaginator
     {
-        $searchQuery = User::query()
-            ->where('is_active', true)
-            ->where('id', '!=', $viewer->id)
-            ->where(function ($q) use ($query): void {
-                $q->where('username', 'like', "%{$query}%")
-                    ->orWhere('name', 'like', "%{$query}%");
-            })
-            ->orderBy('username');
+        $blockedIds = $viewer->blockedUsers()->pluck('users.id')
+            ->merge($viewer->blockedBy()->pluck('users.id'))
+            ->all();
 
-        return $this->blocks->excludeBlocked($searchQuery, $viewer, 'id')->cursorPaginate($perPage);
+        return User::search($query, function (Builder $searchQuery) use ($viewer, $blockedIds): void {
+            $searchQuery->where('is_active', true)
+                ->where('visibility_state', UserVisibilityState::Visible->value)
+                ->where('moderation_state', UserModerationState::Clear->value)
+                ->whereKeyNot($viewer->id)
+                ->when($blockedIds !== [], fn (Builder $query) => $query->whereNotIn('id', $blockedIds));
+        })->paginate($perPage);
     }
 
-    /** @return CursorPaginator<int, Post> */
-    public function posts(string $query, User $viewer, int $perPage = 20): CursorPaginator
+    /** @return LengthAwarePaginator<int, Post> */
+    public function posts(string $query, User $viewer, int $perPage = 20): LengthAwarePaginator
     {
-        $searchQuery = Post::query()
-            ->where('caption', 'like', "%{$query}%")
-            ->with(['user', 'media'])
-            ->withCount(['likes', 'comments'])
-            ->latest('id');
+        $blockedIds = $viewer->blockedUsers()->pluck('users.id')
+            ->merge($viewer->blockedBy()->pluck('users.id'))
+            ->all();
 
-        return $this->blocks->excludeBlocked($searchQuery, $viewer, 'user_id')->cursorPaginate($perPage);
+        return Post::search($query, function (Builder $searchQuery) use ($blockedIds, $viewer): void {
+            $visibleAuthorIds = User::query()->publiclyVisible()
+                ->where(fn (Builder $users) => $users
+                    ->where('account_visibility', 'public')
+                    ->orWhere('id', $viewer->id)
+                    ->orWhereIn('id', $viewer->following()->select('users.id')))
+                ->select('id');
+
+            $searchQuery->whereIn('user_id', $visibleAuthorIds)
+                ->when($blockedIds !== [], fn (Builder $query) => $query->whereNotIn('user_id', $blockedIds))
+                ->with(['user', 'media'])
+                ->withCount(['likes', 'comments']);
+        })->paginate($perPage);
     }
 
-    /** @return CursorPaginator<int, Hashtag> */
-    public function hashtags(string $query, int $perPage = 20): CursorPaginator
+    /** @return LengthAwarePaginator<int, Hashtag> */
+    public function hashtags(string $query, int $perPage = 20): LengthAwarePaginator
     {
-        return Hashtag::query()
-            ->where('name', 'like', '%'.Hashtag::normalize($query).'%')
-            ->withCount('posts')
-            ->orderBy('name')
-            ->cursorPaginate($perPage);
+        return Hashtag::search(Hashtag::normalize($query), function (Builder $searchQuery): void {
+            $searchQuery->withCount('posts');
+        })->paginate($perPage);
     }
 }

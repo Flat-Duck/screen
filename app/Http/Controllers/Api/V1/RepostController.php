@@ -8,6 +8,7 @@ use App\Models\Post;
 use App\Models\Repost;
 use App\Models\User;
 use App\Services\BlockService;
+use App\Services\InteractionPermissionService;
 use App\Services\LikeService;
 use App\Services\RepostService;
 use App\Services\SavedPostService;
@@ -19,6 +20,7 @@ class RepostController extends Controller
 {
     public function __construct(
         private readonly RepostService $reposts,
+        private readonly InteractionPermissionService $interactions,
         private readonly BlockService $blocks,
         private readonly LikeService $likes,
         private readonly SavedPostService $savedPosts,
@@ -33,6 +35,9 @@ class RepostController extends Controller
             abort(403);
         }
 
+        abort_unless($post->isVisibleTo($user), 404);
+        abort_unless($post->reposts_enabled && $this->interactions->canRepost($user, $post->user), 403);
+
         $this->reposts->repost($user, $post, $request->validated()['comment'] ?? null);
 
         return response()->json(null, 204);
@@ -42,6 +47,8 @@ class RepostController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
+
+        abort_unless($post->isVisibleTo($user), 404);
 
         $this->reposts->unrepost($user, $post);
 
@@ -57,7 +64,11 @@ class RepostController extends Controller
             abort(404);
         }
 
-        $reposts = $this->reposts->repostsFor($user);
+        abort_unless($user->account_visibility->value === 'public'
+            || $viewer->is($user)
+            || $viewer->following()->where('followee_id', $user->id)->exists(), 404);
+
+        $reposts = $this->reposts->repostsFor($user, $viewer);
 
         $posts = $reposts->getCollection()->map(fn (Repost $repost) => $repost->post);
         $this->likes->annotateIsLiked($posts, $viewer);

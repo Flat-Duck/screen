@@ -27,6 +27,7 @@ class UserResource extends JsonResource
             'bio' => $this->bio,
             'avatar_url' => $this->avatarUrl(),
             'country_code' => $this->country_code,
+            'account_visibility' => $this->account_visibility->value,
             // Unlike every other field here, birth_date is only ever included on your
             // own profile — it's PII with no reason to be visible to other viewers, even
             // though the rest of this resource is otherwise identical for "me" vs.
@@ -41,6 +42,14 @@ class UserResource extends JsonResource
             'is_following' => $this->when(
                 $request->user() && $request->user()->isNot($this->resource),
                 fn (): bool => (bool) ($this->is_following ?? false),
+            ),
+            'follows_you' => $this->when(
+                $request->user() && $request->user()->isNot($this->resource),
+                fn (): bool => (bool) ($this->follows_you ?? false),
+            ),
+            'follow_request_status' => $this->when(
+                $request->user() && $request->user()->isNot($this->resource),
+                fn (): ?string => $this->follow_request_status ?? null,
             ),
             'is_blocked' => $this->when(
                 $request->user() && $request->user()->isNot($this->resource),

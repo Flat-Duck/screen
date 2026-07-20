@@ -31,6 +31,8 @@ class UpdatePostRequest extends FormRequest
     {
         return [
             'caption' => ['sometimes', 'nullable', 'string', 'max:2200'],
+            'comments_enabled' => ['sometimes', 'boolean'],
+            'reposts_enabled' => ['sometimes', 'boolean'],
         ];
     }
 }

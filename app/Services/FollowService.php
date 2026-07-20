@@ -39,12 +39,12 @@ class FollowService
     /** @return CursorPaginator<int, User&object{pivot: Pivot}> */
     public function followers(User $user, int $perPage = 20): CursorPaginator
     {
-        return $user->followers()->cursorPaginate($perPage);
+        return $user->followers()->publiclyVisible()->cursorPaginate($perPage);
     }
 
     /** @return CursorPaginator<int, User&object{pivot: Pivot}> */
     public function following(User $user, int $perPage = 20): CursorPaginator
     {
-        return $user->following()->cursorPaginate($perPage);
+        return $user->following()->publiclyVisible()->cursorPaginate($perPage);
     }
 }

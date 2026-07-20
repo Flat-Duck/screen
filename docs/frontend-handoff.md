@@ -116,21 +116,108 @@ suppresses notifications *you'd* get from them. There's no `is_muted` field on `
 
 ### 8. Search
 
-- `GET /v1/search/users?q=` — cursor-paginated `UserSummaryResource[]`, matches
-  username/name substring. Excludes: inactive accounts, yourself, and anyone blocked
+Search results are relevance/page paginated through Laravel Scout. Use the standard Laravel
+`meta.current_page`, `meta.last_page`, and `links` values; search endpoints no longer promise a
+cursor because relevance is a computed order rather than a stable ID order.
+
+- `GET /v1/search/users?q=` — page-paginated `UserSummaryResource[]`, matches
+  username/name using Scout database search. Excludes: inactive accounts, yourself, and anyone blocked
   either-way (silently — they just don't appear in results, no error).
-- `GET /v1/search/posts?q=` — cursor-paginated `PostResource[]`, matches caption substring.
-- `GET /v1/search/hashtags?q=` — cursor-paginated response with `name`/`posts_count`/
+- `GET /v1/search/posts?q=` — page-paginated `PostResource[]`, relevance-ranked against the
+  screenshot search document (caption today; OCR/category/source fields can be added later).
+- `GET /v1/search/hashtags?q=` — page-paginated response with `name`/`posts_count`/
   `is_followed` per hashtag (not a full `PostResource`-style object — hashtags have no `id`
   exposed, only `name`, since that's how they're referenced everywhere else in the API too,
   including the new browse endpoints below).
-- All three: plain substring matching, no relevance ranking (a prefix match doesn't rank
-  above a mid-string match) — **don't build a UI that assumes results are sorted by
-  relevance**, they're sorted alphabetically/by recency instead. Smarter ranking is a
-  possible future improvement, not present now.
+- Results use Scout's database engine. Usernames and hashtags use prefix search; screenshot posts
+  use full-text relevance in PostgreSQL. Tests use Scout's collection engine.
 - Separate, tighter rate limit than most reads: 20/min per user (vs. 60/min for `reads`).
 - `q` is required, 1–100 chars — a `422` on `q` if omitted/empty, same validation-error
   shape as everywhere else in the API.
+
+## Shipped: 2026-07-20 — Private accounts and follow requests
+
+- Read/update visibility at `data.privacy.account_visibility` (`public` or `private`) through
+  `GET/PATCH /v1/settings`.
+- `POST /v1/users/{user}/follow` returns `204` for a public account, or `202` with
+  `{"data":{"status":"requested","request_id":123}}` for a private account.
+- `DELETE /v1/users/{user}/follow` unfollows or cancels a pending request idempotently.
+- Pending queues: `GET /v1/follow-requests/incoming` and `/outgoing`.
+- Respond with `POST /v1/follow-requests/{id}/accept` or `/decline`.
+- Public profile metadata remains visible. Private posts, reposts, follower/following lists,
+  hashtag content, search results, saved posts, and direct interaction URLs require ownership or
+  an accepted follow. Private posts never enter Explore/discovery.
+- `UserResource` now includes `account_visibility`, `follows_you`, and
+  `follow_request_status` (`pending` or `null`) for relationship-aware buttons.
+
+## Shipped: 2026-07-20 — Interaction permissions
+
+- `GET/PATCH /v1/settings` now includes `interactions.comments_from`, `mentions_from`,
+  `messages_from`, `reposts_from`, and `reposts_allowed`.
+- Audience values are `everyone`, `followers`, `following`, `mutuals`, and `no_one`.
+  `followers` means the actor follows the account receiving the interaction; `following` means
+  that receiving account follows the actor.
+- Defaults remain permissive (`everyone`, with reposts enabled) so current mobile clients retain
+  their behavior until they expose these controls.
+- Post create/update accepts `comments_enabled` and `reposts_enabled`; both default to `true` and
+  are returned by `PostResource`.
+- Disallowed comment/repost/message writes return `403`. Starting a disallowed conversation
+  returns the existing `422 user_id` validation shape. Disallowed mentions remain visible as
+  ordinary caption/comment text but create no mention record or notification.
+- Disabling comments blocks new comments and replies but leaves existing threads readable.
+  Disabling reposts blocks new reposts without deleting historical reposts.
+
+## Shipped: 2026-07-20 — Message requests
+
+- `POST /v1/conversations` accepts optional `initial_message` (maximum 1,000 characters).
+  Allowed contacts still receive an `active` conversation. A contact outside the recipient's
+  `messages_from` audience must provide `initial_message` and receives a `requested` conversation.
+  `messages_from=no_one` rejects the operation with a `422 user_id` error.
+- `GET /v1/message-requests` returns incoming requests only, cursor paginated and separate from
+  `GET /v1/conversations`. Each item includes `state`, `requested_by`, and `latest_message`.
+- Accept with `POST /v1/conversations/{id}/accept`; reject with
+  `POST /v1/conversations/{id}/reject`. Only the receiving participant may respond.
+- Requested conversations allow message history viewing but reject additional sends and read
+  receipt updates with `409`. Acceptance moves the thread into both users' primary inbox.
+- A rejection prevents another request for 30 days by default. Configure this with
+  `SOCIAL_MESSAGE_REQUEST_REJECTION_COOLDOWN_DAYS`.
+- `DELETE /v1/conversations/{id}` hides the thread only for the caller. A later active message
+  makes it visible to its recipient again.
+- Report with `POST /v1/conversations/{id}/report` using `reason` and optional `details`.
+- Blocking rejects pending requests, hides them from the blocker, and prevents all further sends.
+- Notification settings now include `notifications.message_requests`.
+
+## Shipped: 2026-07-20 — Hidden words and notification controls
+
+- Hidden-term endpoints: `GET /v1/hidden-terms`, `POST /v1/hidden-terms` with `value` and optional
+  `type` (`word` or `phrase`), and `DELETE /v1/hidden-terms/{id}`. Lists are cursor paginated;
+  values are limited to 100 characters and accounts to 100 terms.
+- Matching is case-insensitive, Unicode-normalized, and folds common punctuation/number evasion.
+  Original term values are encrypted at rest and never placed in logs or filter-match records.
+- Matching comments/messages remain stored but return `body: null` and `is_filtered: true` only
+  for the user whose filter matched. Other authorized participants see the original with
+  `is_filtered: false`. Removing a term removes its associated redactions.
+- `content_filters.hide_offensive_comments` and `hide_offensive_messages` enable the deployment's
+  policy-reviewed `SOCIAL_OFFENSIVE_TERMS` lexicon.
+- Notification settings now include `push_enabled`, `replies`, `product_updates`, and
+  `quiet_hours` (`enabled`, `start`, `end`, `timezone`) in addition to the existing categories.
+  Times use `HH:mm`; timezone must be an IANA timezone. Quiet hours suppress push only—database
+  notifications remain available. Account-security push types bypass social toggles and quiet
+  hours.
+
+## Admin-only: 2026-07-20 — Moderation cases and content browser
+
+- Mobile report contracts are unchanged. New reports are automatically grouped by target into an
+  open moderation case; duplicate reports by one reporter remain idempotent.
+- Admin routes: `/moderation/cases`, `/moderation/cases/{id}`, `/moderation/content`, and
+  `/moderation/content/{post}`. They require `moderation.view`; mutations additionally require
+  `moderation.manage`.
+- Cases support assignment, priority, internal notes, investigating/actioned/dismissed transitions,
+  warnings, suspension/ban, content removal/restoration, and recommendation exclusion.
+- Private and soft-deleted screenshots remain available through an authenticated, no-store media
+  preview route. Captions and report details are rendered escaped, never as raw HTML.
+- Recommendation-ineligible posts are excluded from trending refresh, discovery injection, and
+  Explore even if stale IDs remain in Redis.
 
 ### 9. Hashtag browse pages + follow
 

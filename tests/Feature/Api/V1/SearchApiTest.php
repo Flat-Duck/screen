@@ -83,6 +83,32 @@ class SearchApiTest extends TestCase
         $response->assertJsonCount(1, 'data');
     }
 
+    public function test_post_search_document_tracks_caption_edits(): void
+    {
+        $post = Post::factory()->create(['caption' => 'Original screenshot']);
+        Sanctum::actingAs($post->user);
+
+        $this->assertSame('Original screenshot', $post->searchable_text);
+
+        $this->patchJson("/api/v1/posts/{$post->id}", ['caption' => 'Updated settings screen'])
+            ->assertOk();
+
+        $this->assertSame('Updated settings screen', $post->fresh()->searchable_text);
+    }
+
+    public function test_search_uses_page_pagination_for_relevance_order(): void
+    {
+        Post::factory()->count(21)->create(['caption' => 'searchable screenshot']);
+        Sanctum::actingAs(User::factory()->create());
+
+        $response = $this->getJson('/api/v1/search/posts?q=searchable&page=2');
+
+        $response->assertOk();
+        $response->assertJsonPath('meta.current_page', 2);
+        $response->assertJsonPath('meta.per_page', 20);
+        $response->assertJsonCount(1, 'data');
+    }
+
     public function test_searching_hashtags_matches_by_name(): void
     {
         Hashtag::factory()->create(['name' => 'bug']);

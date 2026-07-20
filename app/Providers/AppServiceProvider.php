@@ -45,7 +45,11 @@ class AppServiceProvider extends ServiceProvider
      */
     protected function configureGates(): void
     {
-        Gate::define('viewTelemetry', fn (User $user): bool => (bool) $user->is_admin);
+        Gate::define('viewDashboard', fn (User $user): bool => $user->hasAdminPermission('dashboard.view'));
+        Gate::define('viewTelemetry', fn (User $user): bool => $user->hasAdminPermission('telemetry.view'));
+        Gate::define('viewModeration', fn (User $user): bool => $user->hasAdminPermission('moderation.view'));
+        Gate::define('manageModeration', fn (User $user): bool => $user->hasAdminPermission('moderation.manage'));
+        Gate::define('viewUsers', fn (User $user): bool => $user->hasAdminPermission('users.view'));
     }
 
     /**

@@ -28,6 +28,8 @@ class PostResource extends JsonResource
             'media' => PostMediaResource::collection($this->whenLoaded('media')),
             'likes_count' => $this->likes_count,
             'comments_count' => $this->comments_count,
+            'comments_enabled' => $this->comments_enabled,
+            'reposts_enabled' => $this->reposts_enabled,
             'is_liked' => (bool) ($this->is_liked ?? false),
             'is_saved' => (bool) ($this->is_saved ?? false),
             'created_at' => $this->created_at,

@@ -56,6 +56,7 @@ class HashtagService
     public function postsFor(Hashtag $hashtag, User $viewer, int $perPage = 15): CursorPaginator
     {
         $query = Post::query()
+            ->visibleTo($viewer)
             ->whereIn('id', DB::table('hashtag_post')->where('hashtag_id', $hashtag->id)->select('post_id'))
             ->with(['user', 'media'])
             ->withCount(['likes', 'comments'])

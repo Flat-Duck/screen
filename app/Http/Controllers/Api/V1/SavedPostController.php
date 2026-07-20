@@ -23,6 +23,8 @@ class SavedPostController extends Controller
         /** @var User $user */
         $user = $request->user();
 
+        abort_unless($post->isVisibleTo($user), 404);
+
         $this->savedPosts->save($user, $post);
 
         return response()->json(null, 204);
@@ -32,6 +34,8 @@ class SavedPostController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
+
+        abort_unless($post->isVisibleTo($user), 404);
 
         $this->savedPosts->unsave($user, $post);
 

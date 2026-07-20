@@ -34,6 +34,8 @@ class CreatePost
                     'user_id' => $user->id,
                     'caption' => $data->caption,
                     'status' => Post::STATUS_PROCESSING,
+                    'comments_enabled' => $data->commentsEnabled,
+                    'reposts_enabled' => $data->repostsEnabled,
                 ]);
 
                 ($this->syncHashtags)($post, $data->caption);

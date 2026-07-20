@@ -83,6 +83,12 @@ class ReportsTableTest extends TestCase
         $this->assertSame(Report::STATUS_REVIEWED, $report->status);
         $this->assertTrue($admin->is($report->reviewedBy));
         $this->assertNotNull($report->reviewed_at);
+        $this->assertDatabaseHas('admin_audit_logs', [
+            'actor_id' => $admin->id,
+            'action' => 'report.reviewed',
+            'target_type' => Report::class,
+            'target_id' => $report->id,
+        ]);
     }
 
     public function test_dismissing_a_report(): void
@@ -152,7 +158,14 @@ class ReportsTableTest extends TestCase
         Livewire::test(ReportsTable::class)->call('suspendAuthor', $report->id);
 
         $this->assertFalse($author->fresh()->is_active);
+        $this->assertSame('hidden', $author->fresh()->visibility_state->value);
+        $this->assertSame('suspended', $author->fresh()->moderation_state->value);
         $this->assertSame(Report::STATUS_REVIEWED, $report->fresh()->status);
+        $this->assertDatabaseHas('admin_audit_logs', [
+            'action' => 'user.suspended',
+            'target_type' => User::class,
+            'target_id' => $author->id,
+        ]);
     }
 
     public function test_an_admin_cannot_suspend_themselves_via_a_self_report(): void

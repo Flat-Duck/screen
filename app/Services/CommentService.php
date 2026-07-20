@@ -15,6 +15,7 @@ class CommentService
     public function __construct(
         private readonly MuteService $mutes,
         private readonly SyncCommentMentions $syncMentions,
+        private readonly ContentFilterService $filters,
     ) {}
 
     /**
@@ -30,10 +31,12 @@ class CommentService
             'body' => $body,
         ]);
 
+        $filteredForPostOwner = $this->filters->apply($comment, $user, $post->user, 'comment');
+
         if ($parentId !== null) {
             $this->notifyReply($post, $comment, $user, $parentId);
         } else {
-            $this->notifyPostOwner($post, $comment, $user);
+            $this->notifyPostOwner($post, $comment, $user, $filteredForPostOwner);
         }
 
         ($this->syncMentions)($comment, $body);
@@ -47,22 +50,24 @@ class CommentService
     }
 
     /** @return CursorPaginator<int, Comment> */
-    public function commentsForPost(Post $post, int $perPage = 20): CursorPaginator
+    public function commentsForPost(Post $post, User $viewer, int $perPage = 20): CursorPaginator
     {
         return $post->comments()
             ->topLevel()
             ->with('user')
             ->withCount(['replies', 'likes'])
+            ->withExists(['filterMatches as is_filtered' => fn ($query) => $query->where('user_id', $viewer->id)])
             ->oldest('id')
             ->cursorPaginate($perPage);
     }
 
     /** @return CursorPaginator<int, Comment> */
-    public function repliesFor(Comment $comment, int $perPage = 20): CursorPaginator
+    public function repliesFor(Comment $comment, User $viewer, int $perPage = 20): CursorPaginator
     {
         return $comment->replies()
             ->with('user')
             ->withCount('likes')
+            ->withExists(['filterMatches as is_filtered' => fn ($query) => $query->where('user_id', $viewer->id)])
             ->oldest('id')
             ->cursorPaginate($perPage);
     }
@@ -75,14 +80,16 @@ class CommentService
             return;
         }
 
-        if ($this->mutes->shouldNotify($parent->user, $replier)) {
+        $filteredForParent = $this->filters->apply($reply, $replier, $parent->user, 'comment');
+
+        if (! $filteredForParent && $this->mutes->shouldNotify($parent->user, $replier)) {
             $parent->user->notify(new CommentRepliedNotification($post, $reply, $parent, $replier));
         }
     }
 
-    private function notifyPostOwner(Post $post, Comment $comment, User $commenter): void
+    private function notifyPostOwner(Post $post, Comment $comment, User $commenter, bool $filtered): void
     {
-        if ($commenter->isNot($post->user) && $this->mutes->shouldNotify($post->user, $commenter)) {
+        if (! $filtered && $commenter->isNot($post->user) && $this->mutes->shouldNotify($post->user, $commenter)) {
             $post->user->notify(new PostCommentedNotification($post, $comment, $commenter));
         }
     }

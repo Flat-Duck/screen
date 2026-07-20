@@ -2,7 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Enums\AccountVisibility;
 use App\Models\Post;
+use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Redis;
 use Throwable;
@@ -38,6 +40,9 @@ class RefreshTrendingPosts extends Command
             $scored = 0;
 
             Post::query()
+                ->where('recommendation_eligible', true)
+                ->fromPubliclyVisibleAuthors()
+                ->whereIn('user_id', User::query()->where('account_visibility', AccountVisibility::Public)->select('id'))
                 ->where('created_at', '>=', now()->subDays($windowDays))
                 ->withCount(['likes', 'comments'])
                 ->chunkById(500, function ($posts) use ($tempKey, $likeWeight, $commentWeight, $gravity, &$scored): void {

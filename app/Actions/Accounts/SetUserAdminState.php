@@ -2,6 +2,7 @@
 
 namespace App\Actions\Accounts;
 
+use App\Enums\AdminRole;
 use App\Models\User;
 
 /**
@@ -18,7 +19,10 @@ final class SetUserAdminState
             return;
         }
 
-        $user->is_admin = $isAdmin;
+        $user->forceFill([
+            'is_admin' => $isAdmin,
+            'admin_role' => $isAdmin ? AdminRole::SuperAdmin : null,
+        ]);
         $user->save();
     }
 }

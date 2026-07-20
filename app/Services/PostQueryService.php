@@ -11,9 +11,11 @@ use Illuminate\Support\Facades\DB;
 class PostQueryService
 {
     /** @return CursorPaginator<int, Post> */
-    public function postsForUser(User $user, int $perPage = 12): CursorPaginator
+    public function postsForUser(User $user, User $viewer, int $perPage = 12): CursorPaginator
     {
-        return $user->posts()
+        return Post::query()
+            ->visibleTo($viewer)
+            ->where('user_id', $user->id)
             ->with('media')
             ->withCount(['likes', 'comments'])
             ->latest('id')

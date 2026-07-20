@@ -2,11 +2,15 @@
 
 namespace App\Services;
 
+use App\Enums\ConversationState;
+use App\Models\Conversation;
+use App\Models\FollowRequest;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\CursorPaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Pivot;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class BlockService
@@ -32,6 +36,26 @@ class BlockService
 
         $this->follows->unfollow($blocker, $target);
         $this->follows->unfollow($target, $blocker);
+        FollowRequest::query()
+            ->where(fn ($query) => $query
+                ->where(['requester_id' => $blocker->id, 'target_id' => $target->id])
+                ->orWhere(['requester_id' => $target->id, 'target_id' => $blocker->id]))
+            ->delete();
+
+        $conversationIds = Conversation::query()
+            ->whereHas('participants', fn ($query) => $query->where('users.id', $blocker->id))
+            ->whereHas('participants', fn ($query) => $query->where('users.id', $target->id))
+            ->pluck('id');
+
+        Conversation::query()
+            ->whereIn('id', $conversationIds)
+            ->where('state', ConversationState::Requested)
+            ->update(['state' => ConversationState::Rejected->value, 'rejected_at' => now()]);
+
+        DB::table('conversation_participants')
+            ->whereIn('conversation_id', $conversationIds)
+            ->where('user_id', $blocker->id)
+            ->update(['hidden_at' => now()]);
     }
 
     /** Idempotent — unblocking a user you haven't blocked is a no-op. */

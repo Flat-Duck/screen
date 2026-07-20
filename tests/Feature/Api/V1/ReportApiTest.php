@@ -125,4 +125,30 @@ class ReportApiTest extends TestCase
         $response->assertUnprocessable();
         $response->assertJsonValidationErrors(['reportable_id']);
     }
+
+    public function test_reporting_a_blocked_target_is_rejected_as_unavailable(): void
+    {
+        $reporter = User::factory()->create();
+        $target = User::factory()->create();
+        $reporter->blockedUsers()->attach($target->id);
+        Sanctum::actingAs($reporter);
+
+        $this->postJson('/api/v1/reports', [
+            'reportable_type' => 'user',
+            'reportable_id' => $target->id,
+            'reason' => 'other',
+        ])->assertUnprocessable()->assertJsonValidationErrors(['reportable_id']);
+    }
+
+    public function test_reporting_content_from_a_suspended_author_is_rejected_as_unavailable(): void
+    {
+        $post = Post::factory()->for(User::factory()->create(['is_active' => false]))->create();
+        Sanctum::actingAs(User::factory()->create());
+
+        $this->postJson('/api/v1/reports', [
+            'reportable_type' => 'post',
+            'reportable_id' => $post->id,
+            'reason' => 'spam',
+        ])->assertUnprocessable()->assertJsonValidationErrors(['reportable_id']);
+    }
 }

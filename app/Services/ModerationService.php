@@ -2,8 +2,11 @@
 
 namespace App\Services;
 
+use App\Enums\ModerationCaseStatus;
+use App\Models\ModerationCase;
 use App\Models\Report;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 class ModerationService
 {
@@ -15,18 +18,25 @@ class ModerationService
     {
         $reportableClass = Report::REPORTABLE_TYPES[$reportableTypeAlias];
 
-        return Report::query()->firstOrCreate(
-            [
-                'reporter_id' => $reporter->id,
-                'reportable_type' => $reportableClass,
-                'reportable_id' => $reportableId,
-            ],
-            [
-                'reason' => $reason,
-                'details' => $details,
-                'status' => Report::STATUS_PENDING,
-            ],
-        );
+        return DB::transaction(function () use ($reporter, $reportableClass, $reportableId, $reason, $details): Report {
+            $case = ModerationCase::query()->firstOrCreate(
+                ['open_key' => hash('sha256', $reportableClass.':'.$reportableId)],
+                ['target_type' => $reportableClass, 'target_id' => $reportableId, 'status' => ModerationCaseStatus::Open, 'last_reported_at' => now()],
+            );
+            $report = Report::query()->firstOrCreate(
+                ['reporter_id' => $reporter->id, 'reportable_type' => $reportableClass, 'reportable_id' => $reportableId],
+                ['reason' => $reason, 'details' => $details, 'status' => Report::STATUS_PENDING, 'moderation_case_id' => $case->id],
+            );
+            if ($report->moderation_case_id === null) {
+                $report->update(['moderation_case_id' => $case->id]);
+            }
+            if ($report->wasRecentlyCreated) {
+                $case->increment('report_count');
+                $case->update(['last_reported_at' => now()]);
+            }
+
+            return $report;
+        });
     }
 
     /** Marks a report as reviewed — the report was looked at and, typically, acted on. */

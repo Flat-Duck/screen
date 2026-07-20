@@ -38,8 +38,9 @@ class SearchController extends Controller
         $viewer = $request->user();
 
         $posts = $this->search->posts($request->validated()['q'], $viewer);
-        $this->likes->annotateIsLiked($posts->getCollection(), $viewer);
-        $this->savedPosts->annotateIsSaved($posts->getCollection(), $viewer);
+        $postItems = collect($posts->items());
+        $this->likes->annotateIsLiked($postItems, $viewer);
+        $this->savedPosts->annotateIsSaved($postItems, $viewer);
 
         return PostResource::collection($posts);
     }
@@ -50,7 +51,7 @@ class SearchController extends Controller
         $viewer = $request->user();
 
         $hashtags = $this->search->hashtags($request->validated()['q']);
-        $this->hashtagFollows->annotateIsFollowed($hashtags->getCollection(), $viewer);
+        $this->hashtagFollows->annotateIsFollowed(collect($hashtags->items()), $viewer);
 
         return HashtagResource::collection($hashtags);
     }

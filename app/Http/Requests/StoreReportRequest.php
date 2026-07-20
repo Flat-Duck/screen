@@ -2,8 +2,12 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Comment;
+use App\Models\Conversation;
+use App\Models\Post;
 use App\Models\Report;
 use App\Models\User;
+use App\Services\BlockService;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -51,8 +55,56 @@ class StoreReportRequest extends FormRequest
                 && (int) $this->input('reportable_id') === $user->id
             ) {
                 $validator->errors()->add('reportable_id', 'You cannot report yourself.');
+
+                return;
+            }
+
+            if (! $this->reportTargetIsVisibleTo($user)) {
+                $validator->errors()->add('reportable_id', 'The selected content is not available.');
             }
         });
+    }
+
+    private function reportTargetIsVisibleTo(User $reporter): bool
+    {
+        $type = (string) $this->input('reportable_type');
+        $id = (int) $this->input('reportable_id');
+        $blocks = app(BlockService::class);
+
+        if ($type === 'user') {
+            $target = User::query()->find($id);
+
+            return $target !== null
+                && $target->isPubliclyVisible()
+                && ! $blocks->isBlockedEitherWay($reporter, $target);
+        }
+
+        if ($type === 'post') {
+            $post = Post::query()->with('user')->find($id);
+
+            return $post !== null
+                && $post->isVisibleTo($reporter)
+                && ! $blocks->isBlockedEitherWay($reporter, $post->user);
+        }
+
+        if ($type === 'comment') {
+            $comment = Comment::query()->with(['user', 'post.user'])->find($id);
+
+            return $comment !== null
+                && $comment->user->isPubliclyVisible()
+                && $comment->post->isVisibleTo($reporter)
+                && ! $blocks->isBlockedEitherWay($reporter, $comment->user)
+                && ! $blocks->isBlockedEitherWay($reporter, $comment->post->user);
+        }
+
+        if ($type === 'conversation') {
+            $conversation = Conversation::query()->find($id);
+
+            return $conversation !== null
+                && $conversation->participants()->where('users.id', $reporter->id)->exists();
+        }
+
+        return false;
     }
 
     /** Resolves the DB table to validate `reportable_id` existence against, based on the (unvalidated) type. */

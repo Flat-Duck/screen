@@ -45,10 +45,11 @@ class RepostService
     }
 
     /** @return CursorPaginator<int, Repost> */
-    public function repostsFor(User $user, int $perPage = 15): CursorPaginator
+    public function repostsFor(User $user, User $viewer, int $perPage = 15): CursorPaginator
     {
         return Repost::query()
             ->where('user_id', $user->id)
+            ->whereIn('post_id', Post::query()->visibleTo($viewer)->select('id'))
             ->with(['post' => function ($query): void {
                 $query->with(['user', 'media'])->withCount(['likes', 'comments']);
             }])

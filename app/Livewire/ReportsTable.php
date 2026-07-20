@@ -8,11 +8,13 @@ use App\Models\Comment;
 use App\Models\Post;
 use App\Models\Report;
 use App\Models\User;
+use App\Services\AdminAuditLogger;
 use App\Services\CommentService;
 use App\Services\ModerationService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -46,17 +48,23 @@ class ReportsTable extends Component
         $this->resetPage();
     }
 
-    public function markReviewed(int $reportId, ModerationService $moderation): void
+    public function markReviewed(int $reportId, ModerationService $moderation, AdminAuditLogger $audit): void
     {
+        Gate::authorize('manageModeration');
         $report = Report::findOrFail($reportId);
+        $before = $report->only(['status', 'reviewed_by', 'reviewed_at', 'resolution_note']);
         $moderation->markReviewed($report, $this->currentAdmin());
+        $audit->record($this->currentAdmin(), 'report.reviewed', $report, null, $before, $report->only(array_keys($before)));
         $this->flashMessage = 'Marked reviewed.';
     }
 
-    public function dismiss(int $reportId, ModerationService $moderation): void
+    public function dismiss(int $reportId, ModerationService $moderation, AdminAuditLogger $audit): void
     {
+        Gate::authorize('manageModeration');
         $report = Report::findOrFail($reportId);
+        $before = $report->only(['status', 'reviewed_by', 'reviewed_at', 'resolution_note']);
         $moderation->dismiss($report, $this->currentAdmin());
+        $audit->record($this->currentAdmin(), 'report.dismissed', $report, null, $before, $report->only(array_keys($before)));
         $this->flashMessage = 'Dismissed.';
     }
 
@@ -65,7 +73,9 @@ class ReportsTable extends Component
         ModerationService $moderation,
         DeletePost $deletePost,
         CommentService $comments,
+        AdminAuditLogger $audit,
     ): void {
+        Gate::authorize('manageModeration');
         $report = Report::findOrFail($reportId);
         $reportable = $report->reportable;
 
@@ -80,11 +90,13 @@ class ReportsTable extends Component
         }
 
         $moderation->markReviewed($report, $this->currentAdmin(), 'Content removed.');
+        $audit->record($this->currentAdmin(), 'content.removed', $reportable, 'Content removed from report '.$report->id);
         $this->flashMessage = 'Content removed and report marked reviewed.';
     }
 
-    public function suspendAuthor(int $reportId, ModerationService $moderation, SetUserActiveState $setActiveState): void
+    public function suspendAuthor(int $reportId, ModerationService $moderation, SetUserActiveState $setActiveState, AdminAuditLogger $audit): void
     {
+        Gate::authorize('manageModeration');
         $report = Report::findOrFail($reportId);
         $author = $this->authorOf($report->reportable);
 
@@ -100,8 +112,10 @@ class ReportsTable extends Component
             return;
         }
 
+        $before = $author->only(['is_active', 'visibility_state', 'moderation_state', 'moderated_at']);
         $setActiveState($author, false);
         $moderation->markReviewed($report, $this->currentAdmin(), "Suspended {$author->username}.");
+        $audit->record($this->currentAdmin(), 'user.suspended', $author, 'Suspended from report '.$report->id, $before, $author->only(array_keys($before)));
         $this->flashMessage = "Suspended {$author->username} and marked reviewed.";
     }
 

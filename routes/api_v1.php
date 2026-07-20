@@ -11,7 +11,9 @@ use App\Http\Controllers\Api\V1\DeviceController;
 use App\Http\Controllers\Api\V1\ExploreController;
 use App\Http\Controllers\Api\V1\FeedController;
 use App\Http\Controllers\Api\V1\FollowController;
+use App\Http\Controllers\Api\V1\FollowRequestController;
 use App\Http\Controllers\Api\V1\HashtagController;
+use App\Http\Controllers\Api\V1\HiddenTermController;
 use App\Http\Controllers\Api\V1\LikeController;
 use App\Http\Controllers\Api\V1\MuteController;
 use App\Http\Controllers\Api\V1\NotificationController;
@@ -64,6 +66,9 @@ Route::middleware(['auth:sanctum', 'auth.user', 'session.touch'])->group(functio
 
     Route::get('settings', [SettingsController::class, 'show'])->middleware('throttle:settings-manage');
     Route::patch('settings', [SettingsController::class, 'update'])->middleware('throttle:settings-manage');
+    Route::get('hidden-terms', [HiddenTermController::class, 'index'])->middleware('throttle:settings-manage');
+    Route::post('hidden-terms', [HiddenTermController::class, 'store'])->middleware('throttle:settings-manage');
+    Route::delete('hidden-terms/{hiddenTerm}', [HiddenTermController::class, 'destroy'])->middleware('throttle:settings-manage');
 
     Route::get('two-factor', [TwoFactorController::class, 'show'])->middleware('throttle:two-factor-manage');
     // Enable returns everything (QR + recovery codes) in this one response rather than
@@ -104,6 +109,13 @@ Route::middleware(['auth:sanctum', 'auth.user', 'session.touch'])->group(functio
     Route::get('users/{user}/followers', [FollowController::class, 'followers'])->middleware('throttle:reads');
     Route::get('users/{user}/following', [FollowController::class, 'following'])->middleware('throttle:reads');
 
+    Route::post('users/{user}/follow-requests', [FollowRequestController::class, 'store'])->middleware('throttle:writes-moderate');
+    Route::delete('users/{user}/follow-requests', [FollowRequestController::class, 'destroy'])->middleware('throttle:writes-moderate');
+    Route::get('follow-requests/incoming', [FollowRequestController::class, 'incoming'])->middleware('throttle:reads');
+    Route::get('follow-requests/outgoing', [FollowRequestController::class, 'outgoing'])->middleware('throttle:reads');
+    Route::post('follow-requests/{followRequest}/accept', [FollowRequestController::class, 'accept'])->middleware('throttle:writes-moderate');
+    Route::post('follow-requests/{followRequest}/decline', [FollowRequestController::class, 'decline'])->middleware('throttle:writes-moderate');
+
     Route::post('users/{user}/block', [BlockController::class, 'store'])->middleware('throttle:writes-moderate');
     Route::delete('users/{user}/block', [BlockController::class, 'destroy'])->middleware('throttle:writes-moderate');
     Route::get('blocked-users', [BlockController::class, 'index'])->middleware('throttle:reads');
@@ -143,6 +155,11 @@ Route::middleware(['auth:sanctum', 'auth.user', 'session.touch'])->group(functio
 
     Route::post('conversations', [ConversationController::class, 'store'])->middleware('throttle:writes-moderate');
     Route::get('conversations', [ConversationController::class, 'index'])->middleware('throttle:reads');
+    Route::get('message-requests', [ConversationController::class, 'requests'])->middleware('throttle:reads');
+    Route::post('conversations/{conversation}/accept', [ConversationController::class, 'accept'])->middleware('throttle:writes-moderate');
+    Route::post('conversations/{conversation}/reject', [ConversationController::class, 'reject'])->middleware('throttle:writes-moderate');
+    Route::delete('conversations/{conversation}', [ConversationController::class, 'destroy'])->middleware('throttle:writes-moderate');
+    Route::post('conversations/{conversation}/report', [ConversationController::class, 'report'])->middleware('throttle:reports');
     Route::patch('conversations/{conversation}/read', [ConversationController::class, 'markRead'])->middleware('throttle:writes-moderate');
     Route::get('conversations/{conversation}/messages', [ConversationMessageController::class, 'index'])->middleware('throttle:reads');
     Route::post('conversations/{conversation}/messages', [ConversationMessageController::class, 'store'])->middleware('throttle:messages-send');

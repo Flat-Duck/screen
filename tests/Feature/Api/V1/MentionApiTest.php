@@ -128,8 +128,8 @@ class MentionApiTest extends TestCase
 
         $this->createPost($author, 'Hi @alice');
 
-        // The Mention row still gets created (text isn't suppressed, only the notification).
-        $this->assertDatabaseCount('mentions', 1);
+        // Block policy takes precedence over otherwise permissive mention settings.
+        $this->assertDatabaseCount('mentions', 0);
         $this->assertDatabaseCount('notifications', 0);
     }
 }

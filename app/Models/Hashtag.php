@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Str;
+use Laravel\Scout\Attributes\SearchUsingPrefix;
+use Laravel\Scout\Searchable;
 
 /**
  * @property int $id
@@ -16,7 +18,14 @@ use Illuminate\Support\Str;
 class Hashtag extends Model
 {
     /** @use HasFactory<HashtagFactory> */
-    use HasFactory;
+    use HasFactory, Searchable;
+
+    /** @return array{name: string} */
+    #[SearchUsingPrefix(['name'])]
+    public function toSearchableArray(): array
+    {
+        return ['name' => $this->name];
+    }
 
     protected $fillable = [
         'name',

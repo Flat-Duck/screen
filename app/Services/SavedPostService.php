@@ -42,6 +42,7 @@ class SavedPostService
     public function savedPostsFor(User $user, int $perPage = 15): CursorPaginator
     {
         return Post::query()
+            ->visibleTo($user)
             ->whereIn('id', SavedPost::query()->where('user_id', $user->id)->select('post_id'))
             ->with(['user', 'media'])
             ->withCount(['likes', 'comments'])

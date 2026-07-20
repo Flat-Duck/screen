@@ -73,6 +73,34 @@ class ExploreApiTest extends TestCase
         $response->assertJsonCount(0, 'data');
     }
 
+    public function test_explore_excludes_muted_authors(): void
+    {
+        $author = User::factory()->create();
+        $post = Post::factory()->for($author)->create();
+        $viewer = User::factory()->create();
+        Sanctum::actingAs($viewer);
+        $this->postJson("/api/v1/users/{$author->id}/mute")->assertNoContent();
+
+        Redis::shouldReceive('zrevrange')->once()->andReturn([(string) $post->id]);
+
+        $this->getJson('/api/v1/explore')
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
+    }
+
+    public function test_explore_excludes_suspended_authors(): void
+    {
+        $author = User::factory()->create(['is_active' => false]);
+        $post = Post::factory()->for($author)->create();
+        Sanctum::actingAs(User::factory()->create());
+
+        Redis::shouldReceive('zrevrange')->once()->andReturn([(string) $post->id]);
+
+        $this->getJson('/api/v1/explore')
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
+    }
+
     public function test_explore_is_offset_paginated_by_page_number(): void
     {
         $post = Post::factory()->create();

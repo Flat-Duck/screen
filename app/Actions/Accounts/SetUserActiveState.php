@@ -4,6 +4,8 @@ namespace App\Actions\Accounts;
 
 use App\Actions\Auth\RevokeUserSessions;
 use App\Enums\SessionEndReason;
+use App\Enums\UserModerationState;
+use App\Enums\UserVisibilityState;
 use App\Models\User;
 use App\Services\AccountService;
 
@@ -24,7 +26,12 @@ final class SetUserActiveState
             return;
         }
 
-        $user->is_active = $active;
+        $user->forceFill([
+            'is_active' => $active,
+            'visibility_state' => $active ? UserVisibilityState::Visible : UserVisibilityState::Hidden,
+            'moderation_state' => $active ? UserModerationState::Clear : UserModerationState::Suspended,
+            'moderated_at' => $active ? null : now(),
+        ]);
         $user->save();
 
         if (! $active) {

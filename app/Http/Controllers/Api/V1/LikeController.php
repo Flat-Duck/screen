@@ -26,6 +26,8 @@ class LikeController extends Controller
             abort(403);
         }
 
+        abort_unless($post->isVisibleTo($user), 404);
+
         $this->likes->like($user, $post);
 
         return response()->json(['likes_count' => $post->likes()->count()]);
@@ -35,6 +37,8 @@ class LikeController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
+
+        abort_unless($post->isVisibleTo($user), 404);
 
         $this->likes->unlike($user, $post);
 
@@ -52,6 +56,8 @@ class LikeController extends Controller
             abort(403);
         }
 
+        abort_unless($comment->post->isVisibleTo($user), 404);
+
         $this->likes->like($user, $comment);
 
         return response()->json(['likes_count' => $comment->likes()->count()]);
@@ -61,6 +67,8 @@ class LikeController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
+
+        abort_unless($comment->post->isVisibleTo($user), 404);
 
         $this->likes->unlike($user, $comment);
 

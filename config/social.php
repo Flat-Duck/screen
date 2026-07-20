@@ -51,6 +51,12 @@ return [
 
     'account_retention_days' => env('SOCIAL_ACCOUNT_RETENTION_DAYS', 30),
 
+    'message_request_rejection_cooldown_days' => (int) env('SOCIAL_MESSAGE_REQUEST_REJECTION_COOLDOWN_DAYS', 30),
+
+    // Deployments can supply a comma-separated, policy-reviewed lexicon. User-defined
+    // hidden terms work independently and are the primary filter mechanism.
+    'offensive_terms' => array_values(array_filter(array_map('trim', explode(',', (string) env('SOCIAL_OFFENSIVE_TERMS', ''))))),
+
     /*
     |--------------------------------------------------------------------------
     | Trending / Discovery

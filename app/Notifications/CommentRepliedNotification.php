@@ -60,6 +60,6 @@ class CommentRepliedNotification extends Notification implements FcmNotification
 
     public function settingsKey(): string
     {
-        return 'comments';
+        return 'replies';
     }
 }

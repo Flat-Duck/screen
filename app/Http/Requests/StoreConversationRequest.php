@@ -27,6 +27,7 @@ class StoreConversationRequest extends FormRequest
     {
         return [
             'user_id' => ['required', 'integer', 'exists:users,id'],
+            'initial_message' => ['sometimes', 'nullable', 'string', 'max:1000'],
         ];
     }
 }

@@ -30,6 +30,14 @@
                     <flux:sidebar.item icon="flag" :href="route('reports.index')" :current="request()->routeIs('reports.*')" wire:navigate>
                         {{ __('Reports') }}
                     </flux:sidebar.item>
+                    @can('viewModeration')
+                        <flux:sidebar.item icon="shield-check" :href="route('moderation.cases.index')" :current="request()->routeIs('moderation.cases.*')" wire:navigate>
+                            {{ __('Moderation cases') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="photo" :href="route('moderation.content.index')" :current="request()->routeIs('moderation.content.*')" wire:navigate>
+                            {{ __('Content') }}
+                        </flux:sidebar.item>
+                    @endcan
                 </flux:sidebar.group>
             </flux:sidebar.nav>
 

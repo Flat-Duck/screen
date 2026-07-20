@@ -3,9 +3,14 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enums\AccountVisibility;
+use App\Enums\AdminRole;
+use App\Enums\UserModerationState;
+use App\Enums\UserVisibilityState;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -20,6 +25,8 @@ use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Sanctum\HasApiTokens;
+use Laravel\Scout\Attributes\SearchUsingPrefix;
+use Laravel\Scout\Searchable;
 
 /**
  * @property int $id
@@ -36,6 +43,10 @@ use Laravel\Sanctum\HasApiTokens;
  * @property array<string, mixed>|null $settings
  * @property bool $is_admin
  * @property bool $is_active
+ * @property AdminRole|null $admin_role
+ * @property UserVisibilityState $visibility_state
+ * @property UserModerationState $moderation_state
+ * @property AccountVisibility $account_visibility
  * @property string|null $two_factor_secret
  * @property string|null $two_factor_recovery_codes
  * @property Carbon|null $two_factor_confirmed_at
@@ -44,6 +55,8 @@ use Laravel\Sanctum\HasApiTokens;
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
  * @property bool|null $is_following Set per-request by ProfileService/UserController for the current viewer — not a DB column.
+ * @property bool|null $follows_you Set per-request by UserController for the current viewer — not a DB column.
+ * @property string|null $follow_request_status Set per-request by UserController for the current viewer — not a DB column.
  * @property bool|null $is_blocked Set per-request by UserController for the current viewer — not a DB column.
  * @property bool|null $is_blocked_by Set per-request by UserController for the current viewer — not a DB column.
  */
@@ -52,7 +65,27 @@ use Laravel\Sanctum\HasApiTokens;
 class User extends Authenticatable implements PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasApiTokens, HasFactory, Notifiable, PasskeyAuthenticatable, SoftDeletes, TwoFactorAuthenticatable;
+    use HasApiTokens, HasFactory, Notifiable, PasskeyAuthenticatable, Searchable, SoftDeletes, TwoFactorAuthenticatable;
+
+    /** @var array<string, mixed> */
+    protected $attributes = [
+        'account_visibility' => AccountVisibility::Public->value,
+    ];
+
+    /** @return array<string, string|null> */
+    #[SearchUsingPrefix(['username'])]
+    public function toSearchableArray(): array
+    {
+        return [
+            'username' => $this->username,
+            'name' => $this->name,
+        ];
+    }
+
+    public function shouldBeSearchable(): bool
+    {
+        return $this->isPubliclyVisible();
+    }
 
     /**
      * Get the attributes that should be cast.
@@ -67,8 +100,39 @@ class User extends Authenticatable implements PasskeyUser
             'birth_date' => 'date',
             'settings' => 'array',
             'is_admin' => 'boolean',
+            'admin_role' => AdminRole::class,
             'is_active' => 'boolean',
+            'visibility_state' => UserVisibilityState::class,
+            'moderation_state' => UserModerationState::class,
+            'account_visibility' => AccountVisibility::class,
+            'moderated_at' => 'datetime',
         ];
+    }
+
+    /** @param Builder<User> $query */
+    public function scopePubliclyVisible(Builder $query): void
+    {
+        $query->where('is_active', true)
+            ->where('visibility_state', UserVisibilityState::Visible->value)
+            ->where('moderation_state', UserModerationState::Clear->value);
+    }
+
+    public function isPubliclyVisible(): bool
+    {
+        return $this->is_active
+            && $this->visibility_state === UserVisibilityState::Visible
+            && $this->moderation_state === UserModerationState::Clear;
+    }
+
+    public function hasAdminPermission(string $permission): bool
+    {
+        if (! $this->is_admin) {
+            return false;
+        }
+
+        $role = $this->admin_role;
+
+        return ($role ?? AdminRole::SuperAdmin)->can($permission);
     }
 
     /**
@@ -185,8 +249,26 @@ class User extends Authenticatable implements PasskeyUser
     public function conversations(): BelongsToMany
     {
         return $this->belongsToMany(Conversation::class, 'conversation_participants')
-            ->withPivot('last_read_at')
+            ->withPivot(['last_read_at', 'hidden_at'])
             ->withTimestamps();
+    }
+
+    /** @return HasMany<FollowRequest, $this> */
+    public function outgoingFollowRequests(): HasMany
+    {
+        return $this->hasMany(FollowRequest::class, 'requester_id');
+    }
+
+    /** @return HasMany<FollowRequest, $this> */
+    public function incomingFollowRequests(): HasMany
+    {
+        return $this->hasMany(FollowRequest::class, 'target_id');
+    }
+
+    /** @return HasMany<UserHiddenTerm, $this> */
+    public function hiddenTerms(): HasMany
+    {
+        return $this->hasMany(UserHiddenTerm::class);
     }
 
     public function avatarUrl(): ?string

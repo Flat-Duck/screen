@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\AccountVisibility;
 use App\Models\Post;
 use App\Models\User;
 use Illuminate\Pagination\CursorPaginator;
@@ -31,6 +32,7 @@ class FeedService
     public function feedFor(User $user, int $perPage = 15): CursorPaginator
     {
         $query = Post::query()
+            ->visibleTo($user)
             ->whereIn('user_id', $user->following()->pluck('users.id'))
             ->with(['user', 'media'])
             ->withCount(['likes', 'comments'])
@@ -100,13 +102,17 @@ class FeedService
         }
 
         $query = Post::query()
+            ->visibleTo($user)
+            ->where('recommendation_eligible', true)
+            ->whereIn('user_id', User::query()->where('account_visibility', AccountVisibility::Public->value)->select('id'))
             ->whereIn('id', $ids)
             ->where('user_id', '!=', $user->id)
             ->whereNotIn('user_id', $user->following()->pluck('users.id'))
             ->with(['user', 'media'])
             ->withCount(['likes', 'comments']);
 
-        $posts = $this->blocks->excludeBlocked($query, $user, 'user_id')->get();
+        $query = $this->blocks->excludeBlocked($query, $user, 'user_id');
+        $posts = $this->mutes->excludeMuted($query, $user, 'user_id')->get();
 
         // Redis returns ids in rank order (highest score first); preserve that ordering
         // since the DB query above doesn't.
@@ -153,12 +159,16 @@ class FeedService
         }
 
         $query = Post::query()
+            ->visibleTo($user)
+            ->where('recommendation_eligible', true)
+            ->whereIn('user_id', User::query()->where('account_visibility', AccountVisibility::Public->value)->select('id'))
             ->whereIn('id', $ids)
             ->where('user_id', '!=', $user->id)
             ->with(['user', 'media'])
             ->withCount(['likes', 'comments']);
 
-        $posts = $this->blocks->excludeBlocked($query, $user, 'user_id')->get();
+        $query = $this->blocks->excludeBlocked($query, $user, 'user_id');
+        $posts = $this->mutes->excludeMuted($query, $user, 'user_id')->get();
 
         $rank = array_flip($ids);
 

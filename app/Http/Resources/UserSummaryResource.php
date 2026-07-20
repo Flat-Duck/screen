@@ -24,6 +24,7 @@ class UserSummaryResource extends JsonResource
             'username' => $this->username,
             'name' => $this->name,
             'avatar_url' => $this->avatarUrl(),
+            'account_visibility' => $this->account_visibility->value,
         ];
     }
 }

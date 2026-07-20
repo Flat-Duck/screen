@@ -9,6 +9,7 @@ use App\Models\Post;
 use App\Models\User;
 use App\Services\BlockService;
 use App\Services\CommentService;
+use App\Services\InteractionPermissionService;
 use App\Services\LikeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,6 +21,7 @@ class CommentController extends Controller
         private readonly CommentService $comments,
         private readonly BlockService $blocks,
         private readonly LikeService $likes,
+        private readonly InteractionPermissionService $interactions,
     ) {}
 
     public function index(Request $request, Post $post): AnonymousResourceCollection
@@ -31,7 +33,9 @@ class CommentController extends Controller
             abort(404);
         }
 
-        $comments = $this->comments->commentsForPost($post);
+        abort_unless($post->isVisibleTo($viewer), 404);
+
+        $comments = $this->comments->commentsForPost($post, $viewer);
         $this->likes->annotateCommentsAreLiked($comments->getCollection(), $viewer);
 
         return CommentResource::collection($comments);
@@ -46,10 +50,14 @@ class CommentController extends Controller
             abort(403);
         }
 
+        abort_unless($post->isVisibleTo($user), 404);
+        abort_unless($post->comments_enabled && $this->interactions->canComment($user, $post->user), 403);
+
         $validated = $request->validated();
         $comment = $this->comments->addComment($user, $post, $validated['body'], $validated['parent_id'] ?? null);
         $comment->load('user');
         $comment->is_liked = false;
+        $comment->is_filtered = false;
 
         return (new CommentResource($comment))->response()->setStatusCode(201);
     }
@@ -63,7 +71,9 @@ class CommentController extends Controller
             abort(404);
         }
 
-        $replies = $this->comments->repliesFor($comment);
+        abort_unless($comment->post->isVisibleTo($viewer), 404);
+
+        $replies = $this->comments->repliesFor($comment, $viewer);
         $this->likes->annotateCommentsAreLiked($replies->getCollection(), $viewer);
 
         return CommentResource::collection($replies);

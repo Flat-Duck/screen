@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 /**
  * @property bool|null $is_liked Set per-request by LikeService for the current viewer — not a DB column.
+ * @property bool|null $is_filtered Set per-request for the current viewer — not a DB column.
  */
 class Comment extends Model
 {
@@ -75,5 +76,11 @@ class Comment extends Model
     public function likes(): MorphMany
     {
         return $this->morphMany(Like::class, 'likeable');
+    }
+
+    /** @return MorphMany<ContentFilterMatch, $this> */
+    public function filterMatches(): MorphMany
+    {
+        return $this->morphMany(ContentFilterMatch::class, 'filterable');
     }
 }

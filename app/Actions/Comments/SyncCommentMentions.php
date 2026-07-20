@@ -4,8 +4,10 @@ namespace App\Actions\Comments;
 
 use App\Models\Comment;
 use App\Models\Mention;
+use App\Models\User;
 use App\Notifications\MentionedNotification;
 use App\Services\BlockService;
+use App\Services\InteractionPermissionService;
 use App\Services\MuteService;
 use App\Support\MentionParser;
 
@@ -20,6 +22,7 @@ class SyncCommentMentions
         private readonly MentionParser $parser,
         private readonly BlockService $blocks,
         private readonly MuteService $mutes,
+        private readonly InteractionPermissionService $interactions,
     ) {}
 
     public function __invoke(Comment $comment, string $body): void
@@ -46,6 +49,12 @@ class SyncCommentMentions
         }
 
         foreach ($mentionedUserIds->diff($existingIds) as $userId) {
+            $mentionedUser = User::query()->where('id', (int) $userId)->first();
+
+            if ($mentionedUser === null || ! $this->interactions->canMention($comment->user, $mentionedUser)) {
+                continue;
+            }
+
             $mention = Mention::create([
                 'mentioner_id' => $comment->user_id,
                 'mentioned_user_id' => $userId,

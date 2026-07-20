@@ -14,6 +14,17 @@ class ProfileApiTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_suspended_profiles_and_posts_are_not_publicly_visible(): void
+    {
+        $viewer = User::factory()->create();
+        $suspended = User::factory()->create(['is_active' => false]);
+        Sanctum::actingAs($viewer);
+
+        $this->getJson("/api/v1/users/{$suspended->id}")->assertNotFound();
+        $this->getJson("/api/v1/users/{$suspended->id}/posts")->assertNotFound();
+        $this->getJson("/api/v1/users/{$suspended->id}/top-tags")->assertNotFound();
+    }
+
     public function test_viewing_a_public_profile_returns_post_and_follow_counts(): void
     {
         $target = User::factory()->create();

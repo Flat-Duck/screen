@@ -19,7 +19,8 @@ class CommentResource extends JsonResource
         return [
             'id' => $this->id,
             'parent_id' => $this->parent_id,
-            'body' => $this->body,
+            'body' => ($this->is_filtered ?? false) ? null : $this->body,
+            'is_filtered' => (bool) ($this->is_filtered ?? false),
             'user' => new UserSummaryResource($this->whenLoaded('user')),
             'replies_count' => $this->replies_count ?? 0,
             'likes_count' => $this->likes_count ?? 0,

@@ -5,6 +5,7 @@ namespace App\Notifications\Channels;
 use App\Models\DevicePushToken;
 use App\Models\User;
 use App\Notifications\Contracts\FcmNotification;
+use App\Notifications\Contracts\SecurityFcmNotification;
 use App\Services\Fcm\FcmClient;
 use App\Services\SettingsService;
 use Illuminate\Notifications\Notification;
@@ -38,7 +39,8 @@ class FcmChannel
             return;
         }
 
-        if (! $this->settings->pushNotificationsEnabledFor($notifiable, $notification->settingsKey())) {
+        if (! $notification instanceof SecurityFcmNotification
+            && ! $this->settings->pushNotificationsEnabledFor($notifiable, $notification->settingsKey())) {
             return;
         }
 

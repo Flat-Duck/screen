@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\ConversationState;
 use App\Http\Requests\StoreMessageRequest;
 use App\Http\Resources\MessageResource;
 use App\Models\Conversation;
@@ -30,13 +31,16 @@ class ConversationMessageController extends Controller
     {
         $this->authorize('view', $conversation);
 
+        /** @var User $user */
+        $user = $request->user();
+
         $after = $request->integer('after');
 
         if ($after > 0) {
-            return MessageResource::collection($this->messages->messagesSince($conversation, $after));
+            return MessageResource::collection($this->messages->messagesSince($conversation, $user, $after));
         }
 
-        return MessageResource::collection($this->messages->messagesFor($conversation));
+        return MessageResource::collection($this->messages->messagesFor($conversation, $user));
     }
 
     public function store(StoreMessageRequest $request, Conversation $conversation): JsonResponse
@@ -45,6 +49,8 @@ class ConversationMessageController extends Controller
 
         /** @var User $user */
         $user = $request->user();
+
+        abort_unless($conversation->state === ConversationState::Active, 409);
 
         $other = $this->conversations->otherParticipant($conversation, $user);
 

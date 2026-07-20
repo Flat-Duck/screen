@@ -19,7 +19,8 @@ class MessageResource extends JsonResource
         return [
             'id' => $this->id,
             'conversation_id' => $this->conversation_id,
-            'body' => $this->body,
+            'body' => ($this->is_filtered ?? false) ? null : $this->body,
+            'is_filtered' => (bool) ($this->is_filtered ?? false),
             'sender' => new UserSummaryResource($this->whenLoaded('sender')),
             'created_at' => $this->created_at,
         ];

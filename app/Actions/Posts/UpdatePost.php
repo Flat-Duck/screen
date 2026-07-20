@@ -11,7 +11,7 @@ class UpdatePost
         private readonly SyncPostMentions $syncMentions,
     ) {}
 
-    /** @param array{caption?: string|null} $data */
+    /** @param array{caption?: string|null, comments_enabled?: bool, reposts_enabled?: bool} $data */
     public function __invoke(Post $post, array $data): Post
     {
         if (array_key_exists('caption', $data)) {
@@ -25,6 +25,16 @@ class UpdatePost
             // SyncPostMentions).
             ($this->syncHashtags)($post, $post->caption);
             ($this->syncMentions)($post, $post->caption);
+        }
+
+        foreach (['comments_enabled', 'reposts_enabled'] as $permission) {
+            if (array_key_exists($permission, $data)) {
+                $post->{$permission} = $data[$permission];
+            }
+        }
+
+        if ($post->isDirty()) {
+            $post->save();
         }
 
         return $post;

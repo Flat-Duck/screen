@@ -6,7 +6,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
-/** No factory — tests create reports via the API endpoint. */
+/**
+ * No factory — tests create reports via the API endpoint.
+ *
+ * @property int|null $moderation_case_id
+ */
 class Report extends Model
 {
     public const STATUS_PENDING = 'pending';
@@ -24,6 +28,7 @@ class Report extends Model
         'post' => Post::class,
         'comment' => Comment::class,
         'user' => User::class,
+        'conversation' => Conversation::class,
     ];
 
     protected $fillable = [
@@ -36,6 +41,7 @@ class Report extends Model
         'reviewed_by',
         'reviewed_at',
         'resolution_note',
+        'moderation_case_id',
     ];
 
     /**
@@ -70,5 +76,11 @@ class Report extends Model
     public function reportable(): MorphTo
     {
         return $this->morphTo();
+    }
+
+    /** @return BelongsTo<ModerationCase, $this> */
+    public function moderationCase(): BelongsTo
+    {
+        return $this->belongsTo(ModerationCase::class);
     }
 }

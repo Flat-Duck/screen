@@ -10,5 +10,7 @@ final readonly class CreatePostData
     public function __construct(
         public ?string $caption,
         public array $images,
+        public bool $commentsEnabled = true,
+        public bool $repostsEnabled = true,
     ) {}
 }
