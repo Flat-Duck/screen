@@ -450,6 +450,13 @@ Provide moderators with complete context and controlled actions.
 
 ## Milestone 2.3 — Admin user detail and scoped restrictions
 
+**Status: implemented 2026-07-20.** The admin user detail combines account state, social counts,
+recent screenshots, devices, sessions, connected providers, reports, warnings, restrictions,
+moderation audit history, and support notes. Posting, commenting, messaging, recommendation, and
+login restrictions are independently and immediately enforced. Restrictions support future starts,
+automatic time-based expiry, overlap, extension, revocation, optional permanent duration, case
+linkage, mandatory reasons, and audit records. Login restrictions revoke current sessions.
+
 ### Objective
 
 Support users without relying on full account suspension.
@@ -482,6 +489,11 @@ reports, restrictions, moderation history, connected-account summary, and suppor
 - Restriction creation/revocation is audited.
 
 ## Milestone 3.1 — Alt text and screenshot metadata
+
+**Status: implemented 2026-07-20.** Post creation accepts position-aligned `media_metadata`,
+owners can update an individual image's alt text without replacing it, and post resources expose
+safe structured context while withholding OCR text and perceptual hashes. Active categories are
+available through a dedicated mobile discovery endpoint.
 
 ### Objective
 
@@ -525,6 +537,14 @@ content_warning
 
 ## Milestone 3.2 — OCR and duplicate processing
 
+**Status: implemented 2026-07-20.** New media dispatches independent, retryable OCR and
+perceptual-hash jobs after the post transaction commits; successful OCR dispatches screenshot
+safety evaluation. Provider-version checks make jobs idempotent and allow deliberate
+reprocessing after analyzer upgrades. OCR is encrypted at rest, excluded from public resources
+and search, bounded to 50,000 characters, and deleted with its media. Duplicate detection stores
+an indexed 64-bit difference hash; all processors record pending/processing/ready-or-result/failed
+states without logging extracted text.
+
 ### Objective
 
 Extract searchable text and detect repeated screenshots asynchronously.
@@ -561,6 +581,15 @@ tests for production search behavior.
 
 ## Milestone 3.3 — Sensitive-information warning contract
 
+**Status: implemented 2026-07-20.** The mobile-safe creation path now stages screenshots under an
+owner-scoped UUID token for 30 minutes, processes them before any `Post` exists, and returns only
+finding categories plus normalized regions. Warning analyses require explicit acknowledgement in
+the atomic publish request; the post records the acknowledgement timestamp and analyzer version.
+Clients redact locally and submit a new analysis, explicitly continue, or cancel. Expired,
+cancelled, and abandoned staging files are removed by the existing media cleanup workflow. The
+original direct-post endpoint remains temporarily available for backward compatibility while
+mobile clients migrate to the staged contract.
+
 ### Objective
 
 Let the mobile client warn and help users redact before final publication.
@@ -588,6 +617,14 @@ Avoid creating a publicly visible post before the warning decision is complete.
 - Cleanup of abandoned analyses.
 
 ## Milestone 4.1 — Impression and interaction events
+
+**Status: implemented 2026-07-20.** `/api/v1/analytics/content-events` accepts transactional,
+idempotent batches of up to 50 allow-listed behavioral events and derives user, device, and
+session identity from the active mobile token. Post visibility, author ownership, block state,
+event time, event-specific metadata, payload size, and rate limits are enforced before insertion.
+Analytics rows never mutate authoritative social tables. Raw events have a documented 90-day
+retention window and are removed by a daily scheduled command; longer-lived aggregate tables are
+deferred to Milestone 4.2.
 
 ### Objective
 
@@ -661,6 +698,14 @@ POST /api/v1/analytics/content-events
 
 ## Milestone 4.2 — Aggregates and internal analytics
 
+**Status: implemented 2026-07-20.** Rebuildable UTC aggregates now cover daily product activity,
+post exposure/interaction, user-author affinity, user-category affinity, recommendation feedback,
+and day-0 through day-30 retention cohorts. The scheduled command rebuilds the current partial day
+hourly and the completed prior day after midnight, with bounded date/range backfills for repair.
+The admin dashboard now presents the required overview, conversion, safety, retention,
+moderation, and crash-free metrics with explicit partial-day labeling. Metric definitions and
+affinity weights live in `docs/future_03_analytics_metrics.md`.
+
 ### Objective
 
 Turn events into product and recommendation metrics.
@@ -696,6 +741,11 @@ Add overview cards and charts for:
 
 ## Milestone 4.3 — Feature flags and experiments
 
+**Status: implemented (2026-07-20).** Server-managed flags, deterministic versioned experiment
+assignments, exposure propagation, kill switches, audited configuration commands, protected safety
+namespaces, and a read-only admin status page are now available. See
+`docs/future_04_feature_flags_experiments.md` for the operational and mobile contract.
+
 ### Objective
 
 Roll out feed changes safely.
@@ -716,6 +766,11 @@ Roll out feed changes safely.
 - Log configuration changes in the admin audit log.
 
 ## Milestone 5.1 — Candidate generation
+
+**Status: implemented (2026-07-20).** Nine bounded generators now cover the eight planned source
+families (hashtags and categories are separate), with centralized hard eligibility, deduplication,
+source provenance, versioned Redis hot pools, database fallback, and scheduled TTL refresh. See
+`docs/future_05_candidate_generation.md`.
 
 ### Objective
 
@@ -750,6 +805,11 @@ Each candidate must include source, source score, generated time, and eligibilit
 - Deterministic test fixtures for each source.
 
 ## Milestone 5.2 — Personalized scoring and mixing
+
+**Status: implemented (2026-07-20).** Candidate feature hydration, deterministic explainable
+scoring, bounded diversity/source mixing, persisted feed-session pagination, recommendation
+metadata, and explicit Following/For You APIs are available. See
+`docs/future_06_personalized_ranking.md` for the API and operational contract.
 
 ### Objective
 
@@ -816,6 +876,11 @@ Include non-sensitive recommendation metadata:
 
 ## Milestone 5.3 — Recommendation feedback and administration
 
+**Status: implemented (2026-07-20).** Durable user-local post and target feedback, recommendation
+profile reset, immediate session invalidation, global audited exclusions, score diagnostics,
+anomaly indicators, and an independent For You serving kill switch are available. See
+`docs/future_07_recommendation_feedback_admin.md`.
+
 ### API
 
 Add:
@@ -844,6 +909,10 @@ DELETE /api/v1/recommendations/profile
 - Admin actions are permission-gated and audited.
 
 ## Milestone 6.1 — Saved screenshot collections
+
+**Status: implemented (2026-07-21).** Private owner-only collections, notes, transactional ordering,
+optimistic versions, automatic saving, multi-collection membership, visibility-safe listing, and
+global-unsave cleanup are available. See `docs/future_08_saved_collections.md`.
 
 ### Data model
 
@@ -881,6 +950,9 @@ DELETE /api/v1/collections/{collection}/posts/{post}
 - Collection access must not override post privacy or deletion.
 - Decide whether deleted/inaccessible posts leave a tombstone or disappear.
 
+Decision: inaccessible posts are omitted from API results without a tombstone while membership is
+retained; permanent post deletion removes membership through database cascading.
+
 ### Tests
 
 - Ownership authorization.
@@ -889,6 +961,9 @@ DELETE /api/v1/collections/{collection}/posts/{post}
 - Private-post visibility changes.
 
 ## Milestone 6.2 — Archive and recently deleted
+
+**Status: implemented (2026-07-21).** Owner-only archive, retained deletion, restoration, and
+step-up-protected permanent deletion are available. See `docs/future_09_archive_recently_deleted.md`.
 
 ### Objective
 
@@ -917,6 +992,10 @@ media cleanup safely.
 
 ## Milestone 7.1 — Operations dashboard
 
+**Status: implemented (2026-07-21).** The role-gated dashboard, minute-level dependency snapshots,
+durable scheduled-task runs, bounded API metrics, workflow backlogs, storage totals, and app-version
+adoption are available. See `docs/future_10_operations_dashboard.md`.
+
 ### Objective
 
 Expose the state of every production dependency and background workflow.
@@ -939,6 +1018,10 @@ Expose the state of every production dependency and background workflow.
 - Protect secrets and internal exception details by role.
 
 ## Milestone 7.2 — Telemetry triage
+
+**Status: implemented (2026-07-21).** Durable fingerprint groups, filtered occurrence analysis,
+representative samples, assignment, audited notes and state transitions, and fixed-release tracking
+are available. See `docs/future_11_crash_triage.md`.
 
 ### Objective
 
@@ -964,6 +1047,10 @@ Create crash groups keyed by fingerprint with:
 - Resolve/reopen/ignore actions
 
 ## Milestone 7.3 — Contracts, load tests, and runbooks
+
+**Status: implemented (2026-07-21).** Route-complete OpenAPI export and CI drift checks, validated
+mobile models, opt-in k6 scenarios, and production incident/drill runbooks are available. See
+`docs/future_12_release_readiness.md`.
 
 ### Deliverables
 

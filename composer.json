@@ -75,10 +75,14 @@
         "types:check": [
             "phpstan analyse --memory-limit=1G"
         ],
+        "contract:check": [
+            "@php artisan api:export-contract --check"
+        ],
         "test": [
             "@php artisan config:clear --ansi",
             "@lint:check",
             "@types:check",
+            "@contract:check",
             "@php artisan test"
         ],
         "post-autoload-dump": [

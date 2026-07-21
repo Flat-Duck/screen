@@ -219,6 +219,21 @@ cursor because relevance is a computed order rather than a stable ID order.
 - Recommendation-ineligible posts are excluded from trending refresh, discovery injection, and
   Explore even if stale IDs remain in Redis.
 
+## Admin-only: 2026-07-20 — User detail and scoped restrictions
+
+- `/users/{id}` now provides account/moderation state, social and connected-account summaries,
+  recent screenshots, devices, sessions, reports, warnings, restrictions, audit history, and
+  internal support notes. The page is permission-gated and returned with no-store headers.
+- Restriction types are `posting`, `commenting`, `messaging`, `recommendation`, and `login`.
+  They may be scheduled, temporary, permanent, overlapping, extended, or revoked. Expiry is
+  evaluated from timestamps at authorization time and therefore needs no cleanup job to become
+  effective.
+- Restricted API writes return `403`; reading existing comments/messages remains available.
+  Recommendation restrictions affect only Explore/discovery, not followers' chronological feed.
+  Login restrictions reject new sessions and immediately revoke existing sessions/tokens.
+- Restriction creation, extension, revocation, and support notes are audited with the acting admin
+  and reason. Admins cannot apply restrictions to themselves through this workflow.
+
 ### 9. Hashtag browse pages + follow
 
 - `GET /v1/hashtags/{name}` — single hashtag: `name`, `posts_count`, `is_followed`. Route
@@ -340,10 +355,294 @@ The following claims in that doc are now outdated as of this hand-off:
 
 ## What's Next
 
-Nothing is currently in progress on the backend — the full feature roadmap from the
-2026-07-19 audit (safety/moderation, engagement depth, discovery, sharing & messaging) has
-shipped end to end. Explicitly deferred, no timeline, no work started: Groups, Stories,
-encrypted Vault sync, per-viewer feed personalization/ML ranking. Same status as
-`docs/mobile-app-plan.md` already describes — nothing new here. If/when a new phase of
-backend work starts, it'll show up as a new dated section above this one, same as every
-other entry in this doc.
+All milestones in the current backend roadmap have shipped. The next phase is mobile integration
+against the OpenAPI contract, a staging load test, and production-readiness drills before launch.
+
+---
+
+## Shipped: 2026-07-21 — private saved collections (Milestone 6.1)
+
+- `GET /v1/collections` lists the authenticated user's collections in zero-based `position` order.
+- `POST /v1/collections` accepts `name` (required, 100 characters), nullable `description` (500),
+  and optional `visibility: "private"`. Public/shared collections are not supported.
+- `PATCH /v1/collections/{id}` updates `name`, `description`, or `position` and requires the current
+  integer `version`.
+- `DELETE /v1/collections/{id}` requires `{"version": N}`. Deleting a collection does not globally
+  unsave its screenshots.
+- `GET /v1/collections/{id}/posts` cursor-paginates collection items. Each item contains private
+  `note`, zero-based `position`, `version`, and a nested `PostResource`. The top-level `collection`
+  object provides the current collection version.
+- `POST /v1/collections/{id}/posts/{post}` requires `collection_version`; optional fields are
+  `note` and `position`. It automatically adds the screenshot to the general Saved list. Repeating
+  an existing add is idempotent and returns `200`; a new membership returns `201`.
+- `PATCH /v1/collections/{id}/posts/{post}` requires both `collection_version` and item `version`,
+  and updates `note` and/or `position`.
+- `DELETE /v1/collections/{id}/posts/{post}` requires both versions. Removing one membership does
+  not globally unsave the screenshot.
+- A stale version returns `409`; refetch the collection/items and retry the user's intended change.
+- Collections are owner-only. Access to another user's collection returns `404`.
+- One screenshot may belong to multiple collections, but only once per collection. Globally
+  un-saving it removes all of the acting user's collection memberships.
+- Inaccessible screenshots are omitted without tombstones while membership is retained. They can
+  reappear if private-account access returns. Permanent post deletion cascades membership removal.
+
+---
+
+## Shipped: 2026-07-21 — archive and recently deleted (Milestone 6.2)
+
+- `POST /v1/posts/{id}/archive` privately archives an owned screenshot; repeating it is safe.
+- `DELETE /v1/posts/{id}/archive` restores an owned archived screenshot; repeating it is safe.
+- `GET /v1/archived-posts` cursor-paginates only the authenticated user's archived screenshots.
+- Archived screenshots disappear from all public/profile/feed/search/recommendation and saved-
+  collection reads. Saved and collection memberships remain stored.
+- The existing `DELETE /v1/posts/{id}` moves an active or archived screenshot into Recently
+  Deleted and keeps its media during the retention window.
+- `GET /v1/recently-deleted-posts` cursor-paginates owned screenshots still inside the configured
+  retention window (30 days by default). `deleted_at` and `scheduled_purge_at` are included.
+- `POST /v1/posts/{id}/restore` restores an eligible screenshot as active content. It returns `410`
+  after the retention window and `409` once permanent cleanup has begun.
+- `DELETE /v1/posts/{id}/permanently-delete` permanently removes the row and media. It uses the
+  same step-up contract as account deletion: current password, TOTP recovery flow, or emailed
+  confirmation code depending on the account. It returns `409` if cleanup is already running.
+- Every endpoint is owner-only and uses `404` for another user's or unavailable screenshot ID.
+- `PostResource` now always exposes nullable `archived_at`, `deleted_at`, and
+  `scheduled_purge_at`; normal active responses contain nulls for these fields.
+
+---
+
+## Shipped: 2026-07-21 — operations dashboard (Milestone 7.1)
+
+- `/operations` is an admin-web page available only to super-admins and telemetry viewers. It is
+  intentionally not a mobile API and stores/displays no credentials or raw exception messages.
+- `operations:capture-health` records database, Redis, media-storage, mail, and FCM state plus
+  queue/failed-job counts, media and cleanup failures, security-mail backlog, screenshot storage,
+  and 30-day app-version adoption.
+- The scheduler runs that capture every minute. Snapshots older than five minutes are visibly
+  marked stale and snapshot history is retained for 30 days.
+- Every scheduled command records its latest start, success/failure, and runtime so a missing
+  scheduler and stalled workflows are distinguishable.
+- `/api/*` traffic is aggregated into minute buckets containing counts, 5xx errors, 429 responses,
+  total latency, and maximum latency. No URL, body, token, user ID, IP address, or headers are
+  retained. Buckets are pruned after 30 days.
+- Production must run `php artisan schedule:run` every minute and queue workers for `default`,
+  `security`, and `media`; otherwise the dashboard will correctly become stale or show backlogs.
+
+---
+
+## Shipped: 2026-07-21 — crash-group triage (Milestone 7.2)
+
+- `/crash-groups` groups fatal and non-fatal errors by the existing redacted stable fingerprint.
+  It is an admin-web workflow, not a mobile endpoint.
+- Groups retain status, assignment, notes, counts, first/last seen time, and fixed app version even
+  after raw telemetry expires under its normal retention policy.
+- The list supports status, app release, Android OS, device manufacturer/model, exception, name,
+  and fingerprint filters.
+- Detail pages show a 14-day occurrence chart, filtered occurrence count, and ten recent sample
+  events linking to existing raw-event inspection.
+- Telemetry viewers may read triage data. Only super-admins may assign/unassign, add internal notes,
+  investigate, resolve, ignore, or reopen groups. Every mutation requires a reason and is audited.
+- Valid states are `open`, `investigating`, `resolved`, and `ignored`. Resolved or ignored groups
+  can be reopened; reopening clears the previous fixed-version value.
+- Event ingestion updates groups idempotently. A retry repairs an event left ungrouped by a
+  transient failure without increasing occurrence or affected-user counts twice.
+
+---
+
+## Shipped: 2026-07-21 — contracts, load tests, and runbooks (Milestone 7.3)
+
+- `docs/openapi-v1.json` is the OpenAPI 3.1 contract for every registered mobile route. It records
+  public/device/user authentication boundaries and reusable request/response models.
+- Run `php artisan api:export-contract` after an intentional API change. `composer test` runs
+  `api:export-contract --check` and fails if routes and the committed document have drifted.
+- Contract tests validate route/method completeness, `$ref` integrity, unique operation IDs,
+  backend-required request fields, and real `PostResource`/`UserResource` payloads.
+- `load/k6/mobile-api.js` covers feed, Explore, search, notifications, screenshot upload,
+  messaging, analytics ingestion, and device telemetry. Mutating scenarios require explicit
+  environment variables and must run only in an authorized staging/disposable environment.
+- Runbooks now cover database/media backup and restore drills, queue/scheduler outages, moderation
+  escalation, account compromise, and deletion incidents under `docs/runbooks/`.
+
+---
+
+## Shipped: 2026-07-20 — recommendation feedback (Milestone 5.3)
+
+- `POST /v1/posts/{post}/not-interested` hides a post from that user's recommendation candidates;
+  `DELETE` the same endpoint to undo it. Both operations are idempotent.
+- `POST /v1/posts/{post}/hide` permanently hides the post from that user's recommendation
+  candidates in v1. There is intentionally no restore endpoint for Hide yet.
+- `POST /v1/users/{user}/show-fewer` applies a negative ranking signal to that author's future
+  candidates. It is not a block, mute, or complete exclusion.
+- `POST /v1/hashtags/{hashtag}/show-fewer` applies the equivalent topic penalty. Hashtags use their
+  normalized name in the route, as with existing hashtag endpoints.
+- `DELETE /v1/recommendations/profile` clears post feedback, author/topic show-fewer state, affinity
+  rows, raw recommendation interaction events, and outstanding For You sessions. It does not delete
+  the account, login/device sessions, security history, posts, saves, follows, blocks, or messages.
+- Every feedback mutation invalidates outstanding For You snapshots for the acting user. Start the
+  next request without the previous cursor; an invalidated cursor returns `422`.
+- Feedback is user-local. Administrative exclusions are the only feedback controls that affect all
+  users.
+- Administrators can disable For You globally. During a shutdown, `/feed/for-you` returns an empty
+  valid response, including for existing cursors; `/feed/following` continues normally.
+
+---
+
+## Shipped: 2026-07-20 — personalized feeds (Milestone 5.2)
+
+- `GET /v1/feed/following` is the explicit reverse-chronological feed of followed accounts. It uses
+  the existing Laravel cursor pagination and does not contain recommendation metadata.
+- `GET /v1/feed/for-you` is the personalized feed. It accepts `per_page` from 1–30 and an opaque
+  `cursor`; never inspect, construct, or persist assumptions about the cursor format.
+- A first For You request creates a short-lived stable feed session. Subsequent cursors page through
+  that immutable ranking without duplicates or cursor drift. Starting without a cursor creates a
+  fresh ranking.
+- The For You response adds `meta.feed_session_id`, `meta.request_id`, `meta.next_cursor`, and
+  `meta.has_more`. Each post adds:
+
+```json
+{
+  "recommendation": {
+    "request_id": "7bc1d3d0-...",
+    "source": "followed_hashtag",
+    "reason": "Related to a hashtag you follow"
+  }
+}
+```
+
+- Send that `request_id`, `source` as `candidate_source`, position, and `surface: "for_you_feed"`
+  with Milestone 4.1 interaction events. Reasons are display-safe server text; clients may show them
+  directly but should not branch product logic on the wording.
+- A cursor returns `422` if malformed, expired, or used by another user. On that response, discard it
+  and start a new For You request without a cursor.
+- Hard safety/privacy changes are rechecked on every page. A blocked, moderated, or newly private
+  item may therefore disappear from an existing session; this policy takes priority over filling
+  every requested page slot.
+- `GET /v1/feed` remains the legacy compatibility endpoint during migration.
+
+---
+
+## Shipped: 2026-07-20 — recommendation candidate generation (Milestone 5.1)
+
+- This is an internal recommendation-pipeline layer; existing feed endpoints and response shapes do
+  not change yet.
+- The server now builds bounded candidate pools from following, hashtags, categories, global and
+  country trending, two-hop follows, author/topic affinities, and new-creator exploration.
+- Privacy, account visibility, blocks, mutes, recommendation restrictions, moderation eligibility,
+  screenshot safety, and prior negative feedback are applied before candidates reach ranking.
+- Candidate records carry their source, source-local score, generation time, and eligibility
+  metadata. Duplicate posts retain the first source plus additional-source provenance.
+- Milestone 5.2 will consume these pools and introduce the mobile-facing For You contract. Do not
+  infer or reproduce these candidate rules on the client.
+
+---
+
+## Shipped: 2026-07-20 — feature flags and experiments (Milestone 4.3)
+
+- `GET /v1/feature-configuration` returns `data.flags` and
+  `data.experiment_assignments` for the authenticated user.
+- Flags are keyed by their canonical string key. Each enabled flag contains `version` and a
+  server-defined `payload`. A missing flag is off for that user; do not apply a local rollout.
+- `GET /v1/feed` now includes a top-level `experiment_assignments` object. Cache it with the feed
+  page and echo it on related Milestone 4.1 interaction events.
+- The server validates reported assignments against assignments it previously issued to that user.
+  Forged or locally selected variants return `422`.
+- Assignments are deterministic and sticky within an experiment version. Version changes may issue
+  a new assignment; previously issued versions remain valid for delayed/offline event uploads.
+- Start/end windows and kill switches are enforced by the server. Clients should treat absent flags
+  and assignments as disabled and must not retain them past the latest configuration response.
+- Privacy, moderation, safety, authentication, and visibility behavior are excluded from
+  experimentation by policy and validation.
+
+---
+
+## Shipped: 2026-07-20 — screenshot accessibility and context (Milestone 3.1)
+
+- `GET /v1/screenshot-categories` returns active options in display order as
+  `{id, slug, name}[]`.
+- `POST /v1/posts` accepts optional `media_metadata`, with exactly one object per uploaded image
+  and in the same order: `media_metadata[0][alt_text]`, etc. Alt text is nullable and limited to
+  1,000 characters.
+- Post create/update accepts nullable `category_id`, `source_application` (100 characters),
+  `source_url` (2,048 characters; public HTTP/HTTPS only), and `content_warning`
+  (`sensitive` or `spoiler`).
+- `PATCH /v1/posts/{post}/media/{media}` updates the owner's alt text using
+  `{"alt_text": "Description"}`; send `null` to clear it. The image itself is unchanged.
+- `PostResource` adds `category`, `source_application`, `source_url`, and `content_warning`.
+  `PostMediaResource` adds `alt_text` and `safety_status`.
+- OCR text, OCR metadata, and perceptual hashes are deliberately private server fields and are
+  not returned by the API.
+
+---
+
+## Shipped: 2026-07-20 — screenshot processing (Milestone 3.2)
+
+- OCR, duplicate hashing, and sensitive-information evaluation now run asynchronously for every
+  uploaded screenshot. This does not delay post creation or image availability.
+- `media[].safety_status` now resolves from `pending` to `clear`, `warning`, or `failed`.
+  `warning` means the client should display a generic caution; the API intentionally supplies no
+  detected text or secret details.
+- OCR and duplicate data remain internal. OCR does not affect search results yet, and no new OCR
+  or duplicate fields were added to the mobile response.
+- Operational requirement: media workers need Tesseract installed, or
+  `SOCIAL_OCR_BINARY` configured to a compatible executable. Language defaults to `eng` and can
+  be changed with `SOCIAL_OCR_LANGUAGE`.
+
+---
+
+## Shipped: 2026-07-20 — pre-publication safety flow (Milestone 3.3)
+
+Use this flow for all new mobile post creation; `POST /v1/posts` remains temporarily available only
+so older clients do not break.
+
+1. `POST /v1/media/analyses` as multipart with `images[]` and optional position-aligned
+   `media_metadata[][alt_text]`. Returns `202` with `{token, status, expires_at,
+   requires_acknowledgement, items}`. Tokens expire after 30 minutes.
+2. If `status` is `processing`, poll `GET /v1/media/analyses/{token}`. Each item returns only
+   `position`, processing `status`, `safety_status`, and findings shaped as
+   `{category, region: {x, y, width, height}}`. Coordinates are normalized from 0 to 1. No
+   detected text is returned.
+3. On a warning, either redact locally and cancel/re-upload, cancel with
+   `DELETE /v1/media/analyses/{token}`, or explicitly continue.
+4. Publish with `POST /v1/media/analyses/{token}/publish`, sending the normal caption/category/
+   source/content-warning fields. If `requires_acknowledgement` is true, also send
+   `acknowledge_sensitive: true`; otherwise the API returns `422`. Publishing returns the normal
+   `PostResource` with `201` and consumes the token.
+
+Tokens are private to their creator: another user receives `404`. Expired tokens return `410`,
+unfinished analyses return `409` on publish, and abandoned files are removed automatically.
+
+---
+
+## Shipped: 2026-07-20 — content analytics ingestion (Milestone 4.1)
+
+`POST /v1/analytics/content-events` accepts `{events: [...]}` with 1–50 events and returns
+`{accepted_event_ids: [...]}`. Retry the same UUID safely: duplicates are idempotent. Batch the
+events periodically rather than sending one request per impression. The body is capped at 256 KB
+and the endpoint at 30 batches/minute.
+
+Every event requires `event_id` (UUID), `event_type`, `author_id`, `surface`, and `occurred_at`.
+Post-based events also require `post_id`. Optional common fields are `position` (0–999),
+`candidate_source`, `request_id` (UUID), and up to 20 `experiment_assignments`. Never send user,
+device, or session IDs; the server derives them from the active mobile token.
+
+Allowed event types: `impression`, `open`, `carousel_swipe`, `zoom`, `dwell`, `like`, `comment`,
+`save`, `collection_add`, `repost`, `share`, `profile_open`, `follow_author`, `hide`,
+`not_interested`, and `report`. Only `profile_open` and `follow_author` omit `post_id`.
+
+Allowed surfaces: `following_feed`, `for_you_feed`, `explore`, `search`, `hashtag`, `profile`,
+`post_detail`, `saved`, `notification`, and `share_sheet`. Allowed candidate sources are
+`following`, `trending`, `followed_hashtag`, `category`, `two_hop`, `similar_author`,
+`similar_topic`, `new_creator`, `search`, `profile`, `direct`, and `notification`.
+
+Event-specific metadata is deliberately narrow:
+
+- `dwell`: `duration_ms` (0–600,000)
+- `carousel_swipe`: `media_position` (0–9) and `direction` (`next`/`previous`)
+- `zoom`: `media_position`
+- `share`: `share_channel` (`system`, `copy_link`, or `external`)
+- `hide`/`not_interested`: `reason` (`not_relevant`, `seen_before`, `low_quality`, `sensitive`,
+  or `other`)
+
+Analytics events do not perform the action they describe. Continue calling the real like, save,
+follow, report, comment, and repost endpoints; analytics cannot change their counters or state.
+Events older than 30 days, more than five minutes in the future, before the current device session,
+for inaccessible posts, or with mismatched authors are rejected. Raw rows are retained for 90 days.
