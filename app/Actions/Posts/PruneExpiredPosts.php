@@ -5,6 +5,7 @@ namespace App\Actions\Posts;
 use App\Data\Maintenance\PruneSummary;
 use App\Enums\PostPurgeOutcome;
 use App\Models\Post;
+use App\Models\Scopes\NotArchivedScope;
 use DateTimeInterface;
 use Throwable;
 
@@ -16,7 +17,7 @@ final class PruneExpiredPosts
     {
         $purged = $busy = $alreadyGone = $failed = 0;
 
-        foreach (Post::onlyTrashed()->where('deleted_at', '<', $cutoff)->select('id')->lazyById(100) as $post) {
+        foreach (Post::withoutGlobalScope(NotArchivedScope::class)->onlyTrashed()->where('deleted_at', '<', $cutoff)->select('id')->lazyById(100) as $post) {
             try {
                 $outcome = ($this->purgePost)($post->id);
                 $purged += $outcome === PostPurgeOutcome::Purged ? 1 : 0;

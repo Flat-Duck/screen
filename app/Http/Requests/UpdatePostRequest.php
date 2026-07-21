@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\SafeSourceUrl;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdatePostRequest extends FormRequest
 {
@@ -33,6 +35,10 @@ class UpdatePostRequest extends FormRequest
             'caption' => ['sometimes', 'nullable', 'string', 'max:2200'],
             'comments_enabled' => ['sometimes', 'boolean'],
             'reposts_enabled' => ['sometimes', 'boolean'],
+            'category_id' => ['sometimes', 'nullable', 'integer', Rule::exists('screenshot_categories', 'id')->where('is_active', true)],
+            'source_application' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'source_url' => ['sometimes', 'nullable', 'string', 'max:2048', new SafeSourceUrl],
+            'content_warning' => ['sometimes', 'nullable', 'string', Rule::in(['sensitive', 'spoiler'])],
         ];
     }
 }

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Actions\Auth\RevokeUserSessions;
 use App\Enums\SessionEndReason;
+use App\Models\Scopes\NotArchivedScope;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
@@ -38,7 +39,7 @@ class AccountService
     public function deleteAccount(User $user): void
     {
         DB::transaction(function () use ($user): void {
-            $user->posts()->update([
+            $user->posts()->withoutGlobalScope(NotArchivedScope::class)->update([
                 'deleted_at' => now(),
                 'account_deleted_at' => now(),
             ]);

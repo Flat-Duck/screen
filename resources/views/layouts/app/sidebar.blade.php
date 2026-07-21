@@ -15,12 +15,28 @@
                     <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
                         {{ __('Dashboard') }}
                     </flux:sidebar.item>
+                    @can('viewOperations')
+                        <flux:sidebar.item icon="server-stack" :href="route('operations.index')" :current="request()->routeIs('operations.*')" wire:navigate>
+                            {{ __('Operations') }}
+                        </flux:sidebar.item>
+                    @endcan
+                    <flux:sidebar.item icon="beaker" :href="route('experiments.index')" :current="request()->routeIs('experiments.*')" wire:navigate>
+                        {{ __('Experiments') }}
+                    </flux:sidebar.item>
+                    @can('viewModeration')
+                        <flux:sidebar.item icon="sparkles" :href="route('recommendations.index')" :current="request()->routeIs('recommendations.*')" wire:navigate>
+                            {{ __('Recommendations') }}
+                        </flux:sidebar.item>
+                    @endcan
                     <flux:sidebar.item icon="device-phone-mobile" :href="route('devices.index')" :current="request()->routeIs('devices.*')" wire:navigate>
                         {{ __('Devices') }}
                     </flux:sidebar.item>
                     <flux:sidebar.item icon="bolt" :href="route('events.index')" :current="request()->routeIs('events.*')" wire:navigate>
                         {{ __('Events & Crashes') }}
                     </flux:sidebar.item>
+                    @can('viewTelemetry')
+                        <flux:sidebar.item icon="bug-ant" :href="route('crash-groups.index')" :current="request()->routeIs('crash-groups.*')" wire:navigate>{{ __('Crash triage') }}</flux:sidebar.item>
+                    @endcan
                     <flux:sidebar.item icon="bell" :href="route('notifications.index')" :current="request()->routeIs('notifications.*')" wire:navigate>
                         {{ __('Notifications') }}
                     </flux:sidebar.item>

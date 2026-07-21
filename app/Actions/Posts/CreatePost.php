@@ -4,6 +4,8 @@ namespace App\Actions\Posts;
 
 use App\Data\Posts\CreatePostData;
 use App\Data\Posts\StagedPostMedia;
+use App\Jobs\ComputePostMediaPerceptualHash;
+use App\Jobs\ExtractPostMediaText;
 use App\Jobs\GeneratePostMediaThumbnail;
 use App\Models\Post;
 use App\Models\PostMedia;
@@ -36,12 +38,16 @@ class CreatePost
                     'status' => Post::STATUS_PROCESSING,
                     'comments_enabled' => $data->commentsEnabled,
                     'reposts_enabled' => $data->repostsEnabled,
+                    'category_id' => $data->categoryId,
+                    'source_application' => $data->sourceApplication,
+                    'source_url' => $data->sourceUrl,
+                    'content_warning' => $data->contentWarning,
                 ]);
 
                 ($this->syncHashtags)($post, $data->caption);
 
                 foreach ($batch->media as $media) {
-                    $row = $this->createMediaRow($post, $media);
+                    $row = $this->createMediaRow($post, $media, $data->mediaMetadata[$media->position] ?? []);
                     GeneratePostMediaThumbnail::dispatch($row->id)->afterCommit();
                 }
 
@@ -56,6 +62,11 @@ class CreatePost
             // otherwise pick the job up before the post/mention rows are actually visible.
             ($this->syncMentions)($post, $data->caption);
 
+            foreach ($post->media as $media) {
+                ExtractPostMediaText::dispatch($media->id);
+                ComputePostMediaPerceptualHash::dispatch($media->id);
+            }
+
             return $post;
         } catch (Throwable $exception) {
             $this->stageMedia->cleanup($batch);
@@ -64,7 +75,8 @@ class CreatePost
         }
     }
 
-    private function createMediaRow(Post $post, StagedPostMedia $media): PostMedia
+    /** @param array{alt_text?: string|null} $metadata */
+    private function createMediaRow(Post $post, StagedPostMedia $media, array $metadata): PostMedia
     {
         return $post->media()->create([
             'position' => $media->position,
@@ -74,6 +86,7 @@ class CreatePost
             'mime_type' => $media->mimeType,
             'size_bytes' => $media->sizeBytes,
             'status' => PostMedia::STATUS_PENDING,
+            'alt_text' => $metadata['alt_text'] ?? null,
         ]);
     }
 }

@@ -8,6 +8,8 @@ class DeletePost
 {
     public function __invoke(Post $post): void
     {
+        $post->archived_at = null;
+        $post->save();
         $post->delete();
     }
 }

@@ -6,6 +6,7 @@ use App\Contracts\MediaFileStore;
 use App\Enums\PostPurgeOutcome;
 use App\Enums\PostPurgeStatus;
 use App\Models\Post;
+use App\Models\Scopes\NotArchivedScope;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Throwable;
@@ -30,7 +31,7 @@ class PurgePost
         }
 
         try {
-            $post = Post::onlyTrashed()->with('media')->find($postId);
+            $post = Post::withoutGlobalScope(NotArchivedScope::class)->onlyTrashed()->with('media')->find($postId);
 
             if (! $post) {
                 return PostPurgeOutcome::AlreadyGone;

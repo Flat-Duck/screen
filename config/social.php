@@ -22,6 +22,28 @@ return [
 
     'media_job_backoff_seconds' => [30, 120, 300],
 
+    'processing' => [
+        'analysis_ttl_minutes' => (int) env('SOCIAL_MEDIA_ANALYSIS_TTL_MINUTES', 30),
+        'ocr' => [
+            'binary' => env('SOCIAL_OCR_BINARY', 'tesseract'),
+            'language' => env('SOCIAL_OCR_LANGUAGE', 'eng'),
+            'timeout_seconds' => (int) env('SOCIAL_OCR_TIMEOUT_SECONDS', 45),
+            'max_characters' => (int) env('SOCIAL_OCR_MAX_CHARACTERS', 50_000),
+        ],
+        'safety' => [
+            // Detection only sets a warning state. Matched text is never returned or logged.
+            'patterns' => [
+                'credential' => [
+                    '/\bBearer\s+[A-Za-z0-9._~+\/-]+=*/i',
+                    '/\b(?:api[_-]?key|secret|password|token)\s*[:=]\s*\S+/i',
+                ],
+                'email_address' => ['/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i'],
+                'payment_card' => ['/\b(?:\d[ -]*?){13,19}\b/'],
+                'government_id' => ['/\b\d{3}-\d{2}-\d{4}\b/'],
+            ],
+        ],
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Post Retention
@@ -52,6 +74,49 @@ return [
     'account_retention_days' => env('SOCIAL_ACCOUNT_RETENTION_DAYS', 30),
 
     'message_request_rejection_cooldown_days' => (int) env('SOCIAL_MESSAGE_REQUEST_REJECTION_COOLDOWN_DAYS', 30),
+
+    'analytics' => [
+        // Raw event rows are intentionally short-lived. Milestone 4.2 aggregates will
+        // outlive them without retaining per-event behavioral history indefinitely.
+        'raw_event_retention_days' => (int) env('SOCIAL_ANALYTICS_RETENTION_DAYS', 90),
+    ],
+
+    'recommendations' => [
+        // Bump this prefix when pool semantics change; old keys then expire naturally.
+        'hot_pool_prefix' => env('SOCIAL_RECOMMENDATION_POOL_PREFIX', 'recommendations:v1:hot'),
+        'hot_pool_ttl_minutes' => (int) env('SOCIAL_RECOMMENDATION_POOL_TTL_MINUTES', 60),
+        'total_limit' => (int) env('SOCIAL_RECOMMENDATION_TOTAL_LIMIT', 250),
+        'page_size' => 15,
+        'ranking_version' => env('SOCIAL_RECOMMENDATION_RANKING_VERSION', 'v1'),
+        'feed_session_ttl_minutes' => (int) env('SOCIAL_RECOMMENDATION_SESSION_TTL_MINUTES', 30),
+        'two_hop_author_limit' => 100,
+        'new_creator_max_followers' => 100,
+        'diversity' => [
+            'max_per_author' => 2,
+            'max_per_category' => 4,
+            'max_source_share' => 0.5,
+        ],
+        'source_limits' => [
+            'following' => 100,
+            'followed_hashtag' => 50,
+            'category' => 50,
+            'trending' => 50,
+            'regional_trending' => 30,
+            'two_hop' => 40,
+            'similar_author' => 30,
+            'similar_topic' => 40,
+            'new_creator' => 20,
+        ],
+        'windows' => [
+            'following_days' => 14,
+            'interest_days' => 30,
+            'trending_days' => 7,
+            'two_hop_days' => 14,
+            'similar_author_days' => 30,
+            'similar_topic_days' => 45,
+            'new_creator_days' => 90,
+        ],
+    ],
 
     // Deployments can supply a comma-separated, policy-reviewed lexicon. User-defined
     // hidden terms work independently and are the primary filter mechanism.

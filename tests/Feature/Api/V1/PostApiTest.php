@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Api\V1;
 
+use App\Jobs\ComputePostMediaPerceptualHash;
+use App\Jobs\ExtractPostMediaText;
 use App\Jobs\GeneratePostMediaThumbnail;
 use App\Models\Comment;
 use App\Models\Hashtag;
@@ -40,6 +42,8 @@ class PostApiTest extends TestCase
         $this->assertDatabaseCount('post_media', 2);
         $this->assertSame([0, 1], PostMedia::query()->orderBy('position')->pluck('position')->all());
         Queue::assertPushed(GeneratePostMediaThumbnail::class, 2);
+        Queue::assertPushed(ExtractPostMediaText::class, 2);
+        Queue::assertPushed(ComputePostMediaPerceptualHash::class, 2);
     }
 
     public function test_creating_a_post_rejects_more_than_ten_images(): void

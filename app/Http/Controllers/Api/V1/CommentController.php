@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\UserRestrictionType;
 use App\Http\Requests\StoreCommentRequest;
 use App\Http\Resources\CommentResource;
 use App\Models\Comment;
@@ -11,6 +12,7 @@ use App\Services\BlockService;
 use App\Services\CommentService;
 use App\Services\InteractionPermissionService;
 use App\Services\LikeService;
+use App\Services\UserRestrictionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -22,6 +24,7 @@ class CommentController extends Controller
         private readonly BlockService $blocks,
         private readonly LikeService $likes,
         private readonly InteractionPermissionService $interactions,
+        private readonly UserRestrictionService $restrictions,
     ) {}
 
     public function index(Request $request, Post $post): AnonymousResourceCollection
@@ -45,6 +48,7 @@ class CommentController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
+        $this->restrictions->enforce($user, UserRestrictionType::Commenting);
 
         if ($this->blocks->isBlockedEitherWay($user, $post->user)) {
             abort(403);

@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ApiRequestMetric;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -20,12 +21,22 @@ Schedule::command('security-outbox:dispatch')->everyMinute()->onOneServer()->wit
 
 Schedule::command('telemetry:prune')->daily()->onOneServer()->withoutOverlapping();
 
+Schedule::command('analytics:prune-content-events')->daily()->onOneServer()->withoutOverlapping();
+
+Schedule::command('analytics:aggregate --date=today')->hourly()->onOneServer()->withoutOverlapping();
+Schedule::command('analytics:aggregate')->dailyAt('00:15')->onOneServer()->withoutOverlapping();
+
 Schedule::command('sessions:expire')->everyFifteenMinutes()->onOneServer()->withoutOverlapping();
+
+Schedule::command('operations:capture-health')->everyMinute()->onOneServer()->withoutOverlapping();
+Schedule::command('model:prune', ['--model' => [ApiRequestMetric::class]])->daily()->onOneServer()->withoutOverlapping();
 
 // Recomputes the trending/discovery pool FeedService blends into first-page feed loads.
 // Requires Redis; safe to skip a run or have Redis blip — the published set carries its
 // own safety TTL (config('social.trending.safety_ttl_minutes')) and the feed fails open.
 Schedule::command('posts:refresh-trending')->everyTenMinutes()->onOneServer()->withoutOverlapping();
+Schedule::command('recommendations:refresh-pools')->everyTenMinutes()->onOneServer()->withoutOverlapping();
+Schedule::command('recommendations:prune-sessions')->hourly()->onOneServer()->withoutOverlapping();
 
 // Telescope records every request/exception in every environment (see
 // TelescopeServiceProvider::register()), not just failures, so telescope_entries

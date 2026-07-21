@@ -26,6 +26,8 @@ class PostMediaResource extends JsonResource
             'width' => $this->width,
             'height' => $this->height,
             'status' => $this->status,
+            'alt_text' => $this->alt_text,
+            'safety_status' => $this->safety_status,
         ];
     }
 }

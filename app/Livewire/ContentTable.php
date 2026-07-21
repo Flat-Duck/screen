@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\Post;
+use App\Models\Scopes\NotArchivedScope;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -31,7 +32,7 @@ class ContentTable extends Component
 
     public function render(): View
     {
-        $posts = Post::withTrashed()->with(['user', 'media'])->withCount(['likes', 'comments'])
+        $posts = Post::withoutGlobalScope(NotArchivedScope::class)->withTrashed()->with(['user', 'media'])->withCount(['likes', 'comments'])
             ->when($this->search !== '', fn ($query) => $query->where(fn ($search) => $search->where('caption', 'like', '%'.$this->search.'%')->orWhere('id', ctype_digit($this->search) ? (int) $this->search : -1)))
             ->when($this->state === 'removed', fn ($query) => $query->onlyTrashed())
             ->when($this->state === 'active', fn ($query) => $query->withoutTrashed())

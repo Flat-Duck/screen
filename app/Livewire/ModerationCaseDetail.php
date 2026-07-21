@@ -7,6 +7,7 @@ use App\Enums\ModerationCaseStatus;
 use App\Models\Comment;
 use App\Models\ModerationCase;
 use App\Models\Post;
+use App\Models\Scopes\NotArchivedScope;
 use App\Models\User;
 use App\Services\ModerationCaseService;
 use Illuminate\Contracts\View\View;
@@ -123,7 +124,7 @@ class ModerationCaseDetail extends Component
     {
         $case = $this->case();
         if ($case->target_type === Post::class) {
-            return Post::withTrashed()->with(['user', 'media'])->find($case->target_id);
+            return Post::withoutGlobalScope(NotArchivedScope::class)->withTrashed()->with(['user', 'media'])->find($case->target_id);
         }
 
         return $case->target;

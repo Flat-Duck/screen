@@ -3,7 +3,9 @@
 use App\Exceptions\DeviceProofOfPossessionRequired;
 use App\Http\Middleware\EnsureSanctumPrincipalIsDevice;
 use App\Http\Middleware\EnsureSanctumPrincipalIsUser;
+use App\Http\Middleware\LimitContentAnalyticsPayloadSize;
 use App\Http\Middleware\LimitTelemetryPayloadSize;
+use App\Http\Middleware\RecordApiRequestMetric;
 use App\Http\Middleware\TouchDeviceSession;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -18,10 +20,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->appendToGroup('api', RecordApiRequestMetric::class);
         $middleware->alias([
             'auth.user' => EnsureSanctumPrincipalIsUser::class,
             'auth.device' => EnsureSanctumPrincipalIsDevice::class,
             'telemetry.size' => LimitTelemetryPayloadSize::class,
+            'analytics.size' => LimitContentAnalyticsPayloadSize::class,
             'session.touch' => TouchDeviceSession::class,
         ]);
     })

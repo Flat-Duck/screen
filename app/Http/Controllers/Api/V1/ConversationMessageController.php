@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\ConversationState;
+use App\Enums\UserRestrictionType;
 use App\Http\Requests\StoreMessageRequest;
 use App\Http\Resources\MessageResource;
 use App\Models\Conversation;
@@ -10,6 +11,7 @@ use App\Models\User;
 use App\Services\BlockService;
 use App\Services\ConversationService;
 use App\Services\MessageService;
+use App\Services\UserRestrictionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -20,6 +22,7 @@ class ConversationMessageController extends Controller
         private readonly MessageService $messages,
         private readonly ConversationService $conversations,
         private readonly BlockService $blocks,
+        private readonly UserRestrictionService $restrictions,
     ) {}
 
     /**
@@ -49,6 +52,7 @@ class ConversationMessageController extends Controller
 
         /** @var User $user */
         $user = $request->user();
+        $this->restrictions->enforce($user, UserRestrictionType::Messaging);
 
         abort_unless($conversation->state === ConversationState::Active, 409);
 

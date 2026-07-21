@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Resources\PostResource;
 use App\Models\Post;
 use App\Models\User;
+use App\Services\BlockService;
 use App\Services\LikeService;
 use App\Services\SavedPostService;
 use Illuminate\Http\JsonResponse;
@@ -16,6 +17,7 @@ class SavedPostController extends Controller
     public function __construct(
         private readonly SavedPostService $savedPosts,
         private readonly LikeService $likes,
+        private readonly BlockService $blocks,
     ) {}
 
     public function store(Request $request, Post $post): JsonResponse
@@ -23,7 +25,7 @@ class SavedPostController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        abort_unless($post->isVisibleTo($user), 404);
+        abort_unless($post->isVisibleTo($user) && ! $this->blocks->isBlockedEitherWay($user, $post->user), 404);
 
         $this->savedPosts->save($user, $post);
 
@@ -35,7 +37,7 @@ class SavedPostController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        abort_unless($post->isVisibleTo($user), 404);
+        abort_unless($this->savedPosts->isSaved($user, $post), 404);
 
         $this->savedPosts->unsave($user, $post);
 

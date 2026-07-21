@@ -105,7 +105,7 @@
                     @else
                         <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-900">
                             <td class="px-4 py-3">
-                                <div class="font-medium text-zinc-800 dark:text-zinc-100">{{ $user->username ?? '(no username)' }}</div>
+                                <a href="{{ route('users.show', $user->id) }}" class="font-medium text-blue-600 hover:underline dark:text-blue-400">{{ $user->username ?? '(no username)' }}</a>
                                 <div class="text-xs text-zinc-500 dark:text-zinc-400">{{ $user->name }}</div>
                             </td>
                             <td class="px-4 py-3 text-zinc-600 dark:text-zinc-300">{{ $user->email }}</td>

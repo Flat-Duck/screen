@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Enums\AccountVisibility;
 use App\Enums\PostPurgeStatus;
+use App\Models\Scopes\NotArchivedScope;
+use Carbon\CarbonInterface;
 use Database\Factories\PostFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -27,9 +29,11 @@ use Laravel\Scout\Searchable;
  *                                           user deleted this specific post on its own — see RestoreDeletedUser.
  * @property bool|null $is_liked Set per-request by LikeService for the current viewer — not a DB column.
  * @property bool|null $is_saved Set per-request by SavedPostService for the current viewer — not a DB column.
+ * @property array{request_id: string, source: string, reason: string}|null $recommendation Set only on For You feed results.
  * @property bool $comments_enabled
  * @property bool $reposts_enabled
  * @property bool $recommendation_eligible
+ * @property CarbonInterface|null $archived_at
  */
 class Post extends Model
 {
@@ -59,6 +63,12 @@ class Post extends Model
         'recommendation_eligible',
         'moderated_at',
         'moderation_reason',
+        'category_id',
+        'source_application',
+        'source_url',
+        'content_warning',
+        'safety_acknowledged_at',
+        'safety_analysis_version',
     ];
 
     /** @return array<string, string> */
@@ -69,15 +79,19 @@ class Post extends Model
             'purge_status' => PostPurgeStatus::class,
             'purge_attempted_at' => 'datetime',
             'edited_at' => 'datetime',
+            'archived_at' => 'datetime',
             'comments_enabled' => 'boolean',
             'reposts_enabled' => 'boolean',
             'recommendation_eligible' => 'boolean',
             'moderated_at' => 'datetime',
+            'safety_acknowledged_at' => 'datetime',
         ];
     }
 
     protected static function booted(): void
     {
+        static::addGlobalScope(new NotArchivedScope);
+
         static::saving(function (Post $post): void {
             if ($post->isDirty('caption') || ! $post->exists) {
                 $post->searchable_text = $post->caption ?? '';
@@ -94,7 +108,7 @@ class Post extends Model
 
     public function shouldBeSearchable(): bool
     {
-        return $this->user()->publiclyVisible()->exists();
+        return $this->archived_at === null && $this->user()->publiclyVisible()->exists();
     }
 
     /** @param Builder<Post> $query */
@@ -134,6 +148,12 @@ class Post extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /** @return BelongsTo<ScreenshotCategory, $this> */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(ScreenshotCategory::class, 'category_id');
     }
 
     /**

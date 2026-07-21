@@ -97,6 +97,8 @@ class TelemetryApiTest extends TestCase
             ->assertJson(['accepted_event_ids' => [$event['event_id']]]);
 
         $this->assertDatabaseHas('telemetry_events', ['device_id' => $device->id, 'user_id' => null]);
+        $this->assertDatabaseCount('crash_groups', 1);
+        $this->assertDatabaseHas('crash_groups', ['occurrence_count' => 1, 'affected_user_count' => 0]);
     }
 
     public function test_valid_session_attributes_crash_to_user_and_session(): void

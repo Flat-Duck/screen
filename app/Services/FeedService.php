@@ -3,8 +3,10 @@
 namespace App\Services;
 
 use App\Enums\AccountVisibility;
+use App\Enums\UserRestrictionType;
 use App\Models\Post;
 use App\Models\User;
+use App\Models\UserRestriction;
 use Illuminate\Pagination\CursorPaginator;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Collection;
@@ -34,7 +36,7 @@ class FeedService
         $query = Post::query()
             ->visibleTo($user)
             ->whereIn('user_id', $user->following()->pluck('users.id'))
-            ->with(['user', 'media'])
+            ->with(['user', 'media', 'category'])
             ->withCount(['likes', 'comments'])
             ->latest('id');
 
@@ -104,11 +106,12 @@ class FeedService
         $query = Post::query()
             ->visibleTo($user)
             ->where('recommendation_eligible', true)
+            ->whereNotIn('user_id', UserRestriction::query()->active()->where('type', UserRestrictionType::Recommendation)->select('user_id'))
             ->whereIn('user_id', User::query()->where('account_visibility', AccountVisibility::Public->value)->select('id'))
             ->whereIn('id', $ids)
             ->where('user_id', '!=', $user->id)
             ->whereNotIn('user_id', $user->following()->pluck('users.id'))
-            ->with(['user', 'media'])
+            ->with(['user', 'media', 'category'])
             ->withCount(['likes', 'comments']);
 
         $query = $this->blocks->excludeBlocked($query, $user, 'user_id');
@@ -161,10 +164,11 @@ class FeedService
         $query = Post::query()
             ->visibleTo($user)
             ->where('recommendation_eligible', true)
+            ->whereNotIn('user_id', UserRestriction::query()->active()->where('type', UserRestrictionType::Recommendation)->select('user_id'))
             ->whereIn('user_id', User::query()->where('account_visibility', AccountVisibility::Public->value)->select('id'))
             ->whereIn('id', $ids)
             ->where('user_id', '!=', $user->id)
-            ->with(['user', 'media'])
+            ->with(['user', 'media', 'category'])
             ->withCount(['likes', 'comments']);
 
         $query = $this->blocks->excludeBlocked($query, $user, 'user_id');

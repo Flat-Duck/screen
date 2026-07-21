@@ -24,6 +24,18 @@ class PostMedia extends Model
 
     public const STATUS_FAILED = 'failed';
 
+    public const PROCESSING_PENDING = 'pending';
+
+    public const PROCESSING_PROCESSING = 'processing';
+
+    public const PROCESSING_READY = 'ready';
+
+    public const PROCESSING_FAILED = 'failed';
+
+    public const SAFETY_CLEAR = 'clear';
+
+    public const SAFETY_WARNING = 'warning';
+
     protected $fillable = [
         'post_id',
         'position',
@@ -34,6 +46,16 @@ class PostMedia extends Model
         'mime_type',
         'size_bytes',
         'status',
+        'alt_text',
+        'ocr_text',
+        'ocr_language',
+        'ocr_status',
+        'ocr_version',
+        'perceptual_hash',
+        'safety_status',
+        'hash_status',
+        'hash_version',
+        'safety_version',
     ];
 
     protected function casts(): array
@@ -43,6 +65,7 @@ class PostMedia extends Model
             'width' => 'integer',
             'height' => 'integer',
             'size_bytes' => 'integer',
+            'ocr_text' => 'encrypted',
         ];
     }
 

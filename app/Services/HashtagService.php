@@ -58,7 +58,7 @@ class HashtagService
         $query = Post::query()
             ->visibleTo($viewer)
             ->whereIn('id', DB::table('hashtag_post')->where('hashtag_id', $hashtag->id)->select('post_id'))
-            ->with(['user', 'media'])
+            ->with(['user', 'media', 'category'])
             ->withCount(['likes', 'comments'])
             ->latest('id');
 

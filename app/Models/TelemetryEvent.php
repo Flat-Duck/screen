@@ -48,6 +48,7 @@ class TelemetryEvent extends Model
         'build_type',
         'os_version',
         'crash_fingerprint',
+        'crash_group_id',
     ];
 
     protected function casts(): array
@@ -78,6 +79,12 @@ class TelemetryEvent extends Model
     public function deviceSession(): BelongsTo
     {
         return $this->belongsTo(DeviceSession::class);
+    }
+
+    /** @return BelongsTo<CrashGroup, $this> */
+    public function crashGroup(): BelongsTo
+    {
+        return $this->belongsTo(CrashGroup::class);
     }
 
     /**

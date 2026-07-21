@@ -139,7 +139,7 @@ class WorkflowDurabilityTest extends TestCase
 
     public function test_maintenance_schedules_are_single_server_and_non_overlapping(): void
     {
-        $commands = ['posts:prune-deleted', 'users:prune-deleted', 'media:clean-orphans', 'security-outbox:dispatch', 'telemetry:prune', 'sessions:expire', 'posts:refresh-trending'];
+        $commands = ['posts:prune-deleted', 'users:prune-deleted', 'media:clean-orphans', 'security-outbox:dispatch', 'telemetry:prune', 'sessions:expire', 'posts:refresh-trending', 'recommendations:refresh-pools', 'recommendations:prune-sessions'];
         $events = app(Schedule::class)->events();
 
         foreach ($commands as $command) {

@@ -57,6 +57,8 @@ class RateLimiterServiceProvider extends ServiceProvider
 
         RateLimiter::for('reports', fn (Request $request) => $this->byUser($request, 10));
 
+        RateLimiter::for('content-analytics', fn (Request $request) => $this->byUser($request, 30));
+
         RateLimiter::for('notifications-read', fn (Request $request) => $this->byUser($request, 60));
 
         RateLimiter::for('notifications-mark-all', fn (Request $request) => $this->byUser($request, 20));

@@ -2,6 +2,7 @@
 
 namespace App\Actions\Accounts;
 
+use App\Models\Scopes\NotArchivedScope;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
@@ -11,7 +12,7 @@ class RestoreDeletedAccount
     {
         return DB::transaction(function () use ($userId): RestoreDeletedAccountResult {
             $user = User::onlyTrashed()->findOrFail($userId);
-            $restoredPosts = $user->posts()->onlyTrashed()->whereNotNull('account_deleted_at')->update([
+            $restoredPosts = $user->posts()->withoutGlobalScope(NotArchivedScope::class)->onlyTrashed()->whereNotNull('account_deleted_at')->update([
                 'deleted_at' => null,
                 'account_deleted_at' => null,
             ]);

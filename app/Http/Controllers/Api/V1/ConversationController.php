@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\ConversationState;
+use App\Enums\UserRestrictionType;
 use App\Http\Requests\StoreConversationReportRequest;
 use App\Http\Requests\StoreConversationRequest;
 use App\Http\Resources\ConversationResource;
@@ -11,6 +12,7 @@ use App\Models\Conversation;
 use App\Models\User;
 use App\Services\ConversationService;
 use App\Services\ModerationService;
+use App\Services\UserRestrictionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -20,12 +22,14 @@ class ConversationController extends Controller
     public function __construct(
         private readonly ConversationService $conversations,
         private readonly ModerationService $moderation,
+        private readonly UserRestrictionService $restrictions,
     ) {}
 
     public function store(StoreConversationRequest $request): JsonResponse
     {
         /** @var User $user */
         $user = $request->user();
+        $this->restrictions->enforce($user, UserRestrictionType::Messaging);
 
         $other = User::query()->findOrFail((int) $request->validated()['user_id']);
 

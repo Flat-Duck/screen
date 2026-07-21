@@ -6,6 +6,7 @@ use App\Actions\Posts\PurgePost;
 use App\Contracts\MediaFileStore;
 use App\Enums\AccountPurgeOutcome;
 use App\Enums\PostPurgeOutcome;
+use App\Models\Scopes\NotArchivedScope;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 
@@ -31,7 +32,7 @@ final class PurgeDeletedAccount
                 return AccountPurgeOutcome::AlreadyGone;
             }
 
-            foreach ($user->posts()->onlyTrashed()->select('posts.id')->lazyById(100) as $post) {
+            foreach ($user->posts()->withoutGlobalScope(NotArchivedScope::class)->onlyTrashed()->select('posts.id')->lazyById(100) as $post) {
                 if (($this->purgePost)($post->id) === PostPurgeOutcome::Busy) {
                     return AccountPurgeOutcome::Busy;
                 }

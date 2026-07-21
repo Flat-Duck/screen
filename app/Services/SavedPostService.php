@@ -2,14 +2,19 @@
 
 namespace App\Services;
 
+use App\Models\CollectionItem;
 use App\Models\Post;
+use App\Models\SavedCollection;
 use App\Models\SavedPost;
 use App\Models\User;
 use Illuminate\Pagination\CursorPaginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class SavedPostService
 {
+    public function __construct(private readonly BlockService $blocks) {}
+
     /** Idempotent — saving an already-saved post is a no-op. */
     public function save(User $user, Post $post): void
     {
@@ -22,7 +27,22 @@ class SavedPostService
     /** Idempotent — unsaving a post you haven't saved is a no-op. */
     public function unsave(User $user, Post $post): void
     {
-        SavedPost::query()->where('user_id', $user->id)->where('post_id', $post->id)->delete();
+        DB::transaction(function () use ($user, $post): void {
+            SavedPost::query()->where('user_id', $user->id)->where('post_id', $post->id)->delete();
+            $collections = SavedCollection::query()->where('user_id', $user->id)
+                ->whereHas('items', fn ($items) => $items->where('post_id', $post->id))->lockForUpdate()->get();
+            foreach ($collections as $collection) {
+                $item = CollectionItem::query()->where('collection_id', $collection->id)->where('post_id', $post->id)->first();
+                if (! $item) {
+                    continue;
+                }
+                $item->delete();
+                CollectionItem::query()->where('collection_id', $collection->id)->where('position', '>', $item->position)
+                    ->update(['position' => DB::raw('position - 1'), 'version' => DB::raw('version + 1'), 'updated_at' => now()]);
+                $collection->version++;
+                $collection->save();
+            }
+        });
     }
 
     /** Single-post check for a detail view — see annotateIsSaved() for annotating a list. */
@@ -41,13 +61,14 @@ class SavedPostService
      */
     public function savedPostsFor(User $user, int $perPage = 15): CursorPaginator
     {
-        return Post::query()
+        $query = Post::query()
             ->visibleTo($user)
             ->whereIn('id', SavedPost::query()->where('user_id', $user->id)->select('post_id'))
-            ->with(['user', 'media'])
+            ->with(['user', 'media', 'category'])
             ->withCount(['likes', 'comments'])
-            ->latest('id')
-            ->cursorPaginate($perPage);
+            ->latest('id');
+
+        return $this->blocks->excludeBlocked($query, $user, 'user_id')->cursorPaginate($perPage);
     }
 
     /**

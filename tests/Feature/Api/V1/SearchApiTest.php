@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Api\V1;
 
+use App\Enums\AccountVisibility;
+use App\Enums\UserVisibilityState;
 use App\Models\Hashtag;
 use App\Models\Post;
 use App\Models\User;
@@ -94,6 +96,19 @@ class SearchApiTest extends TestCase
             ->assertOk();
 
         $this->assertSame('Updated settings screen', $post->fresh()->searchable_text);
+    }
+
+    public function test_post_search_excludes_private_and_hidden_content_before_returning_results(): void
+    {
+        $privateAuthor = User::factory()->create(['account_visibility' => AccountVisibility::Private]);
+        $hiddenAuthor = User::factory()->create(['visibility_state' => UserVisibilityState::Hidden]);
+        Post::factory()->for($privateAuthor)->create(['caption' => 'confidential screenshot']);
+        Post::factory()->for($hiddenAuthor)->create(['caption' => 'confidential screenshot']);
+        Sanctum::actingAs(User::factory()->create());
+
+        $this->getJson('/api/v1/search/posts?q=confidential')
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
     }
 
     public function test_search_uses_page_pagination_for_relevance_order(): void

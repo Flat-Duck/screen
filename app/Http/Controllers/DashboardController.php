@@ -4,11 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\Device;
 use App\Models\TelemetryEvent;
+use App\Services\DashboardMetricsService;
 use Illuminate\Contracts\View\View;
 
 class DashboardController extends Controller
 {
-    public function index(): View
+    public function index(DashboardMetricsService $metrics): View
     {
         return view('dashboard', [
             'totalDevices' => Device::count(),
@@ -21,6 +22,7 @@ class DashboardController extends Controller
                 ->latest('received_at')
                 ->limit(5)
                 ->get(),
+            ...$metrics->summary(),
         ]);
     }
 }

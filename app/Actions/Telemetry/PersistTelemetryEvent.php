@@ -7,6 +7,7 @@ use App\Data\Telemetry\TelemetryEventData;
 use App\Models\Device;
 use App\Models\DeviceSession;
 use App\Models\TelemetryEvent;
+use App\Services\CrashGroupSynchronizer;
 use App\Services\Telemetry\CrashFingerprint;
 use App\Services\Telemetry\TelemetryRedactor;
 use Illuminate\Support\Str;
@@ -18,6 +19,7 @@ class PersistTelemetryEvent
     public function __construct(
         private readonly TelemetryRedactor $redactor,
         private readonly CrashFingerprint $fingerprint,
+        private readonly CrashGroupSynchronizer $crashGroups,
     ) {}
 
     public function __invoke(
@@ -55,6 +57,10 @@ class PersistTelemetryEvent
                 'crash_fingerprint' => $this->fingerprint->make($exceptionClass, $stackTrace),
             ]
         );
+
+        // Also run for idempotent retries so a prior failure between event persistence and
+        // grouping can heal rather than leaving the crash permanently ungrouped.
+        $this->crashGroups->sync($event);
 
         return $event->event_uuid;
     }

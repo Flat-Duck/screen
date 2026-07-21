@@ -5,10 +5,12 @@ namespace App\Actions\Auth;
 use App\Data\Auth\DeviceSessionContext;
 use App\Enums\LoginMethod;
 use App\Enums\SessionEndReason;
+use App\Enums\UserRestrictionType;
 use App\Models\Device;
 use App\Models\DeviceSession;
 use App\Models\User;
 use App\Services\Auth\IssuedAccessToken;
+use App\Services\UserRestrictionService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -17,7 +19,7 @@ use RuntimeException;
 
 final class StartDeviceSession
 {
-    public function __construct(private readonly CloseDeviceSession $closeSession) {}
+    public function __construct(private readonly CloseDeviceSession $closeSession, private readonly UserRestrictionService $restrictions) {}
 
     /**
      * The single choke point every login path (password, social, completed 2FA
@@ -46,6 +48,10 @@ final class StartDeviceSession
             throw ValidationException::withMessages([
                 'account' => __('This account has been deactivated. Contact support if you believe this is a mistake.'),
             ]);
+        }
+
+        if ($this->restrictions->isRestricted($user, UserRestrictionType::Login)) {
+            throw ValidationException::withMessages(['account' => __('This account is temporarily restricted from signing in.')]);
         }
 
         $lock = Cache::lock("device-session:{$device->id}", 30);

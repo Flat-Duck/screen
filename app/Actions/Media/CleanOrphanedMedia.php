@@ -5,6 +5,7 @@ namespace App\Actions\Media;
 use App\Contracts\MediaFileStore;
 use App\Data\Maintenance\PruneSummary;
 use App\Enums\MediaCleanupStatus;
+use App\Models\MediaAnalysis;
 use App\Models\MediaCleanupTask;
 use App\Models\PostMedia;
 use App\Models\User;
@@ -28,6 +29,8 @@ final class CleanOrphanedMedia
                 continue;
             }
 
+            $analysis = MediaAnalysis::query()->where('cleanup_task_id', $task->id)->first();
+
             $isReferenced = PostMedia::query()->where('original_path', 'like', $task->directory.'/%')->exists()
                 || User::withTrashed()->where('avatar_path', 'like', $task->directory.'/%')->exists();
 
@@ -40,6 +43,7 @@ final class CleanOrphanedMedia
 
             try {
                 $this->files->deleteDirectory($task->directory);
+                $analysis?->delete();
                 $task->delete();
                 $cleaned++;
             } catch (Throwable $exception) {

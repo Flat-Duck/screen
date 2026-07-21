@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -269,6 +270,24 @@ class User extends Authenticatable implements PasskeyUser
     public function hiddenTerms(): HasMany
     {
         return $this->hasMany(UserHiddenTerm::class);
+    }
+
+    /** @return HasMany<UserRestriction, $this> */
+    public function restrictions(): HasMany
+    {
+        return $this->hasMany(UserRestriction::class);
+    }
+
+    /** @return HasMany<UserSupportNote, $this> */
+    public function supportNotes(): HasMany
+    {
+        return $this->hasMany(UserSupportNote::class);
+    }
+
+    /** @return MorphMany<AdminAuditLog, $this> */
+    public function adminAuditLogsAsTarget(): MorphMany
+    {
+        return $this->morphMany(AdminAuditLog::class, 'target');
     }
 
     public function avatarUrl(): ?string

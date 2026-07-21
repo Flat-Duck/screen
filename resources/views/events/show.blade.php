@@ -33,7 +33,10 @@
         </div>
 
         @if ($event->crash_fingerprint)
-            <div class="rounded-xl border border-zinc-200 p-4 font-mono text-xs dark:border-zinc-700">Fingerprint: {{ $event->crash_fingerprint }}</div>
+            <div class="rounded-xl border border-zinc-200 p-4 text-xs dark:border-zinc-700">
+                <span class="font-mono">Fingerprint: {{ $event->crash_fingerprint }}</span>
+                @if($event->crash_group_id)<a href="{{ route('crash-groups.show', $event->crash_group_id) }}" class="ml-3 font-sans text-blue-600">Open triage group →</a>@endif
+            </div>
         @endif
 
         @if (! empty($event->extras))

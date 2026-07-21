@@ -5,24 +5,32 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BlockController;
 use App\Http\Controllers\Api\V1\CommentController;
 use App\Http\Controllers\Api\V1\ConnectedAccountController;
+use App\Http\Controllers\Api\V1\ContentAnalyticsController;
 use App\Http\Controllers\Api\V1\ConversationController;
 use App\Http\Controllers\Api\V1\ConversationMessageController;
 use App\Http\Controllers\Api\V1\DeviceController;
 use App\Http\Controllers\Api\V1\ExploreController;
+use App\Http\Controllers\Api\V1\FeatureConfigurationController;
 use App\Http\Controllers\Api\V1\FeedController;
 use App\Http\Controllers\Api\V1\FollowController;
 use App\Http\Controllers\Api\V1\FollowRequestController;
 use App\Http\Controllers\Api\V1\HashtagController;
 use App\Http\Controllers\Api\V1\HiddenTermController;
 use App\Http\Controllers\Api\V1\LikeController;
+use App\Http\Controllers\Api\V1\MediaAnalysisController;
 use App\Http\Controllers\Api\V1\MuteController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\PostController;
+use App\Http\Controllers\Api\V1\PostLibraryController;
+use App\Http\Controllers\Api\V1\PostMediaController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\PushTokenController;
+use App\Http\Controllers\Api\V1\RecommendationFeedbackController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\RepostController;
+use App\Http\Controllers\Api\V1\SavedCollectionController;
 use App\Http\Controllers\Api\V1\SavedPostController;
+use App\Http\Controllers\Api\V1\ScreenshotCategoryController;
 use App\Http\Controllers\Api\V1\SearchController;
 use App\Http\Controllers\Api\V1\SessionController;
 use App\Http\Controllers\Api\V1\SettingsController;
@@ -78,8 +86,19 @@ Route::middleware(['auth:sanctum', 'auth.user', 'session.touch'])->group(functio
     Route::delete('two-factor', [TwoFactorController::class, 'destroy'])->middleware('throttle:two-factor-manage');
     Route::post('two-factor/recovery-codes', [TwoFactorController::class, 'regenerateRecoveryCodes'])->middleware('throttle:two-factor-manage');
 
+    Route::get('feed/following', [FeedController::class, 'following'])->middleware('throttle:reads');
+    Route::get('feed/for-you', [FeedController::class, 'forYou'])->middleware('throttle:reads');
     Route::get('feed', [FeedController::class, 'index'])->middleware('throttle:reads');
+    Route::delete('recommendations/profile', [RecommendationFeedbackController::class, 'reset'])->middleware('throttle:settings-manage');
+    Route::get('feature-configuration', FeatureConfigurationController::class)->middleware('throttle:reads');
     Route::get('explore', [ExploreController::class, 'index'])->middleware('throttle:reads');
+    Route::post('analytics/content-events', [ContentAnalyticsController::class, 'store'])
+        ->middleware(['analytics.size', 'throttle:content-analytics']);
+    Route::get('screenshot-categories', [ScreenshotCategoryController::class, 'index'])->middleware('throttle:reads');
+    Route::post('media/analyses', [MediaAnalysisController::class, 'store'])->middleware('throttle:posts-store');
+    Route::get('media/analyses/{token}', [MediaAnalysisController::class, 'show'])->middleware('throttle:reads');
+    Route::post('media/analyses/{token}/publish', [MediaAnalysisController::class, 'publish'])->middleware('throttle:posts-store');
+    Route::delete('media/analyses/{token}', [MediaAnalysisController::class, 'destroy'])->middleware('throttle:writes-moderate');
 
     Route::patch('profile', [ProfileController::class, 'update'])->middleware('throttle:writes-moderate');
 
@@ -98,6 +117,7 @@ Route::middleware(['auth:sanctum', 'auth.user', 'session.touch'])->group(functio
     Route::get('hashtags/{hashtag}/posts', [HashtagController::class, 'posts'])->middleware('throttle:reads');
     Route::post('hashtags/{hashtag}/follow', [HashtagController::class, 'follow'])->middleware('throttle:writes-moderate');
     Route::delete('hashtags/{hashtag}/follow', [HashtagController::class, 'unfollow'])->middleware('throttle:writes-moderate');
+    Route::post('hashtags/{hashtag}/show-fewer', [RecommendationFeedbackController::class, 'showFewerFromHashtag'])->middleware('throttle:writes-moderate');
 
     Route::get('users/{user}', [UserController::class, 'show'])->middleware('throttle:reads');
     Route::get('users/{user}/posts', [UserController::class, 'posts'])->middleware('throttle:reads');
@@ -123,14 +143,25 @@ Route::middleware(['auth:sanctum', 'auth.user', 'session.touch'])->group(functio
     Route::post('users/{user}/mute', [MuteController::class, 'store'])->middleware('throttle:writes-moderate');
     Route::delete('users/{user}/mute', [MuteController::class, 'destroy'])->middleware('throttle:writes-moderate');
     Route::get('muted-users', [MuteController::class, 'index'])->middleware('throttle:reads');
+    Route::post('users/{user}/show-fewer', [RecommendationFeedbackController::class, 'showFewerFromUser'])->middleware('throttle:writes-moderate');
 
     Route::post('posts', [PostController::class, 'store'])->middleware('throttle:posts-store');
     Route::get('posts/{post}', [PostController::class, 'show'])->middleware('throttle:reads');
     Route::patch('posts/{post}', [PostController::class, 'update'])->middleware('throttle:writes-moderate');
+    Route::patch('posts/{post}/media/{media}', [PostMediaController::class, 'update'])->middleware('throttle:writes-moderate');
     Route::delete('posts/{post}', [PostController::class, 'destroy'])->middleware('throttle:writes-moderate');
+    Route::post('posts/{postId}/archive', [PostLibraryController::class, 'archive'])->whereNumber('postId')->middleware('throttle:writes-moderate');
+    Route::delete('posts/{postId}/archive', [PostLibraryController::class, 'unarchive'])->whereNumber('postId')->middleware('throttle:writes-moderate');
+    Route::get('archived-posts', [PostLibraryController::class, 'archived'])->middleware('throttle:reads');
+    Route::get('recently-deleted-posts', [PostLibraryController::class, 'recentlyDeleted'])->middleware('throttle:reads');
+    Route::post('posts/{postId}/restore', [PostLibraryController::class, 'restore'])->whereNumber('postId')->middleware('throttle:writes-moderate');
+    Route::delete('posts/{postId}/permanently-delete', [PostLibraryController::class, 'permanentlyDelete'])->whereNumber('postId')->middleware('throttle:account-manage');
 
     Route::post('posts/{post}/like', [LikeController::class, 'store'])->middleware('throttle:reads');
     Route::delete('posts/{post}/like', [LikeController::class, 'destroy'])->middleware('throttle:reads');
+    Route::post('posts/{post}/not-interested', [RecommendationFeedbackController::class, 'notInterested'])->middleware('throttle:writes-moderate');
+    Route::delete('posts/{post}/not-interested', [RecommendationFeedbackController::class, 'restoreInterest'])->middleware('throttle:writes-moderate');
+    Route::post('posts/{post}/hide', [RecommendationFeedbackController::class, 'hide'])->middleware('throttle:writes-moderate');
 
     Route::post('comments/{comment}/like', [LikeController::class, 'storeComment'])->middleware('throttle:reads');
     Route::delete('comments/{comment}/like', [LikeController::class, 'destroyComment'])->middleware('throttle:reads');
@@ -138,6 +169,15 @@ Route::middleware(['auth:sanctum', 'auth.user', 'session.touch'])->group(functio
     Route::post('posts/{post}/save', [SavedPostController::class, 'store'])->middleware('throttle:reads');
     Route::delete('posts/{post}/save', [SavedPostController::class, 'destroy'])->middleware('throttle:reads');
     Route::get('saved-posts', [SavedPostController::class, 'index'])->middleware('throttle:reads');
+
+    Route::get('collections', [SavedCollectionController::class, 'index'])->middleware('throttle:reads');
+    Route::post('collections', [SavedCollectionController::class, 'store'])->middleware('throttle:writes-moderate');
+    Route::patch('collections/{collection}', [SavedCollectionController::class, 'update'])->middleware('throttle:writes-moderate');
+    Route::delete('collections/{collection}', [SavedCollectionController::class, 'destroy'])->middleware('throttle:writes-moderate');
+    Route::get('collections/{collection}/posts', [SavedCollectionController::class, 'items'])->middleware('throttle:reads');
+    Route::post('collections/{collection}/posts/{post}', [SavedCollectionController::class, 'addItem'])->middleware('throttle:writes-moderate');
+    Route::patch('collections/{collection}/posts/{post}', [SavedCollectionController::class, 'updateItem'])->middleware('throttle:writes-moderate');
+    Route::delete('collections/{collection}/posts/{post}', [SavedCollectionController::class, 'removeItem'])->middleware('throttle:writes-moderate');
 
     Route::post('posts/{post}/repost', [RepostController::class, 'store'])->middleware('throttle:writes-moderate');
     Route::delete('posts/{post}/repost', [RepostController::class, 'destroy'])->middleware('throttle:writes-moderate');

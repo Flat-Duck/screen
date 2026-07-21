@@ -3,8 +3,10 @@
 namespace App\Console\Commands;
 
 use App\Enums\AccountVisibility;
+use App\Enums\UserRestrictionType;
 use App\Models\Post;
 use App\Models\User;
+use App\Models\UserRestriction;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Redis;
 use Throwable;
@@ -41,6 +43,7 @@ class RefreshTrendingPosts extends Command
 
             Post::query()
                 ->where('recommendation_eligible', true)
+                ->whereNotIn('user_id', UserRestriction::query()->active()->where('type', UserRestrictionType::Recommendation)->select('user_id'))
                 ->fromPubliclyVisibleAuthors()
                 ->whereIn('user_id', User::query()->where('account_visibility', AccountVisibility::Public)->select('id'))
                 ->where('created_at', '>=', now()->subDays($windowDays))

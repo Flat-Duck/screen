@@ -16,7 +16,7 @@ enum AdminRole: string
             self::SuperAdmin => true,
             self::Moderator => in_array($permission, ['dashboard.view', 'moderation.view', 'moderation.manage', 'users.view'], true),
             self::Support => in_array($permission, ['dashboard.view', 'users.view', 'users.support'], true),
-            self::TelemetryViewer => in_array($permission, ['dashboard.view', 'telemetry.view'], true),
+            self::TelemetryViewer => in_array($permission, ['dashboard.view', 'telemetry.view', 'operations.view'], true),
             self::ReadOnlyAuditor => in_array($permission, ['dashboard.view', 'moderation.view', 'users.view', 'audit.view'], true),
         };
     }
