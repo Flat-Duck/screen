@@ -47,7 +47,14 @@ class CrashGroupsTable extends Component
 
         return view('livewire.crash-groups-table', [
             'groups' => $groups,
-            'releases' => TelemetryEvent::crashes()->whereNotNull('app_version_name')->distinct()->orderByDesc('app_version_code')->limit(50)->pluck('app_version_name'),
+            'releases' => TelemetryEvent::crashes()
+                ->whereNotNull('app_version_name')
+                ->select('app_version_name')
+                ->selectRaw('MAX(app_version_code) AS latest_version_code')
+                ->groupBy('app_version_name')
+                ->orderByDesc('latest_version_code')
+                ->limit(50)
+                ->pluck('app_version_name'),
             'oses' => TelemetryEvent::crashes()->whereNotNull('os_version')->distinct()->orderBy('os_version')->limit(50)->pluck('os_version'),
         ]);
     }

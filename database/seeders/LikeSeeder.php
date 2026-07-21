@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\Like;
 use App\Models\Post;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -17,12 +16,9 @@ class LikeSeeder extends Seeder
         Post::all()->each(function (Post $post) use ($users) {
             $others = $users->reject(fn (User $user) => $user->id === $post->user_id)->values();
 
-            $likerCount = random_int(0, $others->count());
+            $likerCount = random_int(1, max(1, min(14, $others->count())));
 
-            $others->random($likerCount)->each(fn (User $user) => Like::firstOrCreate([
-                'post_id' => $post->id,
-                'user_id' => $user->id,
-            ]));
+            $others->random($likerCount)->each(fn (User $user) => $post->likes()->firstOrCreate(['user_id' => $user->id]));
         });
     }
 }

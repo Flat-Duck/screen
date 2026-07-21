@@ -79,11 +79,19 @@ class PostMedia extends Model
 
     public function originalUrl(): string
     {
+        if (str_starts_with($this->original_path, 'https://') || str_starts_with($this->original_path, 'http://')) {
+            return $this->original_path;
+        }
+
         return Storage::disk(config('social.media_disk'))->url($this->original_path);
     }
 
     public function thumbnailUrl(): ?string
     {
+        if ($this->thumbnail_path && (str_starts_with($this->thumbnail_path, 'https://') || str_starts_with($this->thumbnail_path, 'http://'))) {
+            return $this->thumbnail_path;
+        }
+
         return $this->thumbnail_path
             ? Storage::disk(config('social.media_disk'))->url($this->thumbnail_path)
             : null;

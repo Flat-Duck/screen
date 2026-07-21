@@ -58,10 +58,14 @@ class CrashTriageTest extends TestCase
             'crash_group_id' => $group->id, 'crash_fingerprint' => $group->fingerprint,
             'app_version_name' => '9.1.0', 'app_version_code' => 91, 'os_version' => '16',
         ]);
+        TelemetryEvent::factory()->fatalCrash()->create(['app_version_name' => '9.0.0', 'app_version_code' => 90]);
+        TelemetryEvent::factory()->fatalCrash()->create(['app_version_name' => '9.1.0', 'app_version_code' => 91]);
         $viewer = User::factory()->create(['is_admin' => true, 'admin_role' => AdminRole::TelemetryViewer]);
         $this->actingAs($viewer);
 
-        Livewire::test(CrashGroupsTable::class)->set('release', '9.1.0')->set('os', '16')->set('device', 'Pixel')->assertSee($group->name);
+        Livewire::test(CrashGroupsTable::class)
+            ->assertViewHas('releases', fn ($releases) => $releases->all() === ['9.1.0', '9.0.0'])
+            ->set('release', '9.1.0')->set('os', '16')->set('device', 'Pixel')->assertSee($group->name);
         Livewire::test(CrashGroupsTable::class)->set('release', 'missing')->assertDontSee($group->name);
     }
 

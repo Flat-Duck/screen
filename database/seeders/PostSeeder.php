@@ -2,98 +2,98 @@
 
 namespace Database\Seeders;
 
-use App\Jobs\GeneratePostMediaThumbnail;
+use App\Models\Hashtag;
 use App\Models\Post;
 use App\Models\PostMedia;
+use App\Models\Scopes\NotArchivedScope;
+use App\Models\ScreenshotCategory;
 use App\Models\User;
-use App\Services\ImageProcessingService;
 use Illuminate\Database\Seeder;
-use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Str;
-use Intervention\Image\Drivers\Gd\Driver;
-use Intervention\Image\ImageManager;
-use Throwable;
+use Illuminate\Support\Collection;
 
 class PostSeeder extends Seeder
 {
-    private const POSTS_PER_USER = 10;
+    public const POSTS_PER_USER = 10;
 
-    /**
-     * Creates 10 posts per demo user, each with 1-3 real (downloaded) images run through
-     * the same ImageProcessingService/GeneratePostMediaThumbnail pipeline production uses,
-     * so seeded posts end up READY with a real original + thumbnail on disk.
-     */
-    public function run(ImageProcessingService $images): void
+    public const SOURCE = 'Screenshut Seeder';
+
+    /** @var array<string, string> */
+    private const CATEGORIES = [
+        'technology' => 'Technology', 'design' => 'Design', 'entertainment' => 'Entertainment',
+        'education' => 'Education', 'lifestyle' => 'Lifestyle', 'news' => 'News',
+        'gaming' => 'Gaming', 'business' => 'Business', 'sports' => 'Sports', 'other' => 'Other',
+    ];
+
+    public function run(): void
     {
-        $users = User::whereIn('username', UserSeeder::USERNAMES)->get();
+        Post::withoutGlobalScope(NotArchivedScope::class)->withTrashed()->where('source_application', self::SOURCE)->forceDelete();
 
-        foreach ($users as $user) {
-            for ($i = 0; $i < self::POSTS_PER_USER; $i++) {
-                $post = Post::factory()->create([
-                    'user_id' => $user->id,
-                    'status' => Post::STATUS_PROCESSING,
+        $categories = collect(self::CATEGORIES)->mapWithKeys(fn (string $name, string $slug) => [
+            $slug => ScreenshotCategory::query()->updateOrCreate(['slug' => $slug], ['name' => $name, 'is_active' => true, 'sort_order' => array_search($slug, array_keys(self::CATEGORIES), true)]),
+        ]);
+        $allTopicNames = collect(UserSeeder::SPECIALTIES)->flatten()->unique()->values();
+        $hashtags = $allTopicNames->mapWithKeys(fn (string $name) => [$name => Hashtag::query()->firstOrCreate(['name' => $name])]);
+        $users = User::query()->whereIn('username', UserSeeder::USERNAMES)->get()->keyBy('username');
+
+        foreach ($users as $username => $user) {
+            $specialties = UserSeeder::SPECIALTIES[$username];
+            for ($index = 0; $index < self::POSTS_PER_USER; $index++) {
+                $primaryTags = $index < 8
+                    ? collect(array_slice($specialties, 0, 4))->merge($index % 2 === 0 ? [$specialties[4]] : [])
+                    : collect($specialties)->shuffle()->take(random_int(3, 5));
+                $extraTags = $allTopicNames->diff($specialties)->shuffle()->take(random_int(0, 2));
+                $tagNames = $primaryTags->merge($extraTags)->unique()->values();
+                $createdAt = now()->subDays(random_int(0, 89))->subMinutes(random_int(0, 1439));
+                $category = $this->categoryFor($specialties, $categories);
+                $post = Post::factory()->for($user)->create([
+                    'caption' => fake()->sentence(random_int(5, 12)).' '.$tagNames->map(fn (string $tag) => '#'.$tag)->implode(' '),
+                    'status' => Post::STATUS_READY,
+                    'category_id' => $category->id,
+                    'source_application' => self::SOURCE,
+                    'source_url' => 'https://example.com/demo/'.$username.'/'.$index,
+                    'content_warning' => $index % 19 === 0 ? 'spoiler' : null,
+                    'comments_enabled' => $index % 13 !== 0,
+                    'reposts_enabled' => $index % 11 !== 0,
+                    'created_at' => $createdAt,
+                    'updated_at' => $createdAt,
                 ]);
+                $post->hashtags()->sync($tagNames->map(fn (string $tag) => $hashtags[$tag]->id));
 
-                $mediaCount = random_int(1, 3);
-
-                for ($position = 0; $position < $mediaCount; $position++) {
-                    $this->attachMedia($post, $position, $images);
+                for ($position = 0; $position < random_int(1, 3); $position++) {
+                    $seed = "{$username}-{$index}-{$position}";
+                    PostMedia::query()->create([
+                        'post_id' => $post->id, 'position' => $position,
+                        'original_path' => "https://picsum.photos/seed/{$seed}/640/1136",
+                        'thumbnail_path' => "https://picsum.photos/seed/{$seed}/320/568",
+                        'width' => 640, 'height' => 1136, 'mime_type' => 'image/jpeg',
+                        'size_bytes' => random_int(80_000, 900_000), 'status' => PostMedia::STATUS_READY,
+                        'ocr_status' => PostMedia::PROCESSING_READY, 'hash_status' => PostMedia::PROCESSING_READY,
+                        'safety_status' => $index % 23 === 0 ? PostMedia::SAFETY_WARNING : PostMedia::SAFETY_CLEAR,
+                        'alt_text' => "Demo screenshot about {$primaryTags->first()} by {$user->name}.",
+                    ]);
                 }
             }
         }
     }
 
-    private function attachMedia(Post $post, int $position, ImageProcessingService $images): void
+    /**
+     * @param  list<string>  $specialties
+     * @param  Collection<string, ScreenshotCategory>  $categories
+     */
+    private function categoryFor(array $specialties, Collection $categories): ScreenshotCategory
     {
-        $width = 1080;
-        $height = random_int(1080, 1620);
+        $slug = match (true) {
+            count(array_intersect($specialties, ['flutter', 'coding', 'ai', 'security', 'cars'])) > 0 => 'technology',
+            count(array_intersect($specialties, ['design', 'art', 'fashion'])) > 0 => 'design',
+            count(array_intersect($specialties, ['gaming'])) > 0 => 'gaming',
+            count(array_intersect($specialties, ['education', 'books'])) > 0 => 'education',
+            count(array_intersect($specialties, ['finance', 'business'])) > 0 => 'business',
+            count(array_intersect($specialties, ['football', 'fitness'])) > 0 => 'sports',
+            count(array_intersect($specialties, ['news'])) > 0 => 'news',
+            count(array_intersect($specialties, ['music', 'movies', 'memes'])) > 0 => 'entertainment',
+            default => 'lifestyle',
+        };
 
-        $tmpPath = tempnam(sys_get_temp_dir(), 'seed-media-');
-        file_put_contents($tmpPath, $this->fetchImageBytes($width, $height));
-
-        $file = new UploadedFile($tmpPath, Str::uuid().'.jpg', 'image/jpeg', null, true);
-        $stored = $images->storeOriginal($file, 'posts');
-        @unlink($tmpPath);
-
-        $media = PostMedia::create([
-            'post_id' => $post->id,
-            'position' => $position,
-            'original_path' => $stored['path'],
-            'width' => $stored['width'],
-            'height' => $stored['height'],
-            'mime_type' => $stored['mime'],
-            'size_bytes' => $stored['size'],
-            'status' => PostMedia::STATUS_PENDING,
-        ]);
-
-        (new GeneratePostMediaThumbnail($media->id))->handle($images);
-    }
-
-    /** Pulls a random real photo from Lorem Picsum; falls back to a generated solid-color
-     *  placeholder if the network is unavailable, so seeding never hard-fails offline. */
-    private function fetchImageBytes(int $width, int $height): string
-    {
-        try {
-            $response = Http::timeout(5)->get(
-                'https://picsum.photos/seed/'.Str::random(12)."/{$width}/{$height}"
-            );
-
-            if ($response->successful()) {
-                return $response->body();
-            }
-        } catch (Throwable) {
-            // network unavailable — fall through to local placeholder
-        }
-
-        return $this->placeholderBytes($width, $height);
-    }
-
-    private function placeholderBytes(int $width, int $height): string
-    {
-        $manager = new ImageManager(new Driver);
-        $color = sprintf('#%06x', random_int(0, 0xFFFFFF));
-
-        return (string) $manager->create($width, $height)->fill($color)->toJpeg();
+        return $categories[$slug];
     }
 }
