@@ -41,6 +41,8 @@ use Laravel\Scout\Searchable;
  * @property string|null $avatar_path
  * @property Carbon|null $birth_date
  * @property string|null $country_code
+ * @property Carbon|null $interests_completed_at
+ * @property Carbon|null $interests_skipped_at
  * @property array<string, mixed>|null $settings
  * @property bool $is_admin
  * @property bool $is_active
@@ -99,6 +101,8 @@ class User extends Authenticatable implements PasskeyUser
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'birth_date' => 'date',
+            'interests_completed_at' => 'datetime',
+            'interests_skipped_at' => 'datetime',
             'settings' => 'array',
             'is_admin' => 'boolean',
             'admin_role' => AdminRole::class,
@@ -242,6 +246,17 @@ class User extends Authenticatable implements PasskeyUser
     public function followedHashtags(): BelongsToMany
     {
         return $this->belongsToMany(Hashtag::class, 'hashtag_user')->withTimestamps();
+    }
+
+    /** @return BelongsToMany<Interest, $this, Pivot, 'pivot'> */
+    public function interests(): BelongsToMany
+    {
+        return $this->belongsToMany(Interest::class)->withPivot(['weight', 'source', 'selected_at'])->withTimestamps();
+    }
+
+    public function needsInterestOnboarding(): bool
+    {
+        return $this->interests_completed_at === null && $this->interests_skipped_at === null;
     }
 
     /**

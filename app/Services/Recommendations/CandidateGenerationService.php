@@ -14,6 +14,7 @@ class CandidateGenerationService
 
     public function __construct(
         FollowingCandidateSource $following,
+        OnboardingInterestCandidateSource $onboardingInterests,
         InterestCandidateSource $hashtags,
         CategoryCandidateSource $categories,
         TrendingCandidateSource $trending,
@@ -23,7 +24,7 @@ class CandidateGenerationService
         SimilarTopicCandidateSource $similarTopic,
         NewCreatorCandidateSource $newCreator,
     ) {
-        $this->sources = [$following, $hashtags, $categories, $trending, $regionalTrending, $twoHop, $similarAuthor, $similarTopic, $newCreator];
+        $this->sources = [$following, $onboardingInterests, $hashtags, $categories, $trending, $regionalTrending, $twoHop, $similarAuthor, $similarTopic, $newCreator];
     }
 
     /** @return Collection<int, RecommendationCandidate> */

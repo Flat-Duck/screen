@@ -60,6 +60,14 @@ class UserResource extends JsonResource
                 fn (): bool => (bool) ($this->is_blocked_by ?? false),
             ),
             'created_at' => $this->created_at,
+            'onboarding' => $this->when(
+                $request->user()?->is($this->resource),
+                fn (): array => [
+                    'interests_completed' => $this->interests_completed_at !== null,
+                    'interests_skipped' => $this->interests_skipped_at !== null,
+                    'needs_interest_selection' => $this->needsInterestOnboarding(),
+                ],
+            ),
         ];
     }
 }

@@ -50,7 +50,8 @@ class RecommendationFeedbackController extends Controller
 
     public function reset(Request $request): Response
     {
-        $this->feedback->resetProfile($this->user($request));
+        $data = $request->validate(['clear_interests' => ['sometimes', 'boolean']]);
+        $this->feedback->resetProfile($this->user($request), (bool) ($data['clear_interests'] ?? false));
 
         return response()->noContent();
     }

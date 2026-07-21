@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\V1\FollowController;
 use App\Http\Controllers\Api\V1\FollowRequestController;
 use App\Http\Controllers\Api\V1\HashtagController;
 use App\Http\Controllers\Api\V1\HiddenTermController;
+use App\Http\Controllers\Api\V1\InterestController;
 use App\Http\Controllers\Api\V1\LikeController;
 use App\Http\Controllers\Api\V1\MediaAnalysisController;
 use App\Http\Controllers\Api\V1\MuteController;
@@ -77,6 +78,10 @@ Route::middleware(['auth:sanctum', 'auth.user', 'session.touch'])->group(functio
     Route::get('hidden-terms', [HiddenTermController::class, 'index'])->middleware('throttle:settings-manage');
     Route::post('hidden-terms', [HiddenTermController::class, 'store'])->middleware('throttle:settings-manage');
     Route::delete('hidden-terms/{hiddenTerm}', [HiddenTermController::class, 'destroy'])->middleware('throttle:settings-manage');
+    Route::get('onboarding/interests', [InterestController::class, 'index'])->middleware('throttle:reads');
+    Route::post('onboarding/interests/skip', [InterestController::class, 'skip'])->middleware('throttle:settings-manage');
+    Route::get('me/interests', [InterestController::class, 'selected'])->middleware('throttle:reads');
+    Route::put('me/interests', [InterestController::class, 'update'])->middleware('throttle:settings-manage');
 
     Route::get('two-factor', [TwoFactorController::class, 'show'])->middleware('throttle:two-factor-manage');
     // Enable returns everything (QR + recovery codes) in this one response rather than

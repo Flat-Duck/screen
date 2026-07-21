@@ -11,6 +11,7 @@ use App\Models\Scopes\NotArchivedScope;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class DatabaseSeederTest extends TestCase
@@ -49,5 +50,8 @@ class DatabaseSeederTest extends TestCase
         $this->assertDatabaseCount('user_restrictions', 5);
         $this->assertDatabaseCount('recommendation_feed_sessions', 10);
         $this->assertDatabaseCount('recommendation_exclusions', 4);
+        $this->assertDatabaseCount('interests', 16);
+        $this->assertSame(24, User::query()->whereNotNull('interests_completed_at')->count());
+        $this->assertSame(72, DB::table('interest_user')->count());
     }
 }

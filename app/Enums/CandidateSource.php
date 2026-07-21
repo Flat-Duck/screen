@@ -8,6 +8,7 @@ enum CandidateSource: string
     case Trending = 'trending';
     case RegionalTrending = 'regional_trending';
     case FollowedHashtag = 'followed_hashtag';
+    case OnboardingInterest = 'onboarding_interest';
     case Category = 'category';
     case TwoHop = 'two_hop';
     case SimilarAuthor = 'similar_author';

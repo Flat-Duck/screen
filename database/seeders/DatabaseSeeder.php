@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             FollowSeeder::class,
             PostSeeder::class,
+            InterestSeeder::class,
             LikeSeeder::class,
             CommentSeeder::class,
             SimulationSeeder::class,

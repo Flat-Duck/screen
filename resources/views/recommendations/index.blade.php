@@ -18,6 +18,22 @@
         @endcan
 
         <section>
+            <flux:heading size="lg">Interest onboarding</flux:heading>
+            <div class="mt-3 grid gap-3 sm:grid-cols-3">
+                <div class="rounded-xl border border-zinc-200 p-4 dark:border-zinc-700"><div class="text-sm text-zinc-500">Completed</div><div class="text-2xl font-semibold">{{ number_format($interestOnboarding['completed']) }}</div></div>
+                <div class="rounded-xl border border-zinc-200 p-4 dark:border-zinc-700"><div class="text-sm text-zinc-500">Skipped</div><div class="text-2xl font-semibold">{{ number_format($interestOnboarding['skipped']) }}</div></div>
+                <div class="rounded-xl border border-zinc-200 p-4 dark:border-zinc-700"><div class="text-sm text-zinc-500">Still pending</div><div class="text-2xl font-semibold">{{ number_format($interestOnboarding['pending']) }}</div></div>
+            </div>
+            <div class="mt-3 overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700">
+                <table class="w-full text-sm"><thead><tr class="text-left"><th class="p-3">Interest</th><th>Slug</th><th>Selections</th><th>Status</th></tr></thead><tbody>
+                    @foreach($popularInterests as $interest)
+                        <tr class="border-t border-zinc-200 dark:border-zinc-700"><td class="p-3">{{ $interest->name }}</td><td>{{ $interest->slug }}</td><td>{{ number_format($interest->users_count) }}</td><td>{{ $interest->is_active ? 'Active' : 'Inactive' }}</td></tr>
+                    @endforeach
+                </tbody></table>
+            </div>
+        </section>
+
+        <section>
             <flux:heading size="lg">Current global hot pool</flux:heading>
             <div class="mt-3 overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700">
                 <table class="w-full text-sm"><thead><tr class="text-left"><th class="p-3">Post</th><th>Author</th><th>Created</th><th>Action</th></tr></thead><tbody>

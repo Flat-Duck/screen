@@ -98,6 +98,7 @@ return [
         ],
         'source_limits' => [
             'following' => 100,
+            'onboarding_interest' => 80,
             'followed_hashtag' => 50,
             'category' => 50,
             'trending' => 50,

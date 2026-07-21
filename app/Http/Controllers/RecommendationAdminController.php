@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\DailyPostMetric;
 use App\Models\FeatureFlag;
+use App\Models\Interest;
 use App\Models\Post;
 use App\Models\RecommendationExclusion;
 use App\Models\RecommendationFeedSession;
@@ -41,6 +42,12 @@ class RecommendationAdminController extends Controller
             'sessions' => RecommendationFeedSession::query()->latest()->limit(20)->get(),
             'exclusions' => RecommendationExclusion::query()->with('post.user')->latest()->limit(50)->get(),
             'anomalies' => $anomalies,
+            'interestOnboarding' => [
+                'completed' => User::query()->whereNotNull('interests_completed_at')->count(),
+                'skipped' => User::query()->whereNotNull('interests_skipped_at')->count(),
+                'pending' => User::query()->whereNull('interests_completed_at')->whereNull('interests_skipped_at')->count(),
+            ],
+            'popularInterests' => Interest::query()->withCount('users')->orderByDesc('users_count')->orderBy('sort_order')->get(),
         ]);
     }
 

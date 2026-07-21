@@ -50,8 +50,16 @@ class RecommendationRankingService
             ->where('target_type', RecommendationTargetFeedback::HASHTAG)->pluck('target_id');
         $reducedTopicPosts = $reducedHashtags->isEmpty() ? collect() : DB::table('hashtag_post')
             ->whereIn('hashtag_id', $reducedHashtags)->whereIn('post_id', $postIds)->pluck('post_id');
+        $meaningfulEvents = ContentEvent::query()->where('user_id', $viewer->id)
+            ->whereIn('event_type', [
+                ContentEventType::Open, ContentEventType::Like, ContentEventType::Comment,
+                ContentEventType::Save, ContentEventType::Repost, ContentEventType::Share,
+                ContentEventType::FollowAuthor, ContentEventType::Hide, ContentEventType::NotInterested,
+                ContentEventType::Report,
+            ])->count();
+        $explicitInterestWeight = $meaningfulEvents <= 20 ? 20.0 : ($meaningfulEvents <= 100 ? 12.0 : 6.0);
 
-        $ranked = $candidates->map(function (RecommendationCandidate $candidate) use ($posts, $authorAffinity, $topicAffinity, $metrics, $seen, $socialProof, $reducedAuthors, $reducedTopicPosts): ?RankedRecommendation {
+        $ranked = $candidates->map(function (RecommendationCandidate $candidate) use ($posts, $authorAffinity, $topicAffinity, $metrics, $seen, $socialProof, $reducedAuthors, $reducedTopicPosts, $explicitInterestWeight): ?RankedRecommendation {
             $post = $posts->get($candidate->postId);
             if (! $post instanceof Post) {
                 return null;
@@ -69,6 +77,9 @@ class RecommendationRankingService
                 'source' => min(15, max(0, $candidate->sourceScore * 15)),
                 'author_affinity' => max(-20, min(20, $authorScore)),
                 'topic_affinity' => max(-15, min(15, $topicScore)),
+                'explicit_interest' => $candidate->source === CandidateSource::OnboardingInterest
+                    || in_array(CandidateSource::OnboardingInterest->value, (array) ($candidate->eligibility['additional_sources'] ?? []), true)
+                    ? $explicitInterestWeight : 0.0,
                 'freshness' => 20 / (1 + max(0, $post->created_at->diffInHours(now())) / 24),
                 'engagement_quality' => min(20, ($positive / $impressions) * 10),
                 'social_proof' => min(10, (float) ($socialProof[$post->user_id] ?? 0) * 2),
@@ -146,6 +157,7 @@ class RecommendationRankingService
         return match ($source) {
             CandidateSource::Following => 'From an account you follow',
             CandidateSource::FollowedHashtag => 'Related to a hashtag you follow',
+            CandidateSource::OnboardingInterest => 'Because you selected this interest',
             CandidateSource::Category, CandidateSource::SimilarTopic => 'Related to topics you engage with',
             CandidateSource::Trending => 'Popular screenshots right now',
             CandidateSource::RegionalTrending => 'Popular screenshots in your region',

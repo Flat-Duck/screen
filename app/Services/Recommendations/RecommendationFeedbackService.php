@@ -51,15 +51,19 @@ class RecommendationFeedbackService
         RecommendationFeedSession::query()->where('user_id', $user->id)->delete();
     }
 
-    public function resetProfile(User $user): void
+    public function resetProfile(User $user, bool $clearExplicitInterests = false): void
     {
-        DB::transaction(function () use ($user): void {
+        DB::transaction(function () use ($user, $clearExplicitInterests): void {
             RecommendationPostFeedback::query()->where('user_id', $user->id)->delete();
             RecommendationTargetFeedback::query()->where('user_id', $user->id)->delete();
             UserAuthorAffinity::query()->where('user_id', $user->id)->delete();
             UserTopicAffinity::query()->where('user_id', $user->id)->delete();
             ContentEvent::query()->where('user_id', $user->id)->delete();
             RecommendationFeedSession::query()->where('user_id', $user->id)->delete();
+            if ($clearExplicitInterests) {
+                $user->interests()->detach();
+                $user->forceFill(['interests_completed_at' => null, 'interests_skipped_at' => null])->saveQuietly();
+            }
         });
     }
 

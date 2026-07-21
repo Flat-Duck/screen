@@ -21,6 +21,7 @@ use App\Models\Experiment;
 use App\Models\ExperimentAssignment;
 use App\Models\FeatureFlag;
 use App\Models\Hashtag;
+use App\Models\Interest;
 use App\Models\MediaAnalysis;
 use App\Models\Mention;
 use App\Models\ModerationCase;
@@ -90,6 +91,15 @@ class SimulationSeeder extends Seeder
             $user->followedHashtags()->syncWithoutDetaching(
                 Hashtag::query()->whereIn('name', UserSeeder::SPECIALTIES[(string) $user->username])->pluck('id')
             );
+            $categoryIds = $user->posts()->whereNotNull('category_id')->distinct()->pluck('category_id');
+            $interestIds = Interest::query()->whereHas('categories', fn ($query) => $query->whereIn('screenshot_categories.id', $categoryIds))
+                ->inRandomOrder()->limit(3)->pluck('id');
+            if ($interestIds->count() < 3) {
+                $interestIds = $interestIds->merge(Interest::query()->whereNotIn('id', $interestIds)->inRandomOrder()->limit(3 - $interestIds->count())->pluck('id'));
+            }
+            $now = now()->subDays(random_int(30, 90));
+            $user->interests()->sync($interestIds->mapWithKeys(fn (int $id): array => [$id => ['weight' => 100, 'source' => 'onboarding', 'selected_at' => $now]])->all());
+            $user->forceFill(['interests_completed_at' => $now])->saveQuietly();
         }
 
         foreach ($users->take(4) as $index => $user) {
