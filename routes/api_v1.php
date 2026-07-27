@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\V1\FeatureConfigurationController;
 use App\Http\Controllers\Api\V1\FeedController;
 use App\Http\Controllers\Api\V1\FollowController;
 use App\Http\Controllers\Api\V1\FollowRequestController;
+use App\Http\Controllers\Api\V1\GroupController;
 use App\Http\Controllers\Api\V1\HashtagController;
 use App\Http\Controllers\Api\V1\HiddenTermController;
 use App\Http\Controllers\Api\V1\InterestController;
@@ -186,6 +187,14 @@ Route::middleware(['auth:sanctum', 'auth.user', 'session.touch'])->group(functio
 
     Route::post('posts/{post}/repost', [RepostController::class, 'store'])->middleware('throttle:writes-moderate');
     Route::delete('posts/{post}/repost', [RepostController::class, 'destroy'])->middleware('throttle:writes-moderate');
+
+    Route::get('groups', [GroupController::class, 'index'])->middleware('throttle:reads');
+    Route::post('groups', [GroupController::class, 'store'])->middleware('throttle:writes-moderate');
+    Route::get('groups/{group}', [GroupController::class, 'show'])->middleware('throttle:reads');
+    Route::post('groups/{group}/membership', [GroupController::class, 'join'])->middleware('throttle:writes-moderate');
+    Route::delete('groups/{group}/membership', [GroupController::class, 'leave'])->middleware('throttle:writes-moderate');
+    Route::get('groups/{group}/posts', [GroupController::class, 'posts'])->middleware('throttle:reads');
+    Route::post('groups/{group}/posts/{post}', [GroupController::class, 'share'])->middleware('throttle:writes-moderate');
 
     Route::get('posts/{post}/comments', [CommentController::class, 'index'])->middleware('throttle:reads');
     Route::post('posts/{post}/comments', [CommentController::class, 'store'])->middleware('throttle:writes-moderate');

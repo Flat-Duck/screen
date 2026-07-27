@@ -12230,6 +12230,538 @@
                             ]
                         }
                     ]
+                },
+                {
+                    "name": "Groups",
+                    "item": [
+                        {
+                            "name": "Group  Index",
+                            "request": {
+                                "auth": {
+                                    "type": "bearer",
+                                    "bearer": [
+                                        {
+                                            "key": "token",
+                                            "value": "{{token}}",
+                                            "type": "string"
+                                        }
+                                    ]
+                                },
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": "{{base_url}}/v1/groups?q=&mine=",
+                                "description": "Mobile API operation: groupControllerIndex."
+                            },
+                            "response": [
+                                {
+                                    "name": "200 OK",
+                                    "originalRequest": {
+                                        "auth": {
+                                            "type": "bearer",
+                                            "bearer": [
+                                                {
+                                                    "key": "token",
+                                                    "value": "{{token}}",
+                                                    "type": "string"
+                                                }
+                                            ]
+                                        },
+                                        "method": "GET",
+                                        "header": [
+                                            {
+                                                "key": "Accept",
+                                                "value": "application/json"
+                                            }
+                                        ],
+                                        "url": "{{base_url}}/v1/groups?q=&mine=",
+                                        "description": "Mobile API operation: groupControllerIndex."
+                                    },
+                                    "status": "OK",
+                                    "code": 200,
+                                    "_postman_previewlanguage": "json",
+                                    "header": [
+                                        {
+                                            "key": "Content-Type",
+                                            "value": "application/json"
+                                        }
+                                    ],
+                                    "body": "{\n    \"data\": [\n        {\n            \"id\": 1,\n            \"name\": \"Photography\",\n            \"description\": \"Minimalist shots and film photography.\",\n            \"visibility\": \"public\",\n            \"member_count\": 128,\n            \"creator\": {\n                \"id\": 1,\n                \"username\": \"elena\",\n                \"name\": \"Elena Voss\",\n                \"avatar_url\": null\n            },\n            \"is_member\": false,\n            \"is_admin\": false,\n            \"created_at\": \"2026-07-26T12:00:00.000000Z\"\n        }\n    ],\n    \"links\": {\n        \"next\": null,\n        \"prev\": null\n    },\n    \"meta\": {\n        \"path\": \"{{base_url}}/v1/groups\",\n        \"per_page\": 20,\n        \"next_cursor\": null,\n        \"prev_cursor\": null\n    }\n}"
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Group  Store",
+                            "request": {
+                                "auth": {
+                                    "type": "bearer",
+                                    "bearer": [
+                                        {
+                                            "key": "token",
+                                            "value": "{{token}}",
+                                            "type": "string"
+                                        }
+                                    ]
+                                },
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": "{{base_url}}/v1/groups",
+                                "description": "Mobile API operation: groupControllerStore.",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"name\": \"Photography\",\n    \"description\": \"Minimalist shots and film photography.\",\n    \"visibility\": \"public\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "response": [
+                                {
+                                    "name": "201 Created",
+                                    "originalRequest": {
+                                        "auth": {
+                                            "type": "bearer",
+                                            "bearer": [
+                                                {
+                                                    "key": "token",
+                                                    "value": "{{token}}",
+                                                    "type": "string"
+                                                }
+                                            ]
+                                        },
+                                        "method": "POST",
+                                        "header": [
+                                            {
+                                                "key": "Accept",
+                                                "value": "application/json"
+                                            },
+                                            {
+                                                "key": "Content-Type",
+                                                "value": "application/json"
+                                            }
+                                        ],
+                                        "url": "{{base_url}}/v1/groups",
+                                        "description": "Mobile API operation: groupControllerStore.",
+                                        "body": {
+                                            "mode": "raw",
+                                            "raw": "{\n    \"name\": \"Photography\",\n    \"description\": \"Minimalist shots and film photography.\",\n    \"visibility\": \"public\"\n}",
+                                            "options": {
+                                                "raw": {
+                                                    "language": "json"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "status": "Created",
+                                    "code": 201,
+                                    "_postman_previewlanguage": "json",
+                                    "header": [
+                                        {
+                                            "key": "Content-Type",
+                                            "value": "application/json"
+                                        }
+                                    ],
+                                    "body": "{\n    \"data\": {\n        \"id\": 1,\n        \"name\": \"Photography\",\n        \"description\": \"Minimalist shots and film photography.\",\n        \"visibility\": \"public\",\n        \"member_count\": 1,\n        \"creator\": {\n            \"id\": 1,\n            \"username\": \"elena\",\n            \"name\": \"Elena Voss\",\n            \"avatar_url\": null\n        },\n        \"is_member\": true,\n        \"is_admin\": true,\n        \"created_at\": \"2026-07-26T12:00:00.000000Z\"\n    }\n}"
+                                },
+                                {
+                                    "name": "422 Validation Error",
+                                    "originalRequest": {
+                                        "auth": {
+                                            "type": "bearer",
+                                            "bearer": [
+                                                {
+                                                    "key": "token",
+                                                    "value": "{{token}}",
+                                                    "type": "string"
+                                                }
+                                            ]
+                                        },
+                                        "method": "POST",
+                                        "header": [
+                                            {
+                                                "key": "Accept",
+                                                "value": "application/json"
+                                            },
+                                            {
+                                                "key": "Content-Type",
+                                                "value": "application/json"
+                                            }
+                                        ],
+                                        "url": "{{base_url}}/v1/groups",
+                                        "description": "Mobile API operation: groupControllerStore.",
+                                        "body": {
+                                            "mode": "raw",
+                                            "raw": "{\n    \"name\": \"Photography\",\n    \"description\": \"Minimalist shots and film photography.\",\n    \"visibility\": \"public\"\n}",
+                                            "options": {
+                                                "raw": {
+                                                    "language": "json"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "status": "Unprocessable Content",
+                                    "code": 422,
+                                    "_postman_previewlanguage": "json",
+                                    "header": [
+                                        {
+                                            "key": "Content-Type",
+                                            "value": "application/json"
+                                        }
+                                    ],
+                                    "body": "{\n    \"message\": \"The given data was invalid.\",\n    \"errors\": {\n        \"name\": [\n            \"The name field is required.\"\n        ]\n    }\n}"
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Group  Show",
+                            "request": {
+                                "auth": {
+                                    "type": "bearer",
+                                    "bearer": [
+                                        {
+                                            "key": "token",
+                                            "value": "{{token}}",
+                                            "type": "string"
+                                        }
+                                    ]
+                                },
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": "{{base_url}}/v1/groups/{{group_id}}",
+                                "description": "Mobile API operation: groupControllerShow."
+                            },
+                            "response": [
+                                {
+                                    "name": "200 OK",
+                                    "originalRequest": {
+                                        "auth": {
+                                            "type": "bearer",
+                                            "bearer": [
+                                                {
+                                                    "key": "token",
+                                                    "value": "{{token}}",
+                                                    "type": "string"
+                                                }
+                                            ]
+                                        },
+                                        "method": "GET",
+                                        "header": [
+                                            {
+                                                "key": "Accept",
+                                                "value": "application/json"
+                                            }
+                                        ],
+                                        "url": "{{base_url}}/v1/groups/{{group_id}}",
+                                        "description": "Mobile API operation: groupControllerShow."
+                                    },
+                                    "status": "OK",
+                                    "code": 200,
+                                    "_postman_previewlanguage": "json",
+                                    "header": [
+                                        {
+                                            "key": "Content-Type",
+                                            "value": "application/json"
+                                        }
+                                    ],
+                                    "body": "{\n    \"data\": {\n        \"id\": 1,\n        \"name\": \"Photography\",\n        \"description\": \"Minimalist shots and film photography.\",\n        \"visibility\": \"public\",\n        \"member_count\": 1,\n        \"creator\": {\n            \"id\": 1,\n            \"username\": \"elena\",\n            \"name\": \"Elena Voss\",\n            \"avatar_url\": null\n        },\n        \"is_member\": true,\n        \"is_admin\": true,\n        \"created_at\": \"2026-07-26T12:00:00.000000Z\"\n    }\n}"
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Group  Join",
+                            "request": {
+                                "auth": {
+                                    "type": "bearer",
+                                    "bearer": [
+                                        {
+                                            "key": "token",
+                                            "value": "{{token}}",
+                                            "type": "string"
+                                        }
+                                    ]
+                                },
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": "{{base_url}}/v1/groups/{{group_id}}/membership",
+                                "description": "Mobile API operation: groupControllerJoin."
+                            },
+                            "response": [
+                                {
+                                    "name": "204 No Content",
+                                    "originalRequest": {
+                                        "auth": {
+                                            "type": "bearer",
+                                            "bearer": [
+                                                {
+                                                    "key": "token",
+                                                    "value": "{{token}}",
+                                                    "type": "string"
+                                                }
+                                            ]
+                                        },
+                                        "method": "POST",
+                                        "header": [
+                                            {
+                                                "key": "Accept",
+                                                "value": "application/json"
+                                            }
+                                        ],
+                                        "url": "{{base_url}}/v1/groups/{{group_id}}/membership",
+                                        "description": "Mobile API operation: groupControllerJoin."
+                                    },
+                                    "status": "No Content",
+                                    "code": 204,
+                                    "_postman_previewlanguage": "json",
+                                    "header": [
+                                        {
+                                            "key": "Content-Type",
+                                            "value": "application/json"
+                                        }
+                                    ],
+                                    "body": ""
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Group  Leave",
+                            "request": {
+                                "auth": {
+                                    "type": "bearer",
+                                    "bearer": [
+                                        {
+                                            "key": "token",
+                                            "value": "{{token}}",
+                                            "type": "string"
+                                        }
+                                    ]
+                                },
+                                "method": "DELETE",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": "{{base_url}}/v1/groups/{{group_id}}/membership",
+                                "description": "Mobile API operation: groupControllerLeave."
+                            },
+                            "response": [
+                                {
+                                    "name": "204 No Content",
+                                    "originalRequest": {
+                                        "auth": {
+                                            "type": "bearer",
+                                            "bearer": [
+                                                {
+                                                    "key": "token",
+                                                    "value": "{{token}}",
+                                                    "type": "string"
+                                                }
+                                            ]
+                                        },
+                                        "method": "DELETE",
+                                        "header": [
+                                            {
+                                                "key": "Accept",
+                                                "value": "application/json"
+                                            }
+                                        ],
+                                        "url": "{{base_url}}/v1/groups/{{group_id}}/membership",
+                                        "description": "Mobile API operation: groupControllerLeave."
+                                    },
+                                    "status": "No Content",
+                                    "code": 204,
+                                    "_postman_previewlanguage": "json",
+                                    "header": [
+                                        {
+                                            "key": "Content-Type",
+                                            "value": "application/json"
+                                        }
+                                    ],
+                                    "body": ""
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Group  Posts",
+                            "request": {
+                                "auth": {
+                                    "type": "bearer",
+                                    "bearer": [
+                                        {
+                                            "key": "token",
+                                            "value": "{{token}}",
+                                            "type": "string"
+                                        }
+                                    ]
+                                },
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": "{{base_url}}/v1/groups/{{group_id}}/posts",
+                                "description": "Mobile API operation: groupControllerPosts."
+                            },
+                            "response": [
+                                {
+                                    "name": "200 OK",
+                                    "originalRequest": {
+                                        "auth": {
+                                            "type": "bearer",
+                                            "bearer": [
+                                                {
+                                                    "key": "token",
+                                                    "value": "{{token}}",
+                                                    "type": "string"
+                                                }
+                                            ]
+                                        },
+                                        "method": "GET",
+                                        "header": [
+                                            {
+                                                "key": "Accept",
+                                                "value": "application/json"
+                                            }
+                                        ],
+                                        "url": "{{base_url}}/v1/groups/{{group_id}}/posts",
+                                        "description": "Mobile API operation: groupControllerPosts."
+                                    },
+                                    "status": "OK",
+                                    "code": 200,
+                                    "_postman_previewlanguage": "json",
+                                    "header": [
+                                        {
+                                            "key": "Content-Type",
+                                            "value": "application/json"
+                                        }
+                                    ],
+                                    "body": "{\n    \"data\": [\n        {\n            \"id\": 1,\n            \"caption\": \"Capturing the silence between structures.\",\n            \"status\": \"ready\",\n            \"user\": {\n                \"id\": 1,\n                \"username\": \"elena\",\n                \"name\": \"Elena Voss\",\n                \"avatar_url\": null\n            },\n            \"media\": [],\n            \"likes_count\": 12,\n            \"comments_count\": 3,\n            \"comments_enabled\": true,\n            \"reposts_enabled\": true,\n            \"is_liked\": false,\n            \"is_saved\": false,\n            \"created_at\": \"2026-07-26T12:00:00.000000Z\"\n        }\n    ],\n    \"links\": {\n        \"next\": null,\n        \"prev\": null\n    },\n    \"meta\": {\n        \"path\": \"{{base_url}}/v1/groups/{{group_id}}/posts\",\n        \"per_page\": 20,\n        \"next_cursor\": null,\n        \"prev_cursor\": null\n    }\n}"
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Group  Share",
+                            "request": {
+                                "auth": {
+                                    "type": "bearer",
+                                    "bearer": [
+                                        {
+                                            "key": "token",
+                                            "value": "{{token}}",
+                                            "type": "string"
+                                        }
+                                    ]
+                                },
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": "{{base_url}}/v1/groups/{{group_id}}/posts/{{post_id}}",
+                                "description": "Mobile API operation: groupControllerShare."
+                            },
+                            "response": [
+                                {
+                                    "name": "204 No Content",
+                                    "originalRequest": {
+                                        "auth": {
+                                            "type": "bearer",
+                                            "bearer": [
+                                                {
+                                                    "key": "token",
+                                                    "value": "{{token}}",
+                                                    "type": "string"
+                                                }
+                                            ]
+                                        },
+                                        "method": "POST",
+                                        "header": [
+                                            {
+                                                "key": "Accept",
+                                                "value": "application/json"
+                                            }
+                                        ],
+                                        "url": "{{base_url}}/v1/groups/{{group_id}}/posts/{{post_id}}",
+                                        "description": "Mobile API operation: groupControllerShare."
+                                    },
+                                    "status": "No Content",
+                                    "code": 204,
+                                    "_postman_previewlanguage": "json",
+                                    "header": [
+                                        {
+                                            "key": "Content-Type",
+                                            "value": "application/json"
+                                        }
+                                    ],
+                                    "body": ""
+                                },
+                                {
+                                    "name": "403 Forbidden",
+                                    "originalRequest": {
+                                        "auth": {
+                                            "type": "bearer",
+                                            "bearer": [
+                                                {
+                                                    "key": "token",
+                                                    "value": "{{token}}",
+                                                    "type": "string"
+                                                }
+                                            ]
+                                        },
+                                        "method": "POST",
+                                        "header": [
+                                            {
+                                                "key": "Accept",
+                                                "value": "application/json"
+                                            }
+                                        ],
+                                        "url": "{{base_url}}/v1/groups/{{group_id}}/posts/{{post_id}}",
+                                        "description": "Mobile API operation: groupControllerShare."
+                                    },
+                                    "status": "Forbidden",
+                                    "code": 403,
+                                    "_postman_previewlanguage": "json",
+                                    "header": [
+                                        {
+                                            "key": "Content-Type",
+                                            "value": "application/json"
+                                        }
+                                    ],
+                                    "body": "{\n    \"message\": \"This action is unauthorized.\"\n}"
+                                }
+                            ]
+                        }
+                    ]
                 }
             ]
         }
