@@ -11,6 +11,7 @@ use Illuminate\Support\Str;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\ImageManager;
 use Intervention\Image\MediaType;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -51,7 +52,9 @@ class ImageProcessingService
 
         $path = sprintf('%s/%s.%s', $directory, (string) Str::uuid(), $extension);
 
-        Storage::disk(config('social.media_disk'))->put($path, (string) $encoded);
+        if (! Storage::disk(config('social.media_disk'))->put($path, (string) $encoded)) {
+            throw new RuntimeException("Failed to store original image [{$path}].");
+        }
 
         return [
             'path' => $path,
@@ -119,6 +122,8 @@ class ImageProcessingService
             ->scaleDown($maxDimension, $maxDimension)
             ->toWebp(quality: 75);
 
-        $disk->put($destinationPath, (string) $encoded);
+        if (! $disk->put($destinationPath, (string) $encoded)) {
+            throw new RuntimeException("Failed to write thumbnail [{$destinationPath}].");
+        }
     }
 }

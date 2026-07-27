@@ -166,9 +166,9 @@ locks backed by a shared cache:
 Run independent workers so security notifications are not delayed by image processing:
 
 ```bash
-php artisan queue:work --queue=security
-php artisan queue:work --queue=media
-php artisan queue:work --queue=default
+php83 artisan queue:work --queue=security
+php83 artisan queue:work --queue=media
+php83 artisan queue:work --queue=default
 ```
 
 `composer dev` consumes `security,media,default` in priority order for local development.
