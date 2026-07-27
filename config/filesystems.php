@@ -45,6 +45,23 @@ return [
             'visibility' => 'public',
             'throw' => false,
             'report' => false,
+            // Group-writable: files/directories on this disk are written by both the
+            // web process (php-fpm as www-data, e.g. the initial upload in
+            // ImageProcessingService::storeOriginal) and the queue worker (Horizon,
+            // running as forge) that generates thumbnails afterward — both are members
+            // of the www-data group, but Flysystem's own default (0755/0644) has no
+            // group-write bit, so whichever process runs second can't write into a
+            // directory the other one created.
+            'permissions' => [
+                'file' => [
+                    'public' => 0664,
+                    'private' => 0600,
+                ],
+                'dir' => [
+                    'public' => 0775,
+                    'private' => 0700,
+                ],
+            ],
         ],
 
         's3' => [
