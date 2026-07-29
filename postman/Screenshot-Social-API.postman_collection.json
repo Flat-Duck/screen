@@ -11232,6 +11232,255 @@
                     ]
                 },
                 {
+                    "name": "Private Saves",
+                    "item": [
+                        {
+                            "name": "Private Save  Store",
+                            "request": {
+                                "auth": {
+                                    "type": "bearer",
+                                    "bearer": [
+                                        {
+                                            "key": "token",
+                                            "value": "{{token}}",
+                                            "type": "string"
+                                        }
+                                    ]
+                                },
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": "{{base_url}}/v1/private-saves",
+                                "description": "Mobile API operation: privateSaveControllerStore.",
+                                "body": {
+                                    "mode": "formdata",
+                                    "formdata": [
+                                        {
+                                            "key": "image",
+                                            "type": "file",
+                                            "src": []
+                                        }
+                                    ]
+                                }
+                            },
+                            "response": [
+                                {
+                                    "name": "201 Created",
+                                    "originalRequest": {
+                                        "auth": {
+                                            "type": "bearer",
+                                            "bearer": [
+                                                {
+                                                    "key": "token",
+                                                    "value": "{{token}}",
+                                                    "type": "string"
+                                                }
+                                            ]
+                                        },
+                                        "method": "POST",
+                                        "header": [
+                                            {
+                                                "key": "Accept",
+                                                "value": "application/json"
+                                            }
+                                        ],
+                                        "url": "{{base_url}}/v1/private-saves",
+                                        "description": "Mobile API operation: privateSaveControllerStore.",
+                                        "body": {
+                                            "mode": "formdata",
+                                            "formdata": [
+                                                {
+                                                    "key": "image",
+                                                    "type": "file",
+                                                    "src": []
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    "status": "Created",
+                                    "code": 201,
+                                    "_postman_previewlanguage": "json",
+                                    "header": [
+                                        {
+                                            "key": "Content-Type",
+                                            "value": "application/json"
+                                        }
+                                    ],
+                                    "body": "{\n    \"data\": {\n        \"id\": 1,\n        \"url\": \"https://screen.bulbulstream.ly/storage/private-saves/1/shot.jpg\",\n        \"width\": 1080,\n        \"height\": 1920,\n        \"mime_type\": \"image/jpeg\",\n        \"size_bytes\": 245678,\n        \"created_at\": \"2026-07-29T00:00:00.000000Z\"\n    }\n}"
+                                },
+                                {
+                                    "name": "422 Validation Error",
+                                    "originalRequest": {
+                                        "auth": {
+                                            "type": "bearer",
+                                            "bearer": [
+                                                {
+                                                    "key": "token",
+                                                    "value": "{{token}}",
+                                                    "type": "string"
+                                                }
+                                            ]
+                                        },
+                                        "method": "POST",
+                                        "header": [
+                                            {
+                                                "key": "Accept",
+                                                "value": "application/json"
+                                            }
+                                        ],
+                                        "url": "{{base_url}}/v1/private-saves",
+                                        "description": "Mobile API operation: privateSaveControllerStore.",
+                                        "body": {
+                                            "mode": "formdata",
+                                            "formdata": [
+                                                {
+                                                    "key": "image",
+                                                    "type": "file",
+                                                    "src": []
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    "status": "Unprocessable Content",
+                                    "code": 422,
+                                    "_postman_previewlanguage": "json",
+                                    "header": [
+                                        {
+                                            "key": "Content-Type",
+                                            "value": "application/json"
+                                        }
+                                    ],
+                                    "body": "{\n    \"message\": \"The given data was invalid.\",\n    \"errors\": {\n        \"image\": [\n            \"The image field is required.\"\n        ]\n    }\n}"
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Private Save  Index",
+                            "request": {
+                                "auth": {
+                                    "type": "bearer",
+                                    "bearer": [
+                                        {
+                                            "key": "token",
+                                            "value": "{{token}}",
+                                            "type": "string"
+                                        }
+                                    ]
+                                },
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": "{{base_url}}/v1/private-saves",
+                                "description": "Mobile API operation: privateSaveControllerIndex."
+                            },
+                            "response": [
+                                {
+                                    "name": "200 OK",
+                                    "originalRequest": {
+                                        "auth": {
+                                            "type": "bearer",
+                                            "bearer": [
+                                                {
+                                                    "key": "token",
+                                                    "value": "{{token}}",
+                                                    "type": "string"
+                                                }
+                                            ]
+                                        },
+                                        "method": "GET",
+                                        "header": [
+                                            {
+                                                "key": "Accept",
+                                                "value": "application/json"
+                                            }
+                                        ],
+                                        "url": "{{base_url}}/v1/private-saves",
+                                        "description": "Mobile API operation: privateSaveControllerIndex."
+                                    },
+                                    "status": "OK",
+                                    "code": 200,
+                                    "_postman_previewlanguage": "json",
+                                    "header": [
+                                        {
+                                            "key": "Content-Type",
+                                            "value": "application/json"
+                                        }
+                                    ],
+                                    "body": "{\n    \"data\": []\n}"
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Private Save  Destroy",
+                            "request": {
+                                "auth": {
+                                    "type": "bearer",
+                                    "bearer": [
+                                        {
+                                            "key": "token",
+                                            "value": "{{token}}",
+                                            "type": "string"
+                                        }
+                                    ]
+                                },
+                                "method": "DELETE",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": "{{base_url}}/v1/private-saves/{{private_save_id}}",
+                                "description": "Mobile API operation: privateSaveControllerDestroy."
+                            },
+                            "response": [
+                                {
+                                    "name": "204 No Content",
+                                    "originalRequest": {
+                                        "auth": {
+                                            "type": "bearer",
+                                            "bearer": [
+                                                {
+                                                    "key": "token",
+                                                    "value": "{{token}}",
+                                                    "type": "string"
+                                                }
+                                            ]
+                                        },
+                                        "method": "DELETE",
+                                        "header": [
+                                            {
+                                                "key": "Accept",
+                                                "value": "application/json"
+                                            }
+                                        ],
+                                        "url": "{{base_url}}/v1/private-saves/{{private_save_id}}",
+                                        "description": "Mobile API operation: privateSaveControllerDestroy."
+                                    },
+                                    "status": "No Content",
+                                    "code": 204,
+                                    "_postman_previewlanguage": "json",
+                                    "header": [
+                                        {
+                                            "key": "Content-Type",
+                                            "value": "application/json"
+                                        }
+                                    ],
+                                    "body": ""
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
                     "name": "Message Requests",
                     "item": [
                         {

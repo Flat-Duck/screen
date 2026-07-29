@@ -4522,6 +4522,126 @@
                 ]
             }
         },
+        "/api/v1/private-saves": {
+            "post": {
+                "operationId": "privateSaveControllerStore",
+                "tags": [
+                    "Private Saves"
+                ],
+                "responses": {
+                    "200": {
+                        "$ref": "#/components/responses/JsonSuccess"
+                    },
+                    "204": {
+                        "description": "Successful operation with no response body"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/RateLimited"
+                    }
+                },
+                "x-auth-principal": "user",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/JsonObject"
+                            }
+                        }
+                    }
+                }
+            },
+            "get": {
+                "operationId": "privateSaveControllerIndex",
+                "tags": [
+                    "Private Saves"
+                ],
+                "responses": {
+                    "200": {
+                        "$ref": "#/components/responses/JsonSuccess"
+                    },
+                    "204": {
+                        "description": "Successful operation with no response body"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/RateLimited"
+                    }
+                },
+                "x-auth-principal": "user",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/private-saves/{privateSave}": {
+            "delete": {
+                "operationId": "privateSaveControllerDestroy",
+                "tags": [
+                    "Private Saves"
+                ],
+                "responses": {
+                    "200": {
+                        "$ref": "#/components/responses/JsonSuccess"
+                    },
+                    "204": {
+                        "description": "Successful operation with no response body"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/RateLimited"
+                    }
+                },
+                "x-auth-principal": "user",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "privateSave",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ]
+            }
+        },
         "/api/v1/profile": {
             "patch": {
                 "operationId": "profileControllerUpdate",

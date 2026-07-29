@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\PostController;
 use App\Http\Controllers\Api\V1\PostLibraryController;
 use App\Http\Controllers\Api\V1\PostMediaController;
+use App\Http\Controllers\Api\V1\PrivateSaveController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\PushTokenController;
 use App\Http\Controllers\Api\V1\RecommendationFeedbackController;
@@ -105,6 +106,10 @@ Route::middleware(['auth:sanctum', 'auth.user', 'session.touch'])->group(functio
     Route::get('media/analyses/{token}', [MediaAnalysisController::class, 'show'])->middleware('throttle:reads');
     Route::post('media/analyses/{token}/publish', [MediaAnalysisController::class, 'publish'])->middleware('throttle:posts-store');
     Route::delete('media/analyses/{token}', [MediaAnalysisController::class, 'destroy'])->middleware('throttle:writes-moderate');
+
+    Route::post('private-saves', [PrivateSaveController::class, 'store'])->middleware('throttle:posts-store');
+    Route::get('private-saves', [PrivateSaveController::class, 'index'])->middleware('throttle:reads');
+    Route::delete('private-saves/{privateSave}', [PrivateSaveController::class, 'destroy'])->middleware('throttle:writes-moderate');
 
     Route::patch('profile', [ProfileController::class, 'update'])->middleware('throttle:writes-moderate');
 
