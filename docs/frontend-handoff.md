@@ -646,3 +646,18 @@ Analytics events do not perform the action they describe. Continue calling the r
 follow, report, comment, and repost endpoints; analytics cannot change their counters or state.
 Events older than 30 days, more than five minutes in the future, before the current device session,
 for inaccessible posts, or with mismatched authors are rejected. Raw rows are retained for 90 days.
+
+---
+
+## Shipped: 2026-08-01 — real `reposts_count` on `PostResource`
+
+`PostResource` gains `reposts_count` — the total number of times the post has been reposted
+(same shape/convention as `likes_count`/`comments_count`: a plain integer, always present,
+never null). It's populated everywhere a post is returned (feed, post detail, saved posts,
+saved collections, library/archive, search, hashtags, groups, explore/trending, and the
+`post` embedded inside `RepostResource`), so any client-side estimate or placeholder for a
+repost count can be replaced with this field directly.
+
+There is still no `is_reposted` — that remains intentionally out of scope for v1 (see the
+"Repost" section above): reposts are profile-only and the feed's repost action never needs
+to know the viewer's own repost state for a given post.

@@ -37,7 +37,7 @@ class FeedService
             ->visibleTo($user)
             ->whereIn('user_id', $user->following()->pluck('users.id'))
             ->with(['user', 'media', 'category'])
-            ->withCount(['likes', 'comments'])
+            ->withCount(['likes', 'comments', 'reposts'])
             ->latest('id');
 
         $query = $this->blocks->excludeBlocked($query, $user, 'user_id');
@@ -112,7 +112,7 @@ class FeedService
             ->where('user_id', '!=', $user->id)
             ->whereNotIn('user_id', $user->following()->pluck('users.id'))
             ->with(['user', 'media', 'category'])
-            ->withCount(['likes', 'comments']);
+            ->withCount(['likes', 'comments', 'reposts']);
 
         $query = $this->blocks->excludeBlocked($query, $user, 'user_id');
         $posts = $this->mutes->excludeMuted($query, $user, 'user_id')->get();
@@ -169,7 +169,7 @@ class FeedService
             ->whereIn('id', $ids)
             ->where('user_id', '!=', $user->id)
             ->with(['user', 'media', 'category'])
-            ->withCount(['likes', 'comments']);
+            ->withCount(['likes', 'comments', 'reposts']);
 
         $query = $this->blocks->excludeBlocked($query, $user, 'user_id');
         $posts = $this->mutes->excludeMuted($query, $user, 'user_id')->get();

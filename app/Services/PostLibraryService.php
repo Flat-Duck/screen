@@ -43,7 +43,7 @@ class PostLibraryService
     public function archived(User $user, int $perPage = 15): CursorPaginator
     {
         return Post::withoutGlobalScope(NotArchivedScope::class)->where('user_id', $user->id)
-            ->whereNotNull('archived_at')->with(['user', 'media', 'category'])->withCount(['likes', 'comments'])
+            ->whereNotNull('archived_at')->with(['user', 'media', 'category'])->withCount(['likes', 'comments', 'reposts'])
             ->latest('archived_at')->latest('id')->cursorPaginate($perPage);
     }
 
@@ -52,7 +52,7 @@ class PostLibraryService
     {
         return Post::withoutGlobalScope(NotArchivedScope::class)->onlyTrashed()->where('user_id', $user->id)
             ->whereNull('account_deleted_at')->where('deleted_at', '>=', now()->subDays((int) config('social.post_retention_days', 30)))
-            ->with(['user', 'media', 'category'])->withCount(['likes', 'comments'])
+            ->with(['user', 'media', 'category'])->withCount(['likes', 'comments', 'reposts'])
             ->latest('deleted_at')->latest('id')->cursorPaginate($perPage);
     }
 

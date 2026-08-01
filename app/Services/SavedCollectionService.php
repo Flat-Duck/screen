@@ -81,7 +81,7 @@ class SavedCollectionService
         $items = CollectionItem::query()->where('collection_id', $owned->id)->whereIn('post_id', $visiblePosts)
             ->orderBy('position')->orderBy('id')->cursorPaginate($perPage);
         $posts = Post::query()->whereIn('id', $items->getCollection()->pluck('post_id'))
-            ->with(['user', 'media', 'category'])->withCount(['likes', 'comments'])->get()->keyBy('id');
+            ->with(['user', 'media', 'category'])->withCount(['likes', 'comments', 'reposts'])->get()->keyBy('id');
         $items->getCollection()->each(fn (CollectionItem $item) => $item->setRelation('post', $posts->get($item->post_id)));
 
         return $items;

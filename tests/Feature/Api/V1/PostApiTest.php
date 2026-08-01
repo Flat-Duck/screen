@@ -257,7 +257,7 @@ class PostApiTest extends TestCase
                 'id', 'caption', 'status',
                 'user' => ['id', 'username', 'name', 'avatar_url'],
                 'media' => [['id', 'position', 'url', 'original_url', 'width', 'height', 'status']],
-                'likes_count', 'comments_count', 'is_liked', 'created_at',
+                'likes_count', 'comments_count', 'reposts_count', 'is_liked', 'created_at',
             ],
         ]);
     }

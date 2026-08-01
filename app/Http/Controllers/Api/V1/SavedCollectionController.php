@@ -116,7 +116,7 @@ class SavedCollectionController extends Controller
 
     private function hydrateItem(CollectionItem $item, User $user): void
     {
-        $post = $item->post()->with(['user', 'media', 'category'])->withCount(['likes', 'comments'])->firstOrFail();
+        $post = $item->post()->with(['user', 'media', 'category'])->withCount(['likes', 'comments', 'reposts'])->firstOrFail();
         $post->is_saved = true;
         $this->likes->annotateIsLiked(collect([$post]), $user);
         $item->setRelation('post', $post);

@@ -59,7 +59,7 @@ class HashtagService
             ->visibleTo($viewer)
             ->whereIn('id', DB::table('hashtag_post')->where('hashtag_id', $hashtag->id)->select('post_id'))
             ->with(['user', 'media', 'category'])
-            ->withCount(['likes', 'comments'])
+            ->withCount(['likes', 'comments', 'reposts'])
             ->latest('id');
 
         return $this->blocks->excludeBlocked($query, $viewer, 'user_id')->cursorPaginate($perPage);

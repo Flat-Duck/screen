@@ -58,7 +58,7 @@ class PostLibraryController extends Controller
     {
         $user = $this->user($request);
         $post = $this->library->restore($user, $postId);
-        $post->load(['user', 'media', 'category'])->loadCount(['likes', 'comments']);
+        $post->load(['user', 'media', 'category'])->loadCount(['likes', 'comments', 'reposts']);
         $this->annotate(collect([$post]), $user);
 
         return new PostResource($post);

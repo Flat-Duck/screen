@@ -184,6 +184,14 @@ class Post extends Model
     }
 
     /**
+     * @return HasMany<Repost, $this>
+     */
+    public function reposts(): HasMany
+    {
+        return $this->hasMany(Repost::class);
+    }
+
+    /**
      * @return BelongsToMany<Hashtag, $this>
      */
     public function hashtags(): BelongsToMany

@@ -34,9 +34,12 @@ Referenced by name below instead of repeating the full field list on every row.
 are omitted entirely when viewing your own profile (meaningless there).
 
 **`PostResource`**:
-`{id, caption, status, user: UserSummaryResource, media: PostMediaResource[], likes_count, comments_count, is_liked, is_saved, created_at, edited_at}`
+`{id, caption, status, user: UserSummaryResource, media: PostMediaResource[], likes_count, comments_count, reposts_count, comments_enabled, reposts_enabled, category, source_application, source_url, content_warning, is_liked, is_saved, created_at, edited_at, archived_at, deleted_at, scheduled_purge_at, recommendation}`
 — `status` is `processing`/`ready`/`failed` (thumbnail generation only, post is visible
-either way). `edited_at` is `null` until the post has been edited.
+either way). `edited_at` is `null` until the post has been edited. `reposts_count` (added
+2026-08-01) is the total number of times the post has been reposted — there is no
+`is_reposted`; v1 reposts are profile-only, so no endpoint needs the viewer's own repost
+state for a post (see `RepostResource` below and the Reposts section).
 
 **`PostMediaResource`**: `{id, position, url, original_url, width, height, status}`
 — `url` is the thumbnail, falling back to `original_url` automatically while

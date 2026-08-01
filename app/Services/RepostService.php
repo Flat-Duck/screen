@@ -51,7 +51,7 @@ class RepostService
             ->where('user_id', $user->id)
             ->whereIn('post_id', Post::query()->visibleTo($viewer)->select('id'))
             ->with(['post' => function ($query): void {
-                $query->with(['user', 'media', 'category'])->withCount(['likes', 'comments']);
+                $query->with(['user', 'media', 'category'])->withCount(['likes', 'comments', 'reposts']);
             }])
             ->latest('id')
             ->cursorPaginate($perPage);

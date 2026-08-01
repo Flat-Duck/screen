@@ -65,7 +65,7 @@ class SavedPostService
             ->visibleTo($user)
             ->whereIn('id', SavedPost::query()->where('user_id', $user->id)->select('post_id'))
             ->with(['user', 'media', 'category'])
-            ->withCount(['likes', 'comments'])
+            ->withCount(['likes', 'comments', 'reposts'])
             ->latest('id');
 
         return $this->blocks->excludeBlocked($query, $user, 'user_id')->cursorPaginate($perPage);

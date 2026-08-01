@@ -38,7 +38,7 @@ class RecommendationFeedService
         $slice = array_slice($items, $offset, $perPage);
         $ids = array_map(fn (array $item): int => (int) $item['post_id'], $slice);
         $posts = $this->eligibility->query($viewer)->whereIn('id', $ids)
-            ->with(['user', 'media', 'category'])->withCount(['likes', 'comments'])->get()->keyBy('id');
+            ->with(['user', 'media', 'category'])->withCount(['likes', 'comments', 'reposts'])->get()->keyBy('id');
 
         $ordered = collect($slice)->map(function (array $item) use ($posts, $session): ?Post {
             $post = $posts->get((int) $item['post_id']);

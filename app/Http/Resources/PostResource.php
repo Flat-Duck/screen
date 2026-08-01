@@ -8,9 +8,10 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * Callers must `loadCount(['likes', 'comments'])` and set `is_liked`/`is_saved` on the
+ * Callers must `loadCount(['likes', 'comments', 'reposts'])` and set `is_liked`/`is_saved` on the
  * model for the current viewer (see LikeService/SavedPostService/PostQueryService) before
- * resourcing.
+ * resourcing. There is no `is_reposted` — v1 reposts are profile-only (see RepostService's
+ * class docblock), so the feed repost action never needs the viewer's own repost state.
  *
  * @mixin Post
  */
@@ -29,6 +30,7 @@ class PostResource extends JsonResource
             'media' => PostMediaResource::collection($this->whenLoaded('media')),
             'likes_count' => $this->likes_count,
             'comments_count' => $this->comments_count,
+            'reposts_count' => $this->reposts_count,
             'comments_enabled' => $this->comments_enabled,
             'reposts_enabled' => $this->reposts_enabled,
             'category' => $this->whenLoaded('category', fn (): array => [

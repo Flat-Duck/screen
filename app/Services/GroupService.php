@@ -103,7 +103,7 @@ class GroupService
             )
             ->whereIn('posts.id', $visiblePostIds)
             ->with(['user', 'media', 'category'])
-            ->withCount(['likes', 'comments'])
+            ->withCount(['likes', 'comments', 'reposts'])
             ->select('posts.*', 'group_post_pivot.group_post_id')
             ->orderByDesc('group_post_pivot.group_post_id')
             ->cursorPaginate($perPage);

@@ -47,7 +47,7 @@ class RefreshTrendingPosts extends Command
                 ->fromPubliclyVisibleAuthors()
                 ->whereIn('user_id', User::query()->where('account_visibility', AccountVisibility::Public)->select('id'))
                 ->where('created_at', '>=', now()->subDays($windowDays))
-                ->withCount(['likes', 'comments'])
+                ->withCount(['likes', 'comments', 'reposts'])
                 ->chunkById(500, function ($posts) use ($tempKey, $likeWeight, $commentWeight, $gravity, &$scored): void {
                     $members = [];
 

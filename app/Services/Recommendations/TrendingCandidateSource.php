@@ -23,7 +23,7 @@ class TrendingCandidateSource extends AbstractCandidateSource
             ->where('created_at', '>=', now()->subDays((int) config('social.recommendations.windows.trending_days', 7)));
 
         if ($ids === []) {
-            $posts = $query->withCount(['likes', 'comments'])->orderByDesc('likes_count')->orderByDesc('comments_count')
+            $posts = $query->withCount(['likes', 'comments', 'reposts'])->orderByDesc('likes_count')->orderByDesc('comments_count')
                 ->latest('id')->limit($limit)->get();
         } else {
             $posts = $query->whereIn('id', $ids)->get()->sortBy(fn (Post $post): int => $this->rank($ids, $post->id))->take($limit)->values();

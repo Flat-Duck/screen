@@ -17,7 +17,7 @@ class PostQueryService
             ->visibleTo($viewer)
             ->where('user_id', $user->id)
             ->with(['user', 'media', 'category'])
-            ->withCount(['likes', 'comments'])
+            ->withCount(['likes', 'comments', 'reposts'])
             ->latest('id')
             ->cursorPaginate($perPage);
     }

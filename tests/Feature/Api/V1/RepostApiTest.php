@@ -58,6 +58,23 @@ class RepostApiTest extends TestCase
         $this->assertDatabaseCount('reposts', 1);
     }
 
+    public function test_reposts_count_reflects_reposts_and_updates_on_unrepost(): void
+    {
+        $post = Post::factory()->create();
+        Sanctum::actingAs(User::factory()->create());
+        $this->getJson("/api/v1/posts/{$post->id}")->assertJsonPath('data.reposts_count', 0);
+
+        $this->postJson("/api/v1/posts/{$post->id}/repost")->assertNoContent();
+        $this->getJson("/api/v1/posts/{$post->id}")->assertJsonPath('data.reposts_count', 1);
+
+        Sanctum::actingAs(User::factory()->create());
+        $this->postJson("/api/v1/posts/{$post->id}/repost")->assertNoContent();
+        $this->getJson("/api/v1/posts/{$post->id}")->assertJsonPath('data.reposts_count', 2);
+
+        $this->deleteJson("/api/v1/posts/{$post->id}/repost")->assertNoContent();
+        $this->getJson("/api/v1/posts/{$post->id}")->assertJsonPath('data.reposts_count', 1);
+    }
+
     public function test_unreposting_removes_it(): void
     {
         $post = Post::factory()->create();

@@ -15,7 +15,7 @@ class ContentController extends Controller
 
     public function show(int $post): View
     {
-        $post = Post::withoutGlobalScope(NotArchivedScope::class)->withTrashed()->with(['user', 'media'])->withCount(['likes', 'comments'])->findOrFail($post);
+        $post = Post::withoutGlobalScope(NotArchivedScope::class)->withTrashed()->with(['user', 'media'])->withCount(['likes', 'comments', 'reposts'])->findOrFail($post);
 
         return view('moderation.content.show', ['post' => $post]);
     }

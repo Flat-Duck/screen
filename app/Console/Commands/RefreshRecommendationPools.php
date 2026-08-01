@@ -29,7 +29,7 @@ class RefreshRecommendationPools extends Command
                 ->fromPubliclyVisibleAuthors()
                 ->whereIn('user_id', User::query()->where('account_visibility', AccountVisibility::Public->value)->select('id'))
                 ->where('created_at', '>=', now()->subDays($window))
-                ->with('user:id,country_code')->withCount(['likes', 'comments'])->get();
+                ->with('user:id,country_code')->withCount(['likes', 'comments', 'reposts'])->get();
 
             $pools = ['global' => []];
             foreach ($posts as $post) {

@@ -35,7 +35,7 @@ class PostController extends Controller
         $post = $createPost($user, $request->toData());
         $post->is_liked = false;
         $post->is_saved = false;
-        $post->loadCount(['likes', 'comments'])->load(['user', 'category']);
+        $post->loadCount(['likes', 'comments', 'reposts'])->load(['user', 'category']);
 
         return (new PostResource($post))->response()->setStatusCode(201);
     }
@@ -45,7 +45,7 @@ class PostController extends Controller
         /** @var User $viewer */
         $viewer = $request->user();
 
-        $post->load(['user', 'media', 'category'])->loadCount(['likes', 'comments']);
+        $post->load(['user', 'media', 'category'])->loadCount(['likes', 'comments', 'reposts']);
 
         if ($this->blocks->isBlockedEitherWay($viewer, $post->user)) {
             abort(404);
@@ -67,7 +67,7 @@ class PostController extends Controller
         $viewer = $request->user();
 
         $post = $updatePost($post, $request->validated());
-        $post->load(['user', 'media', 'category'])->loadCount(['likes', 'comments']);
+        $post->load(['user', 'media', 'category'])->loadCount(['likes', 'comments', 'reposts']);
         $post->is_liked = $post->likes()->where('user_id', $viewer->id)->exists();
         $post->is_saved = $this->savedPosts->isSaved($viewer, $post);
 

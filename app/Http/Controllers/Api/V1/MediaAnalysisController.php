@@ -46,7 +46,7 @@ class MediaAnalysisController extends Controller
         $user = $request->user();
         $this->restrictions->enforce($user, UserRestrictionType::Posting);
         $post = $publish($user, $this->resolve($request, $token), $request->validated());
-        $post->loadCount(['likes', 'comments']);
+        $post->loadCount(['likes', 'comments', 'reposts']);
         $post->is_liked = false;
         $post->is_saved = $this->savedPosts->isSaved($user, $post);
 

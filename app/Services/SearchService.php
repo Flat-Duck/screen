@@ -52,7 +52,7 @@ class SearchService
             $searchQuery->whereIn('user_id', $visibleAuthorIds)
                 ->when($blockedIds !== [], fn (Builder $query) => $query->whereNotIn('user_id', $blockedIds))
                 ->with(['user', 'media', 'category'])
-                ->withCount(['likes', 'comments']);
+                ->withCount(['likes', 'comments', 'reposts']);
         })->paginate($perPage);
     }
 
