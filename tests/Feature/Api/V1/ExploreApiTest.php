@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api\V1;
 
 use App\Models\Post;
+use App\Models\ScreenshotCategory;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Redis;
@@ -111,6 +112,45 @@ class ExploreApiTest extends TestCase
         $response = $this->getJson('/api/v1/explore?page=2');
 
         $response->assertOk();
+    }
+
+    public function test_explore_can_be_filtered_by_category(): void
+    {
+        $memes = ScreenshotCategory::query()->create(['slug' => 'memes', 'name' => 'Memes']);
+        $art = ScreenshotCategory::query()->create(['slug' => 'art', 'name' => 'Art']);
+        $memePost = Post::factory()->create(['category_id' => $memes->id]);
+        $artPost = Post::factory()->create(['category_id' => $art->id]);
+        Sanctum::actingAs(User::factory()->create());
+
+        Redis::shouldReceive('zrevrange')->once()->andReturn([(string) $memePost->id, (string) $artPost->id]);
+
+        $response = $this->getJson('/api/v1/explore?category=memes')->assertOk();
+        $this->assertSame([$memePost->id], $response->json('data.*.id'));
+    }
+
+    public function test_explore_can_be_filtered_by_country(): void
+    {
+        $libyanAuthor = User::factory()->create(['country_code' => 'LY']);
+        $egyptianAuthor = User::factory()->create(['country_code' => 'EG']);
+        $libyanPost = Post::factory()->for($libyanAuthor)->create();
+        $egyptianPost = Post::factory()->for($egyptianAuthor)->create();
+        Sanctum::actingAs(User::factory()->create());
+
+        Redis::shouldReceive('zrevrange')->once()->andReturn([(string) $libyanPost->id, (string) $egyptianPost->id]);
+
+        $response = $this->getJson('/api/v1/explore?country=LY')->assertOk();
+        $this->assertSame([$libyanPost->id], $response->json('data.*.id'));
+    }
+
+    public function test_explore_country_filter_is_case_insensitive(): void
+    {
+        $author = User::factory()->create(['country_code' => 'LY']);
+        $post = Post::factory()->for($author)->create();
+        Sanctum::actingAs(User::factory()->create());
+
+        Redis::shouldReceive('zrevrange')->once()->andReturn([(string) $post->id]);
+
+        $this->getJson('/api/v1/explore?country=ly')->assertOk()->assertJsonCount(1, 'data');
     }
 
     public function test_explore_degrades_gracefully_when_redis_is_unreachable(): void

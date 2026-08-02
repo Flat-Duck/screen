@@ -23,9 +23,16 @@ class ExploreController extends Controller
         /** @var User $viewer */
         $viewer = $request->user();
 
+        $validated = $request->validate([
+            'category' => ['sometimes', 'string', 'max:100'],
+            // Format only, same reasoning as UpdateProfileRequest's own country_code rule —
+            // not validated against the full ISO 3166-1 alpha-2 list.
+            'country' => ['sometimes', 'string', 'size:2', 'alpha'],
+        ]);
+
         $page = max(1, (int) $request->integer('page', 1));
 
-        $posts = $this->feed->explore($viewer, $page);
+        $posts = $this->feed->explore($viewer, $page, category: $validated['category'] ?? null, country: $validated['country'] ?? null);
         $this->likes->annotateIsLiked($posts->getCollection(), $viewer);
         $this->savedPosts->annotateIsSaved($posts->getCollection(), $viewer);
 

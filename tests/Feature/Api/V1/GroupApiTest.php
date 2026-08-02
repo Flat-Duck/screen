@@ -6,6 +6,8 @@ use App\Models\Group;
 use App\Models\Post;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -22,12 +24,36 @@ class GroupApiTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('data.name', 'Photography')
             ->assertJsonPath('data.visibility', 'public')
+            ->assertJsonPath('data.is_discoverable', true)
+            ->assertJsonPath('data.photo_url', null)
             ->assertJsonPath('data.member_count', 1)
             ->assertJsonPath('data.is_member', true)
             ->assertJsonPath('data.is_admin', true);
 
         $groupId = $response->json('data.id');
         $this->assertDatabaseHas('group_members', ['group_id' => $groupId, 'user_id' => $creator->id, 'role' => 'admin']);
+    }
+
+    public function test_creating_a_group_accepts_a_cover_photo_and_discoverability_flag(): void
+    {
+        Storage::fake('public');
+
+        $creator = User::factory()->create();
+        Sanctum::actingAs($creator);
+
+        $response = $this->postJson('/api/v1/groups', [
+            'name' => 'Rock Art',
+            'visibility' => 'private',
+            'is_discoverable' => false,
+            'photo' => UploadedFile::fake()->image('cover.jpg', 800, 800),
+        ])->assertCreated()
+            ->assertJsonPath('data.visibility', 'private')
+            ->assertJsonPath('data.is_discoverable', false);
+
+        $group = Group::findOrFail($response->json('data.id'));
+        $this->assertNotNull($group->photo_path);
+        Storage::disk('public')->assertExists($group->photo_path);
+        $this->assertSame($group->photoUrl(), $response->json('data.photo_url'));
     }
 
     public function test_discover_lists_groups_and_annotates_the_viewers_own_membership(): void

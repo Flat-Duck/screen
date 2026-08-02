@@ -41,6 +41,7 @@ class NewMessageNotification extends Notification implements FcmNotification, Sh
             'message_id' => $this->message->id,
             'sender_id' => $this->sender->id,
             'sender_username' => $this->sender->username,
+            'sender_avatar_url' => $this->sender->avatarUrl(),
             'excerpt' => Str::limit($this->message->body, 140),
         ];
     }

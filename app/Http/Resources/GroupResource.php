@@ -22,6 +22,8 @@ class GroupResource extends JsonResource
             'name' => $this->name,
             'description' => $this->description,
             'visibility' => $this->visibility,
+            'is_discoverable' => (bool) $this->is_discoverable,
+            'photo_url' => $this->photoUrl(),
             'member_count' => $this->member_count,
             'creator' => new UserSummaryResource($this->whenLoaded('creator')),
             'is_member' => (bool) ($this->is_member ?? false),

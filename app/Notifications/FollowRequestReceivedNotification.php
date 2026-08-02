@@ -24,7 +24,11 @@ class FollowRequestReceivedNotification extends Notification implements FcmNotif
     /** @return array<string, int|string|null> */
     public function toArray(object $notifiable): array
     {
-        return ['requester_id' => $this->requester->id, 'requester_username' => $this->requester->username];
+        return [
+            'requester_id' => $this->requester->id,
+            'requester_username' => $this->requester->username,
+            'requester_avatar_url' => $this->requester->avatarUrl(),
+        ];
     }
 
     /** @return array{title: string, body: string, data: array<string, string>} */

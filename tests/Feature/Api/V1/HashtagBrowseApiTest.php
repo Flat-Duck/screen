@@ -6,6 +6,7 @@ use App\Models\Hashtag;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -133,6 +134,56 @@ class HashtagBrowseApiTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonPath('data.is_followed', true);
+    }
+
+    public function test_trending_hashtags_are_ranked_by_recent_post_count(): void
+    {
+        $author = User::factory()->create();
+        $this->createPostWithCaption($author, '#popular one');
+        $this->createPostWithCaption($author, '#popular two');
+        $this->createPostWithCaption($author, '#popular three');
+        $this->createPostWithCaption($author, '#quiet one');
+        Sanctum::actingAs(User::factory()->create());
+
+        $response = $this->getJson('/api/v1/hashtags/trending')->assertOk();
+
+        $response->assertJsonPath('data.0.name', 'popular');
+        $response->assertJsonPath('data.0.posts_count', 3);
+        $response->assertJsonPath('data.1.name', 'quiet');
+    }
+
+    public function test_trending_hashtags_excludes_activity_outside_the_window(): void
+    {
+        $author = User::factory()->create();
+        $this->createPostWithCaption($author, '#stale news');
+        $hashtag = Hashtag::query()->where('name', 'stale')->firstOrFail();
+        DB::table('hashtag_post')->where('hashtag_id', $hashtag->id)->update(['created_at' => now()->subDays(30)]);
+        Sanctum::actingAs(User::factory()->create());
+
+        $this->getJson('/api/v1/hashtags/trending')->assertOk()->assertJsonCount(0, 'data');
+        $this->getJson('/api/v1/hashtags/trending?days=90')->assertOk()->assertJsonCount(1, 'data');
+    }
+
+    public function test_trending_hashtags_respects_the_limit_parameter(): void
+    {
+        $author = User::factory()->create();
+        $this->createPostWithCaption($author, '#one');
+        $this->createPostWithCaption($author, '#two');
+        $this->createPostWithCaption($author, '#three');
+        Sanctum::actingAs(User::factory()->create());
+
+        $this->getJson('/api/v1/hashtags/trending?limit=2')->assertOk()->assertJsonCount(2, 'data');
+    }
+
+    public function test_trending_hashtags_reflects_is_followed_for_the_viewer(): void
+    {
+        $author = User::factory()->create();
+        $this->createPostWithCaption($author, '#bug today');
+        $viewer = User::factory()->create();
+        Sanctum::actingAs($viewer);
+        $this->postJson('/api/v1/hashtags/bug/follow')->assertNoContent();
+
+        $this->getJson('/api/v1/hashtags/trending')->assertOk()->assertJsonPath('data.0.is_followed', true);
     }
 
     public function test_listing_followed_hashtags_returns_only_mine(): void

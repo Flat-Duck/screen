@@ -27,6 +27,10 @@ class MediaAnalysisResource extends JsonResource
                 'status' => $item->ocr_status,
                 'safety_status' => $item->safety_status,
                 'findings' => $item->findings ?? [],
+                // Client pre-fills its editable alt-text field with this once the item is
+                // "ready" — see MediaAnalysisItem::suggestedAltText(). Still null while OCR is
+                // processing (ocr_text isn't set yet) or once ready if OCR found no text at all.
+                'suggested_alt_text' => $item->suggestedAltText(),
             ])->values() : [],
         ];
     }

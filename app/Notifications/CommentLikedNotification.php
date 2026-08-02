@@ -33,6 +33,7 @@ class CommentLikedNotification extends Notification implements FcmNotification, 
             'post_id' => $this->comment->post_id,
             'liker_id' => $this->liker->id,
             'liker_username' => $this->liker->username,
+            'liker_avatar_url' => $this->liker->avatarUrl(),
         ];
     }
 

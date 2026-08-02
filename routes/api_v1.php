@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\V1\FeedController;
 use App\Http\Controllers\Api\V1\FollowController;
 use App\Http\Controllers\Api\V1\FollowRequestController;
 use App\Http\Controllers\Api\V1\GroupController;
+use App\Http\Controllers\Api\V1\GroupInviteController;
 use App\Http\Controllers\Api\V1\HashtagController;
 use App\Http\Controllers\Api\V1\HiddenTermController;
 use App\Http\Controllers\Api\V1\InterestController;
@@ -121,9 +122,10 @@ Route::middleware(['auth:sanctum', 'auth.user', 'session.touch'])->group(functio
     Route::get('search/posts', [SearchController::class, 'posts'])->middleware('throttle:search');
     Route::get('search/hashtags', [SearchController::class, 'hashtags'])->middleware('throttle:search');
 
-    // 'followed' must be registered before the {hashtag} wildcard route below, otherwise
-    // Laravel would try to resolve "followed" as a hashtag name.
+    // 'followed'/'trending' must be registered before the {hashtag} wildcard route below,
+    // otherwise Laravel would try to resolve them as hashtag names.
     Route::get('hashtags/followed', [HashtagController::class, 'followed'])->middleware('throttle:reads');
+    Route::get('hashtags/trending', [HashtagController::class, 'trending'])->middleware('throttle:reads');
     Route::get('hashtags/{hashtag}', [HashtagController::class, 'show'])->middleware('throttle:reads');
     Route::get('hashtags/{hashtag}/posts', [HashtagController::class, 'posts'])->middleware('throttle:reads');
     Route::post('hashtags/{hashtag}/follow', [HashtagController::class, 'follow'])->middleware('throttle:writes-moderate');
@@ -140,8 +142,10 @@ Route::middleware(['auth:sanctum', 'auth.user', 'session.touch'])->group(functio
     Route::get('users/{user}/followers', [FollowController::class, 'followers'])->middleware('throttle:reads');
     Route::get('users/{user}/following', [FollowController::class, 'following'])->middleware('throttle:reads');
 
-    Route::post('users/{user}/follow-requests', [FollowRequestController::class, 'store'])->middleware('throttle:writes-moderate');
-    Route::delete('users/{user}/follow-requests', [FollowRequestController::class, 'destroy'])->middleware('throttle:writes-moderate');
+    // No POST|DELETE users/{user}/follow-requests here — FollowController::store/destroy above
+    // already create/cancel the pending FollowRequest internally for private accounts (202 with
+    // the request id / 204), so a separate entry point for the same action would be redundant,
+    // never called by any real client.
     Route::get('follow-requests/incoming', [FollowRequestController::class, 'incoming'])->middleware('throttle:reads');
     Route::get('follow-requests/outgoing', [FollowRequestController::class, 'outgoing'])->middleware('throttle:reads');
     Route::post('follow-requests/{followRequest}/accept', [FollowRequestController::class, 'accept'])->middleware('throttle:writes-moderate');
@@ -200,6 +204,11 @@ Route::middleware(['auth:sanctum', 'auth.user', 'session.touch'])->group(functio
     Route::delete('groups/{group}/membership', [GroupController::class, 'leave'])->middleware('throttle:writes-moderate');
     Route::get('groups/{group}/posts', [GroupController::class, 'posts'])->middleware('throttle:reads');
     Route::post('groups/{group}/posts/{post}', [GroupController::class, 'share'])->middleware('throttle:writes-moderate');
+
+    Route::post('groups/{group}/invites', [GroupInviteController::class, 'store'])->middleware('throttle:writes-moderate');
+    Route::get('group-invites/incoming', [GroupInviteController::class, 'incoming'])->middleware('throttle:reads');
+    Route::post('group-invites/{groupInvite}/accept', [GroupInviteController::class, 'accept'])->middleware('throttle:writes-moderate');
+    Route::post('group-invites/{groupInvite}/decline', [GroupInviteController::class, 'decline'])->middleware('throttle:writes-moderate');
 
     Route::get('posts/{post}/comments', [CommentController::class, 'index'])->middleware('throttle:reads');
     Route::post('posts/{post}/comments', [CommentController::class, 'store'])->middleware('throttle:writes-moderate');

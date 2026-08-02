@@ -66,6 +66,45 @@ class HashtagService
     }
 
     /**
+     * Global, not per-viewer — same "public accounts, not the full per-viewer follow graph"
+     * baseline `FeedService::explore()` already uses for its own non-personalized candidate
+     * set, rather than `Post::visibleTo()`'s full private-account/following check (that would
+     * make "trending" different for every viewer, and be far more expensive to rank by).
+     * Ranked by activity within the last `$withinDays`, but `posts_count` on the returned
+     * models is each hashtag's real all-time total (`withCount('posts')`, same as
+     * followedHashtagsFor()) — the window only decides *which* tags rank, not the number shown.
+     *
+     * @return Collection<int, Hashtag>
+     */
+    public function trending(int $limit = 10, int $withinDays = 7): Collection
+    {
+        $eligiblePostIds = Post::query()
+            ->fromPubliclyVisibleAuthors()
+            ->whereNull('archived_at')
+            ->select('id');
+
+        $rankedIds = DB::table('hashtag_post')
+            ->whereIn('post_id', $eligiblePostIds)
+            ->where('created_at', '>=', now()->subDays($withinDays))
+            ->select('hashtag_id', DB::raw('count(*) as recent_count'))
+            ->groupBy('hashtag_id')
+            ->orderByDesc('recent_count')
+            ->limit($limit)
+            ->pluck('recent_count', 'hashtag_id');
+
+        if ($rankedIds->isEmpty()) {
+            return collect();
+        }
+
+        return Hashtag::query()
+            ->whereIn('id', $rankedIds->keys())
+            ->withCount('posts')
+            ->get()
+            ->sortByDesc(fn (Hashtag $hashtag): int => $rankedIds[$hashtag->id])
+            ->values();
+    }
+
+    /**
      * Sets `is_followed` on each hashtag for the given viewer in a single query — same
      * pattern as LikeService::annotateIsLiked.
      *

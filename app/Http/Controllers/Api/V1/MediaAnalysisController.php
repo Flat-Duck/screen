@@ -28,9 +28,7 @@ class MediaAnalysisController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
-        /** @var list<array{alt_text?: string|null}> $metadata */
-        $metadata = array_values($request->validated('media_metadata', []));
-        $analysis = $create($user, array_values($request->file('images', [])), $metadata);
+        $analysis = $create($user, array_values($request->file('images', [])));
 
         return (new MediaAnalysisResource($analysis))->response()->setStatusCode(202);
     }

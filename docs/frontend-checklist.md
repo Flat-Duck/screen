@@ -186,7 +186,14 @@ must call `POST /v1/account/confirmation-code` first, then send `confirmation_co
 | `POST /v1/hashtags/{name}/follow` | User | Follow a tag (idempotent). Bookmark-only — no notifications, not blended into feed | — | 204 | ☐ | No client code. |
 | `DELETE /v1/hashtags/{name}/follow` | User | Unfollow a tag (idempotent) | — | 204 | ☐ | No client code. |
 | `GET /v1/hashtags/followed` | User | Your followed hashtags | — | `HashtagResource[]` | ☐ | No client code. |
-| `GET /v1/explore?page=` | User | Standalone trending feed. **Page-number paginated, not cursor** — the only endpoint like this in the API | `page` (optional, default 1) | `PostResource[]` | ☐ | No client code — the closest UI, `TrendingActivity`, is an explicit static placeholder ("no backend wired up yet") reached from the Tags nav tab. |
+| `GET /v1/hashtags/trending?limit=&days=` | User | New 2026-08-02. Global (not per-viewer) ranked list — see `docs/frontend-handoff.md`'s "Shipped: 2026-08-02" entry for the full contract, including the `hashtag_post` timestamp-backfill note | `limit` (optional, default 10, max 50), `days` (optional, default 7, max 90) | `HashtagResource[]` | ☐ | No client code yet. |
+| `GET /v1/explore?page=&category=&country=` | User | Standalone trending feed. **Page-number paginated, not cursor** — the only endpoint like this in the API. `category`/`country` are new 2026-08-02 — see `docs/frontend-handoff.md` | `page` (optional, default 1), `category` (optional, ScreenshotCategory slug), `country` (optional, ISO alpha-2) | `PostResource[]` | ☐ | No client code — the closest UI, `TrendingActivity`, is an explicit static placeholder ("no backend wired up yet") reached from the Tags nav tab. |
+
+> **Note (2026-08-02):** this table predates several features that now have real Android
+> client code (search, hashtags, groups, explore) — the "Done"/"Notes" columns above weren't
+> updated when those shipped. Treat `docs/frontend-handoff.md`'s dated "Shipped" entries as
+> the source of truth for what's actually live; this checklist wasn't re-audited as part of
+> today's Groups/Explore/Hashtags work beyond the two rows above.
 
 ---
 

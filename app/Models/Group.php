@@ -5,15 +5,19 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
-/** @property bool|null $is_member Set per-request by GroupService for the current viewer — not a DB column. */
+/**
+ * @property bool|null $is_member Set per-request by GroupService for the current viewer — not a DB column.
+ * @property bool|null $is_admin Set per-request by GroupService for the current viewer — not a DB column.
+ */
 class Group extends Model
 {
     protected $guarded = [];
 
     protected function casts(): array
     {
-        return ['member_count' => 'integer'];
+        return ['member_count' => 'integer', 'is_discoverable' => 'boolean'];
     }
 
     /** @return BelongsTo<User, $this> */
@@ -42,5 +46,12 @@ class Group extends Model
     public function roleFor(User $user): ?string
     {
         return $this->members()->where('user_id', $user->id)->value('role');
+    }
+
+    public function photoUrl(): ?string
+    {
+        return $this->photo_path
+            ? Storage::disk(config('social.media_disk'))->url($this->photo_path)
+            : null;
     }
 }

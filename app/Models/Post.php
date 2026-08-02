@@ -196,7 +196,7 @@ class Post extends Model
      */
     public function hashtags(): BelongsToMany
     {
-        return $this->belongsToMany(Hashtag::class);
+        return $this->belongsToMany(Hashtag::class)->withTimestamps();
     }
 
     /** @return MorphMany<Report, $this> */

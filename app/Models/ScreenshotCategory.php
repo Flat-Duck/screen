@@ -6,13 +6,14 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/** @property list<string>|null $keywords */
 class ScreenshotCategory extends Model
 {
-    protected $fillable = ['slug', 'name', 'sort_order', 'is_active'];
+    protected $fillable = ['slug', 'name', 'sort_order', 'is_active', 'keywords'];
 
     protected function casts(): array
     {
-        return ['sort_order' => 'integer', 'is_active' => 'boolean'];
+        return ['sort_order' => 'integer', 'is_active' => 'boolean', 'keywords' => 'array'];
     }
 
     /** @param Builder<ScreenshotCategory> $query */

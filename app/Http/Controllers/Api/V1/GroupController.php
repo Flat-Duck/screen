@@ -40,6 +40,8 @@ class GroupController extends Controller
             'name' => ['required', 'string', 'max:100'],
             'description' => ['nullable', 'string', 'max:500'],
             'visibility' => ['sometimes', 'string', 'in:public,private'],
+            'is_discoverable' => ['sometimes', 'boolean'],
+            'photo' => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:5120', 'dimensions:min_width=100,min_height=100'],
         ]);
 
         $group = $this->groups->create($this->user($request), $data);

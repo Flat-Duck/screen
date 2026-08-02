@@ -21,6 +21,22 @@ class HashtagController extends Controller
         private readonly SavedPostService $savedPosts,
     ) {}
 
+    public function trending(Request $request): AnonymousResourceCollection
+    {
+        /** @var User $viewer */
+        $viewer = $request->user();
+
+        $validated = $request->validate([
+            'limit' => ['sometimes', 'integer', 'min:1', 'max:50'],
+            'days' => ['sometimes', 'integer', 'min:1', 'max:90'],
+        ]);
+
+        $hashtags = $this->hashtags->trending((int) ($validated['limit'] ?? 10), (int) ($validated['days'] ?? 7));
+        $this->hashtags->annotateIsFollowed($hashtags, $viewer);
+
+        return HashtagResource::collection($hashtags);
+    }
+
     public function show(Request $request, Hashtag $hashtag): HashtagResource
     {
         /** @var User $viewer */

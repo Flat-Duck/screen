@@ -5,12 +5,15 @@ namespace App\Services;
 use App\Enums\AccountVisibility;
 use App\Enums\UserRestrictionType;
 use App\Models\Post;
+use App\Models\ScreenshotCategory;
 use App\Models\User;
 use App\Models\UserRestriction;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\CursorPaginator;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Str;
 use Throwable;
 
 class FeedService
@@ -140,9 +143,17 @@ class FeedService
      * offset/limit, so plain page-number pagination is the honest fit here rather than
      * forcing a cursor abstraction onto a data source that doesn't have one.
      *
+     * $category (a ScreenshotCategory slug) and $country (a 2-letter ISO code, matching
+     * User::updateProfile()'s own country_code format) both narrow the same Redis-ranked
+     * candidate ID batch further via ordinary SQL `WHERE`s — same "no guarantee of exactly
+     * $perPage filtered results per page" honesty the unfiltered query already has (visibility/
+     * eligibility/blocks/mutes can already thin a page below $perPage today); doing a wider,
+     * iterative Redis over-fetch just to backfill a filtered page to full would be a real
+     * architecture change, not "add filters".
+     *
      * @return Paginator<int, Post>
      */
-    public function explore(User $user, int $page = 1, int $perPage = 15): Paginator
+    public function explore(User $user, int $page = 1, int $perPage = 15, ?string $category = null, ?string $country = null): Paginator
     {
         $offset = ($page - 1) * $perPage;
 
@@ -168,6 +179,8 @@ class FeedService
             ->whereIn('user_id', User::query()->where('account_visibility', AccountVisibility::Public->value)->select('id'))
             ->whereIn('id', $ids)
             ->where('user_id', '!=', $user->id)
+            ->when($category, fn (Builder $q) => $q->whereIn('category_id', ScreenshotCategory::query()->where('slug', $category)->select('id')))
+            ->when($country, fn (Builder $q) => $q->whereIn('user_id', User::query()->where('country_code', Str::upper($country))->select('id')))
             ->with(['user', 'media', 'category'])
             ->withCount(['likes', 'comments', 'reposts']);
 

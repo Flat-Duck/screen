@@ -661,3 +661,164 @@ repost count can be replaced with this field directly.
 There is still no `is_reposted` — that remains intentionally out of scope for v1 (see the
 "Repost" section above): reposts are profile-only and the feed's repost action never needs
 to know the viewer's own repost state for a given post.
+
+---
+
+## Shipped: 2026-08-02 — group photos, discoverability, invites, trending hashtags, and Explore filters
+
+Groups themselves (`GET/POST /v1/groups`, membership, group feed, share-into-group) shipped
+earlier (2026-07-26) but never got a write-up here — this entry covers both that base shape
+and today's additions together.
+
+### 13. Group cover photo + discoverability
+
+- `POST /v1/groups` now accepts two more optional fields alongside `name`/`description`/
+  `visibility`: `photo` (multipart image — `jpeg`/`png`/`webp`, ≤5MB, ≥100×100px, same
+  validation shape as `PATCH /v1/profile`'s `avatar`) and `is_discoverable` (boolean,
+  default `true`). Send `multipart/form-data` if you're including `photo`; plain JSON still
+  works for text-only fields.
+- `is_discoverable` is a **separate dimension from `visibility`**, not a public/private
+  synonym — a private group can still choose whether it's findable in search once someone
+  has a direct link/invite. There's no server-side search-ranking behavior wired to it yet
+  (nothing currently reads it to filter/boost discovery results); it's stored and returned
+  so the client has somewhere real to persist the toggle, same spirit as other fields that
+  exist ahead of the UI that will consume them.
+- `GroupResource` gains `is_discoverable` (boolean) and `photo_url` (nullable string, same
+  `Storage::disk(...)->url()` pattern as `User.avatar_url`) — present on every group
+  response (index/show/store), `null` when no photo was ever uploaded.
+- No dedicated "update group photo later" endpoint yet — `photo` is create-time only, same
+  scope as the Android client's own create-group form.
+
+### 14. Group invites
+
+New relationship type, same "pending row, updateOrCreate, accept/decline flips its status"
+shape `follow-requests` already uses, just scoped to `(group, invitee)` instead of
+`(requester, target)`:
+
+- `POST /v1/groups/{group}/invites` — body `{"user_id": <int>}`. **Admin-only**: 403 if the
+  caller isn't that group's admin. 422 if the target user is already a member. Idempotent
+  per `(group, invitee)` — inviting an already-pending invitee just refreshes the row (new
+  inviter, fresh `pending` status) rather than erroring or duplicating. Returns `202` with a
+  `GroupInviteResource`.
+- `GET /v1/group-invites/incoming` — the current user's own pending invites, cursor-paginated,
+  newest first. This is the only invite-listing endpoint that exists — there's no "invites I
+  sent" (outgoing) list yet, unlike follow-requests which has both directions.
+- `POST /v1/group-invites/{groupInvite}/accept` — 204. Only the invitee can accept (404
+  otherwise); 409 if the invite is no longer `pending`. Joins the group (increments
+  `member_count`, creates the `group_members` row with `role: member`) and marks the invite
+  `accepted` in one transaction.
+- `POST /v1/group-invites/{groupInvite}/decline` — 204. Same ownership/pending checks as
+  accept; no membership side effect.
+- `GroupInviteResource` shape: `{id, status, group: GroupResource, inviter: UserSummaryResource,
+  created_at}`. `status` is one of `pending`/`accepted`/`declined`/`cancelled` (the last is
+  reserved for parity with follow-requests' enum shape — nothing currently transitions an
+  invite to `cancelled`, there's no revoke-by-inviter endpoint yet).
+
+### 15. Trending hashtags
+
+- `GET /v1/hashtags/trending?limit=&days=` — new, **global** (not per-viewer) ranked list.
+  `limit` defaults to 10 (max 50), `days` defaults to 7 (max 90) and controls the activity
+  window used for ranking only. Returns `HashtagResource[]` (`name`, `posts_count`,
+  `is_followed` for the calling viewer) — `posts_count` is each hashtag's real **all-time**
+  total (`withCount('posts')`, same as `hashtags/followed`), not the windowed count; the
+  window only decides *which* tags make the list, not the number shown next to them.
+- Ranking source is real activity (count of posts tagged with each hashtag inside the
+  window), restricted to posts from publicly-visible accounts and not archived — same
+  "public accounts, not the full per-viewer follow graph" baseline `GET /v1/explore` already
+  uses for its own non-personalized candidate set. This is deliberately *not* per-viewer —
+  trending is the same list for everyone, unlike a personalized feed.
+- Registered ahead of the `GET /v1/hashtags/{hashtag}` wildcard route, same reason
+  `hashtags/followed` already is — otherwise `GET /v1/hashtags/trending` would resolve as
+  "look up a hashtag literally named `trending`".
+- **Backend bug fixed in the same pass, not something new to build around:** `hashtag_post`
+  pivot rows never had `created_at`/`updated_at` populated before today (`Post::hashtags()`/
+  `Hashtag::posts()` were missing `->withTimestamps()`) — nothing read that column until this
+  endpoint needed it to rank by recency. Existing rows were backfilled from their post's own
+  `created_at`; new rows self-populate correctly now. No client-visible contract change, just
+  flagging it in case any historical `hashtag_post.created_at` value you may have cached
+  looks suspiciously identical to a migration run timestamp rather than the real tag date —
+  that's the backfill, not a data-quality bug on your end.
+
+### Explore filters
+
+`GET /v1/explore` (see section 10 above) gains two optional query params, applied on top of
+the existing Redis-ranked candidate batch:
+
+- `category` — a `ScreenshotCategory` slug (see `GET /v1/screenshot-categories` for the
+  list). Filters to posts whose `category_id` matches.
+- `country` — a 2-letter ISO 3166-1 alpha-2 code, case-insensitive, same format rule as
+  `PATCH /v1/profile`'s `country_code` (not validated against the full ISO list server-side).
+  Filters to posts whose author's `country_code` matches.
+- Neither filter changes the pagination contract or guarantees a full page of filtered
+  results — they narrow the same fixed-size batch of Redis-ranked IDs the unfiltered query
+  already fetches per page, the same honesty the existing visibility/eligibility/block/mute
+  exclusions already have (a page can already come back thinner than `perPage` today). A
+  wider, iterative Redis over-fetch to backfill a filtered page to full would be a real
+  pagination-architecture change, out of scope here.
+
+### 16. Notification actor avatars
+
+Every notification type's `data` payload (`GET /v1/notifications`) now includes the acting
+user's avatar URL alongside their existing id/username fields — `liker_avatar_url`,
+`follower_avatar_url`, `commenter_avatar_url`, `mentioner_avatar_url`, `replier_avatar_url`,
+`reposter_avatar_url`, `sender_avatar_url` (new message), `requester_avatar_url` (follow
+request received), `avatar_url` (follow request accepted — that one class didn't already
+namespace its other fields per-actor, so this one isn't prefixed either, matching its
+existing `user_id`/`username` keys). Same nullable-string shape as `UserResource.avatar_url`
+elsewhere — `null` when that user has no avatar set, never a placeholder URL. Added so a
+notifications feed can render the actor's real photo instead of a generic icon; no endpoint
+signature changed, this is purely new keys inside the existing untyped `data` map.
+
+### 17. Removed: `POST`/`DELETE /v1/users/{user}/follow-requests`
+
+These two `FollowRequestController` routes are gone — they were never anything other than a
+second, redundant entry point to the exact same action `POST`/`DELETE /v1/users/{user}/follow`
+(`FollowController::store`/`destroy`) already perform: both call the same
+`FollowRequestService::request()`/`cancel()` under the hood, and `FollowController::store`
+already returns the `202`-with-`request_id` shape for a private account. If any client was
+calling the `/follow-requests` variant directly, switch it to `/follow` — behavior is identical.
+`GET /v1/follow-requests/incoming`/`/outgoing` and `POST /v1/follow-requests/{id}/accept`/
+`/decline` are unaffected and still live.
+
+## Shipped: 2026-08-02 — the composer only sends the image and the words now
+
+The mobile "post to timeline" flow (`POST /v1/media/analyses` → poll `GET .../{token}` → `POST
+.../{token}/publish`) picks category, content warning, and alt text server-side now. The client's
+job shrank to: pick an image, write a caption (hashtags and all), optionally pick a destination
+group, send.
+
+- **`POST /v1/media/analyses`** no longer accepts `media_metadata`/`alt_text` at all — there's no
+  OCR result yet at upload time, so there was never anything meaningful to seed it with. Just
+  `images[]`.
+- **`GET /v1/media/analyses/{token}`** (poll) — each item in `data.items` gains
+  `suggested_alt_text`: OCR text, whitespace-collapsed, capped at 1000 chars. `null` while still
+  processing, once OCR found no text at all, *or* whenever that item's own `safety_status` is
+  `"warning"` — deliberately never auto-suggesting alt text sourced from the same text a warning
+  exists to keep from being echoed back. Pre-fill the composer's (still-editable) alt-text field
+  with this once the item is `"ready"`.
+- **`POST /v1/media/analyses/{token}/publish`** — `category_id` and `content_warning` are no
+  longer accepted fields; sending them is silently ignored (not a `422`, just absent from
+  `validated()`). Both are computed:
+  - `category_id`: `App\Services\Screenshots\CategoryMatcher` scores every active
+    `screenshot_categories` row's `keywords` against the caption's `#hashtags` (weight 3) and the
+    OCR'd text's words (weight 1), picks the top scorer if it clears a minimum of 3, else leaves
+    the post uncategorized (`null`) — a v1 keyword heuristic, not ML, by design (see the class's
+    own kdoc for the reasoning). `GET /v1/screenshot-categories` is unaffected and still exists —
+    it's still used elsewhere (e.g. the Explore category filter), just no longer surfaced as a
+    manual picker in the composer.
+  - `content_warning`: `"sensitive"` whenever any media item's `safety_status` came back
+    `"warning"` (the same `SensitiveInformationAnalyzer`/PII-detection pass that already gated the
+    `acknowledge_sensitive` confirmation step — that step is unchanged, still required before a
+    "warning" analysis can publish), `null` otherwise. There is no automatic path to `"spoiler"` —
+    that value is retired; nothing about OCR'd text can indicate a narrative spoiler, so it was
+    never anything but a manual label, and the composer no longer offers one.
+  - New optional field: **`alt_text`** (string, max 1000) — overrides the OCR suggestion for a
+    single-image analysis; ignored (each item just keeps its own OCR suggestion) if the analysis
+    has more than one image, since a single override can't disambiguate which one it was meant
+    for.
+  - New optional field: **`group_id`** — posts directly into that group in the same request,
+    instead of the old "publish to timeline, then separately `POST
+    /v1/groups/{group}/posts/{post}` to re-share it" two-step flow. `403` if the caller isn't a
+    member of that group, and atomically — a rejected group post creates no timeline post either,
+    nothing is left half-published. The re-share endpoint itself is untouched and still the way to
+    additionally share an *already-published* post into a second group afterward.

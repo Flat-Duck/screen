@@ -24,7 +24,11 @@ class FollowRequestAcceptedNotification extends Notification implements FcmNotif
     /** @return array<string, int|string|null> */
     public function toArray(object $notifiable): array
     {
-        return ['user_id' => $this->user->id, 'username' => $this->user->username];
+        return [
+            'user_id' => $this->user->id,
+            'username' => $this->user->username,
+            'avatar_url' => $this->user->avatarUrl(),
+        ];
     }
 
     /** @return array{title: string, body: string, data: array<string, string>} */

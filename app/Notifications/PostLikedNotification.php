@@ -32,6 +32,7 @@ class PostLikedNotification extends Notification implements FcmNotification, Sho
             'post_id' => $this->post->id,
             'liker_id' => $this->liker->id,
             'liker_username' => $this->liker->username,
+            'liker_avatar_url' => $this->liker->avatarUrl(),
         ];
     }
 

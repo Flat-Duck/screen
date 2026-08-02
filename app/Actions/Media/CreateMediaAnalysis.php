@@ -22,9 +22,8 @@ class CreateMediaAnalysis
 
     /**
      * @param  list<UploadedFile>  $images
-     * @param  list<array{alt_text?: string|null}>  $metadata
      */
-    public function __invoke(User $user, array $images, array $metadata): MediaAnalysis
+    public function __invoke(User $user, array $images): MediaAnalysis
     {
         $token = (string) Str::uuid();
         $directory = 'analyses/'.$token;
@@ -54,7 +53,6 @@ class CreateMediaAnalysis
                     'height' => $stored['height'],
                     'mime_type' => $stored['mime'],
                     'size_bytes' => $stored['size'],
-                    'alt_text' => $metadata[$position]['alt_text'] ?? null,
                 ]);
                 $itemIds[] = $item->id;
             }

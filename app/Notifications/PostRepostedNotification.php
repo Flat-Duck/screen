@@ -34,6 +34,7 @@ class PostRepostedNotification extends Notification implements FcmNotification, 
             'post_id' => $this->post->id,
             'reposter_id' => $this->reposter->id,
             'reposter_username' => $this->reposter->username,
+            'reposter_avatar_url' => $this->reposter->avatarUrl(),
             'comment' => $this->comment ? Str::limit($this->comment, 140) : null,
         ];
     }

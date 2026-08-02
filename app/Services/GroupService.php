@@ -8,6 +8,7 @@ use App\Models\GroupPost;
 use App\Models\Post;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Pagination\CursorPaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -16,6 +17,7 @@ class GroupService
 {
     public function __construct(
         private readonly BlockService $blocks,
+        private readonly ImageProcessingService $images,
     ) {}
 
     /** @return CursorPaginator<int, Group> */
@@ -33,7 +35,7 @@ class GroupService
         return $groups;
     }
 
-    /** @param array{name: string, description?: string|null, visibility?: string} $data */
+    /** @param array{name: string, description?: string|null, visibility?: string, is_discoverable?: bool, photo?: UploadedFile|null} $data */
     public function create(User $creator, array $data): Group
     {
         return DB::transaction(function () use ($creator, $data): Group {
@@ -42,8 +44,19 @@ class GroupService
                 'name' => $data['name'],
                 'description' => $data['description'] ?? null,
                 'visibility' => $data['visibility'] ?? 'public',
+                'is_discoverable' => $data['is_discoverable'] ?? true,
                 'member_count' => 1,
             ]);
+
+            // Needs the group's own id for the storage directory, so this can only happen
+            // after Group::create() above — same "create first, then store the file under
+            // its id" ordering as posts' own media pipeline.
+            if (! empty($data['photo'])) {
+                $stored = $this->images->storeOriginal($data['photo'], "groups/{$group->id}", maxDimension: 1024);
+                $group->photo_path = $stored['path'];
+                $group->save();
+            }
+
             GroupMember::create([
                 'group_id' => $group->id,
                 'user_id' => $creator->id,

@@ -2,44 +2,26 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Enums\AccountVisibility;
 use App\Http\Resources\FollowRequestResource;
 use App\Models\FollowRequest;
 use App\Models\User;
-use App\Services\BlockService;
 use App\Services\FollowRequestService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
+/**
+ * Incoming/outgoing/accept/decline only — there is deliberately no store()/destroy() here.
+ * FollowController::store()/destroy() (POST|DELETE /v1/users/{user}/follow) already create/cancel
+ * the pending FollowRequest internally for private accounts via this same FollowRequestService, so
+ * a dedicated POST|DELETE /v1/users/{user}/follow-requests would just be a second, redundant entry
+ * point to the identical action.
+ */
 class FollowRequestController extends Controller
 {
     public function __construct(
         private readonly FollowRequestService $requests,
-        private readonly BlockService $blocks,
     ) {}
-
-    public function store(Request $request, User $user): JsonResponse
-    {
-        /** @var User $requester */
-        $requester = $request->user();
-        abort_unless($user->isPubliclyVisible(), 404);
-        abort_unless($user->account_visibility === AccountVisibility::Private, 422);
-        abort_if($this->blocks->isBlockedEitherWay($requester, $user), 403);
-
-        $followRequest = $this->requests->request($requester, $user)->load(['requester', 'target']);
-
-        return (new FollowRequestResource($followRequest))->response()->setStatusCode(202);
-    }
-
-    public function destroy(Request $request, User $user): JsonResponse
-    {
-        /** @var User $requester */
-        $requester = $request->user();
-        $this->requests->cancel($requester, $user);
-
-        return response()->json(null, 204);
-    }
 
     public function incoming(Request $request): AnonymousResourceCollection
     {
