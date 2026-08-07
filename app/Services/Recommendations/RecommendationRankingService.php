@@ -35,7 +35,7 @@ class RecommendationRankingService
         $topicAffinity = UserTopicAffinity::query()->where('user_id', $viewer->id)
             ->whereIn('category_id', $posts->pluck('category_id')->filter())->orderByDesc('affinity_date')->get()->unique('category_id')->keyBy('category_id');
         $metrics = DailyPostMetric::query()->whereIn('post_id', $postIds)
-            ->selectRaw('post_id, SUM(unique_viewers) unique_viewers, SUM(impressions) impressions, SUM(opens) opens, SUM(saves) saves, SUM(reposts) reposts, SUM(shares) shares, SUM(hides) hides, SUM(not_interested) not_interested, SUM(reports) reports')
+            ->selectRaw('post_id, SUM(unique_viewers) unique_viewers, SUM(impressions) impressions, SUM(opens) opens, SUM(likes) likes, SUM(comments) comments, SUM(saves) saves, SUM(reposts) reposts, SUM(shares) shares, SUM(hides) hides, SUM(not_interested) not_interested, SUM(reports) reports')
             ->groupBy('post_id')->get()->keyBy('post_id');
         $seen = ContentEvent::query()->where('user_id', $viewer->id)->whereIn('post_id', $postIds)
             ->where('event_type', ContentEventType::Impression)->selectRaw('post_id, COUNT(*) total')
@@ -66,7 +66,13 @@ class RecommendationRankingService
             }
             $metric = $metrics->get($post->id);
             $impressions = max(1, (int) ($metric->impressions ?? 0));
-            $positive = (int) ($metric->opens ?? 0) + 3 * (int) ($metric->saves ?? 0)
+            // Same relative ordering as AggregateContentAnalyticsDay::weight()'s affinity weights
+            // (open < like ≈ comment ≈ share < save ≈ repost), compressed onto this smaller 1–3
+            // scale. Likes/comments were previously missing here entirely even though
+            // DailyPostMetric has tracked both columns since Milestone 4.1 — every like and
+            // comment was invisible to this ranking component.
+            $positive = (int) ($metric->opens ?? 0) + 2 * (int) ($metric->likes ?? 0)
+                + 2 * (int) ($metric->comments ?? 0) + 3 * (int) ($metric->saves ?? 0)
                 + 3 * (int) ($metric->reposts ?? 0) + 2 * (int) ($metric->shares ?? 0);
             $negative = (int) ($metric->hides ?? 0) + 2 * (int) ($metric->not_interested ?? 0)
                 + 3 * (int) ($metric->reports ?? 0);

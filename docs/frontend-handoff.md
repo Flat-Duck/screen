@@ -635,10 +635,10 @@ Allowed surfaces: `following_feed`, `for_you_feed`, `explore`, `search`, `hashta
 
 Event-specific metadata is deliberately narrow:
 
-- `dwell`: `duration_ms` (0–600,000)
+- `dwell`: `duration_ms` (0–600,000) — see the 2026-08-08 entry below for two more optional fields
 - `carousel_swipe`: `media_position` (0–9) and `direction` (`next`/`previous`)
 - `zoom`: `media_position`
-- `share`: `share_channel` (`system`, `copy_link`, or `external`)
+- `share`: `share_channel` (`system`, `copy_link`, `external`, or `group` — see 2026-08-08 below)
 - `hide`/`not_interested`: `reason` (`not_relevant`, `seen_before`, `low_quality`, `sensitive`,
   or `other`)
 
@@ -822,3 +822,29 @@ group, send.
     member of that group, and atomically — a rejected group post creates no timeline post either,
     nothing is left half-published. The re-share endpoint itself is untouched and still the way to
     additionally share an *already-published* post into a second group afterward.
+
+---
+
+## Shipped: 2026-08-08 — richer dwell signal + `group` as a share channel
+
+Two additions to the `dwell` event's `metadata` (see the Milestone 4.1 entry above for the full
+content-events contract) — both optional, so existing clients that only send `duration_ms` are
+unaffected:
+
+- **`completion_rate`** (0–1) — the largest fraction of the post's own on-screen height the client
+  ever displayed during that dwell. Meaningful mainly for a tall screenshot the viewer never
+  scrolled all the way through.
+- **`rewatch_count`** (integer ≥ 0) — how many times the viewer had already dwelled on this same
+  post earlier in the same session. `0` on the first dwell, `1` on the second, and so on.
+
+Sending either on a non-`dwell` event, or a value outside its range, still `422`s — same enforcement
+as every other per-type metadata field.
+
+Dwell's affinity weight now factors both in: still +1 per 10 seconds (capped at +3), plus +1 if
+`completion_rate` is at least 0.9, plus +1 if `rewatch_count` is greater than 0 — max +5 instead of
+the previous +3. An event that omits both fields (or predates them) scores exactly as before.
+
+Also: `share`'s required `share_channel` metadata gains a fourth allowed value, **`group`** —
+alongside `system`, `copy_link`, and `external` — for the existing "share into a group you've
+joined" action (`POST /v1/groups/{group}/posts/{post}`, shipped 2026-07-26), which doesn't fit any
+of the original three (none of them mean "stayed inside the app, into an in-app destination").

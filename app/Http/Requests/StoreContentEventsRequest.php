@@ -33,11 +33,13 @@ class StoreContentEventsRequest extends FormRequest
             'events.*.experiment_assignments' => ['nullable', 'array', 'max:20'],
             'events.*.experiment_assignments.*' => ['string', 'max:50'],
             'events.*.occurred_at' => ['required', 'date', 'after_or_equal:'.now()->subDays(30)->toIso8601String(), 'before_or_equal:'.now()->addMinutes(5)->toIso8601String()],
-            'events.*.metadata' => ['nullable', 'array:duration_ms,media_position,direction,share_channel,reason'],
+            'events.*.metadata' => ['nullable', 'array:duration_ms,completion_rate,rewatch_count,media_position,direction,share_channel,reason'],
             'events.*.metadata.duration_ms' => ['nullable', 'integer', 'min:0', 'max:600000'],
+            'events.*.metadata.completion_rate' => ['nullable', 'numeric', 'min:0', 'max:1'],
+            'events.*.metadata.rewatch_count' => ['nullable', 'integer', 'min:0', 'max:999'],
             'events.*.metadata.media_position' => ['nullable', 'integer', 'min:0', 'max:9'],
             'events.*.metadata.direction' => ['nullable', Rule::in(['next', 'previous'])],
-            'events.*.metadata.share_channel' => ['nullable', Rule::in(['system', 'copy_link', 'external'])],
+            'events.*.metadata.share_channel' => ['nullable', Rule::in(['system', 'copy_link', 'external', 'group'])],
             'events.*.metadata.reason' => ['nullable', Rule::in(['not_relevant', 'seen_before', 'low_quality', 'sensitive', 'other'])],
         ];
     }
@@ -54,7 +56,7 @@ class StoreContentEventsRequest extends FormRequest
                 $type = ContentEventType::tryFrom((string) $event['event_type']);
                 $metadata = is_array($event['metadata'] ?? null) ? $event['metadata'] : [];
                 $allowedMetadata = match ($type) {
-                    ContentEventType::Dwell => ['duration_ms'],
+                    ContentEventType::Dwell => ['duration_ms', 'completion_rate', 'rewatch_count'],
                     ContentEventType::CarouselSwipe => ['media_position', 'direction'],
                     ContentEventType::Zoom => ['media_position'],
                     ContentEventType::Share => ['share_channel'],

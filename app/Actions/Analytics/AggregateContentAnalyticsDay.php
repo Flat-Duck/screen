@@ -256,7 +256,7 @@ class AggregateContentAnalyticsDay
     {
         return match ($type) {
             ContentEventType::Open => 1,
-            ContentEventType::Dwell => min(3, intdiv((int) ($metadata['duration_ms'] ?? 0), 10_000)),
+            ContentEventType::Dwell => $this->dwellWeight($metadata),
             ContentEventType::Like => 3,
             ContentEventType::Comment => 4,
             ContentEventType::Save, ContentEventType::Repost => 5,
@@ -268,6 +268,27 @@ class AggregateContentAnalyticsDay
             ContentEventType::Report => -10,
             default => 0,
         };
+    }
+
+    /**
+     * Duration is the base signal (+1 per 10s, capped at +3, unchanged from before completion/
+     * rewatch existed as fields). Two optional bonuses on top, each worth at most +1, so a client
+     * that never sends either field (or an event predating them) scores identically to today:
+     * +1 for a near-total read of a tall screenshot (`completion_rate` — see
+     * `ViewportDwellTracker`'s Android-side kdoc for what "completion" means without video/watch-
+     * time content), +1 for coming back to the same post at least once this session
+     * (`rewatch_count`), since a deliberate return is a stronger interest signal than a single long
+     * look. Max dwell weight is therefore +5, not +3.
+     *
+     * @param  array<string, mixed>  $metadata
+     */
+    private function dwellWeight(array $metadata): int
+    {
+        $durationWeight = min(3, intdiv((int) ($metadata['duration_ms'] ?? 0), 10_000));
+        $completionBonus = (float) ($metadata['completion_rate'] ?? 0) >= 0.9 ? 1 : 0;
+        $rewatchBonus = (int) ($metadata['rewatch_count'] ?? 0) > 0 ? 1 : 0;
+
+        return $durationWeight + $completionBonus + $rewatchBonus;
     }
 
     /** @param array<int|string, array<string, mixed>> $rows */

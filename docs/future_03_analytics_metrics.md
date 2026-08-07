@@ -55,7 +55,7 @@ excluded. Impression is neutral; the score weights are:
 | Event | Weight |
 |---|---:|
 | Open | +1 |
-| Dwell | +1 per 10 seconds, capped at +3 |
+| Dwell | +1 per 10 seconds (capped at +3), +1 if `completion_rate` ≥ 0.9, +1 if `rewatch_count` > 0 — max +5 |
 | Profile open | +2 |
 | Like | +3 |
 | Comment / share | +4 |

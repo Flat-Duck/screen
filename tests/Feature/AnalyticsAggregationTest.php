@@ -92,6 +92,18 @@ class AnalyticsAggregationTest extends TestCase
         $this->assertSame(1, $retention->retained_users);
     }
 
+    public function test_dwell_completion_rate_and_rewatch_count_add_up_to_two_bonus_points(): void
+    {
+        [$day, $viewer, $post, $session] = $this->fixture();
+
+        // Base +2 (20_000ms / 10_000, capped at 3) + 1 (completion_rate >= 0.9) + 1 (rewatch_count > 0) = 4.
+        $this->record($viewer, $post, $session, 'dwell', ['duration_ms' => 20_000, 'completion_rate' => 0.95, 'rewatch_count' => 2]);
+
+        app(AggregateContentAnalyticsDay::class)($day);
+
+        $this->assertSame(4, UserAuthorAffinity::firstOrFail()->score);
+    }
+
     public function test_rebuild_is_idempotent_and_includes_late_events(): void
     {
         [$day, $viewer, $post, $session] = $this->fixture();

@@ -88,6 +88,43 @@ class ContentAnalyticsApiTest extends TestCase
         $this->assertDatabaseCount('content_events', 0);
     }
 
+    public function test_dwell_completion_rate_and_rewatch_count_are_accepted_and_bounded(): void
+    {
+        $issued = $this->startUserSession(User::factory()->create());
+        $post = Post::factory()->create();
+
+        $valid = $this->event($post, 'dwell');
+        $valid['metadata'] = ['duration_ms' => 12_000, 'completion_rate' => 0.95, 'rewatch_count' => 1];
+        $this->withToken($issued->token)->postJson('/api/v1/analytics/content-events', ['events' => [$valid]])
+            ->assertOk();
+
+        $tooHigh = $this->event($post, 'dwell');
+        $tooHigh['metadata'] = ['duration_ms' => 1000, 'completion_rate' => 1.5];
+        $this->withToken($issued->token)->postJson('/api/v1/analytics/content-events', ['events' => [$tooHigh]])
+            ->assertUnprocessable()->assertJsonValidationErrors('events.0.metadata.completion_rate');
+
+        $negative = $this->event($post, 'dwell');
+        $negative['metadata'] = ['duration_ms' => 1000, 'rewatch_count' => -1];
+        $this->withToken($issued->token)->postJson('/api/v1/analytics/content-events', ['events' => [$negative]])
+            ->assertUnprocessable()->assertJsonValidationErrors('events.0.metadata.rewatch_count');
+    }
+
+    public function test_share_channel_accepts_group_and_rejects_unknown_values(): void
+    {
+        $issued = $this->startUserSession(User::factory()->create());
+        $post = Post::factory()->create();
+
+        $group = $this->event($post, 'share');
+        $group['metadata'] = ['share_channel' => 'group'];
+        $this->withToken($issued->token)->postJson('/api/v1/analytics/content-events', ['events' => [$group]])
+            ->assertOk();
+
+        $unknown = $this->event($post, 'share');
+        $unknown['metadata'] = ['share_channel' => 'bluetooth'];
+        $this->withToken($issued->token)->postJson('/api/v1/analytics/content-events', ['events' => [$unknown]])
+            ->assertUnprocessable()->assertJsonValidationErrors('events.0.metadata.share_channel');
+    }
+
     public function test_event_time_must_fall_inside_the_active_device_session(): void
     {
         $issued = $this->startUserSession(User::factory()->create());
