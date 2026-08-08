@@ -61,10 +61,21 @@ class DeliverSecurityOutboxMessage implements ShouldQueue
             try {
                 Mail::to($message->recipient)->send($this->mailable($message));
             } catch (Throwable $exception) {
+                // Keyed off the model's own persisted attempt count, not $this->attempts() — that
+                // reflects the queue worker's own retry bookkeeping (unavailable/always 1 when
+                // handle() is invoked directly, e.g. in tests), whereas $message->attempts is the
+                // durable count of actual delivery attempts this message has had regardless of
+                // how it was invoked. Once it reaches $tries, this was the last attempt: stop
+                // retrying instead of resetting back to Pending forever.
+                $exhausted = $message->attempts >= $this->tries;
+
                 $message->forceFill([
-                    'status' => SecurityOutboxStatus::Pending,
+                    'status' => $exhausted ? SecurityOutboxStatus::Failed : SecurityOutboxStatus::Pending,
                     'processing_started_at' => null,
-                    'available_at' => now()->addSeconds($this->retryDelay($message->attempts)),
+                    // available_at is NOT NULL at the schema level; a Failed row is already
+                    // excluded from DispatchPendingSecurityOutbox's status='pending' query
+                    // regardless of this value, so just leave it at "now" rather than nulling it.
+                    'available_at' => $exhausted ? now() : now()->addSeconds($this->retryDelay($message->attempts)),
                     'last_error' => Str::limit($exception::class.': '.$exception->getMessage(), 2000, ''),
                 ])->save();
 
@@ -79,6 +90,26 @@ class DeliverSecurityOutboxMessage implements ShouldQueue
         } finally {
             $lock->release();
         }
+    }
+
+    /** Backstop for the queue worker giving up outside handle()'s own try/catch (e.g. a fatal
+     * error, or the lock-held release(10) path retried past $tries) — same terminal transition
+     * as the exhausted-attempts branch in handle(), so a message can never retry forever
+     * regardless of which path it exhausts through. */
+    public function failed(?Throwable $exception): void
+    {
+        $message = SecurityOutboxMessage::find($this->messageId);
+
+        if (! $message || $message->status === SecurityOutboxStatus::Sent) {
+            return;
+        }
+
+        $message->forceFill([
+            'status' => SecurityOutboxStatus::Failed,
+            'processing_started_at' => null,
+            'available_at' => now(),
+            'last_error' => $exception ? Str::limit($exception::class.': '.$exception->getMessage(), 2000, '') : $message->last_error,
+        ])->save();
     }
 
     private function mailable(SecurityOutboxMessage $message): ChangeEmailVerificationMail|EmailChangedNotificationMail

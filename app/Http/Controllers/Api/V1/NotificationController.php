@@ -33,7 +33,10 @@ class NotificationController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        $user->unreadNotifications->markAsRead();
+        // A single bulk UPDATE, not $user->unreadNotifications->markAsRead() — that loads every
+        // unread row into memory and issues one UPDATE per row via Eloquent's own
+        // DatabaseNotificationCollection::markAsRead(), unbounded by a user-controlled backlog size.
+        $user->notifications()->whereNull('read_at')->update(['read_at' => now()]);
 
         return response()->json(null, 204);
     }

@@ -135,9 +135,38 @@ class GroupApiTest extends TestCase
         $this->getJson("/api/v1/groups/{$group->id}/posts")->assertOk()->assertJsonCount(0, 'data');
     }
 
-    private function createGroup(User $creator, string $name): Group
+    public function test_private_group_is_hidden_and_gated_for_non_members(): void
     {
-        $group = Group::create(['creator_id' => $creator->id, 'name' => $name, 'visibility' => 'public', 'member_count' => 1]);
+        $creator = User::factory()->create();
+        Sanctum::actingAs($creator);
+        $group = $this->createGroup($creator, 'Founders Only', visibility: 'private');
+        $post = Post::factory()->for($creator)->create();
+        $this->postJson("/api/v1/groups/{$group->id}/posts/{$post->id}")->assertNoContent();
+
+        $outsider = User::factory()->create();
+        Sanctum::actingAs($outsider);
+
+        // Absent from the general discovery listing entirely.
+        $this->getJson('/api/v1/groups')->assertOk()->assertJsonCount(0, 'data');
+
+        // Direct-link show/posts hide the group's existence rather than confirming it exists.
+        $this->getJson("/api/v1/groups/{$group->id}")->assertNotFound();
+        $this->getJson("/api/v1/groups/{$group->id}/posts")->assertNotFound();
+
+        // Self-service join is refused — a private group requires an invite.
+        $this->postJson("/api/v1/groups/{$group->id}/membership")->assertForbidden();
+        $this->assertDatabaseMissing('group_members', ['group_id' => $group->id, 'user_id' => $outsider->id]);
+
+        // A member sees/lists it normally.
+        Sanctum::actingAs($creator);
+        $this->getJson('/api/v1/groups')->assertOk()->assertJsonCount(1, 'data');
+        $this->getJson("/api/v1/groups/{$group->id}")->assertOk();
+        $this->getJson("/api/v1/groups/{$group->id}/posts")->assertOk()->assertJsonCount(1, 'data');
+    }
+
+    private function createGroup(User $creator, string $name, string $visibility = 'public'): Group
+    {
+        $group = Group::create(['creator_id' => $creator->id, 'name' => $name, 'visibility' => $visibility, 'member_count' => 1]);
         $group->members()->create(['user_id' => $creator->id, 'role' => 'admin']);
 
         return $group;

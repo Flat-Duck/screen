@@ -38,7 +38,7 @@ class GroupInviteService
         $this->assertOwnedPendingInvite($user, $invite);
 
         DB::transaction(function () use ($user, $invite): void {
-            $this->groups->join($user, $invite->group);
+            $this->groups->join($user, $invite->group, viaInvite: true);
             $invite->update(['status' => GroupInviteStatus::Accepted, 'responded_at' => now()]);
         });
     }

@@ -120,9 +120,25 @@ class GroupInviteApiTest extends TestCase
         $this->postJson("/api/v1/group-invites/{$invite->id}/accept")->assertNotFound();
     }
 
-    private function createGroup(User $creator, string $name): Group
+    public function test_accepting_an_invite_to_a_private_group_still_joins(): void
     {
-        $group = Group::create(['creator_id' => $creator->id, 'name' => $name, 'visibility' => 'public', 'member_count' => 1]);
+        $admin = User::factory()->create();
+        Sanctum::actingAs($admin);
+        $group = $this->createGroup($admin, 'Inner Circle', visibility: 'private');
+
+        $invitee = User::factory()->create();
+        $this->postJson("/api/v1/groups/{$group->id}/invites", ['user_id' => $invitee->id])->assertStatus(202);
+
+        Sanctum::actingAs($invitee);
+        $inviteId = $this->getJson('/api/v1/group-invites/incoming')->json('data.0.id');
+
+        $this->postJson("/api/v1/group-invites/{$inviteId}/accept")->assertNoContent();
+        $this->assertDatabaseHas('group_members', ['group_id' => $group->id, 'user_id' => $invitee->id, 'role' => 'member']);
+    }
+
+    private function createGroup(User $creator, string $name, string $visibility = 'public'): Group
+    {
+        $group = Group::create(['creator_id' => $creator->id, 'name' => $name, 'visibility' => $visibility, 'member_count' => 1]);
         $group->members()->create(['user_id' => $creator->id, 'role' => 'admin']);
 
         return $group;

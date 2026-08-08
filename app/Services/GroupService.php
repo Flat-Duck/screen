@@ -23,9 +23,17 @@ class GroupService
     /** @return CursorPaginator<int, Group> */
     public function discover(User $viewer, ?string $query, bool $mine, int $perPage = 20): CursorPaginator
     {
+        $viewerGroupIds = GroupMember::query()->where('user_id', $viewer->id)->select('group_id');
+
         $groups = Group::query()
             ->when($query, fn (Builder $q) => $q->where('name', 'like', '%'.$query.'%'))
-            ->when($mine, fn (Builder $q) => $q->whereIn('id', GroupMember::query()->where('user_id', $viewer->id)->select('group_id')))
+            ->when($mine, fn (Builder $q) => $q->whereIn('id', $viewerGroupIds))
+            // A private group is invisible to browse/search unless the viewer is already a
+            // member — `mine` already scopes to the viewer's own groups above, so this only
+            // matters for the general (non-`mine`) listing.
+            ->unless($mine, fn (Builder $q) => $q->where(
+                fn (Builder $q) => $q->where('visibility', '!=', 'private')->orWhereIn('id', $viewerGroupIds)
+            ))
             ->orderByDesc('member_count')
             ->orderByDesc('id')
             ->cursorPaginate($perPage);
@@ -70,13 +78,23 @@ class GroupService
 
     public function show(User $viewer, Group $group): Group
     {
+        // 404, not 403 — hides a private group's existence entirely, same convention as
+        // UserController::show's block check, rather than confirming "yes, it exists, but
+        // you can't see it."
+        abort_unless($group->visibility !== 'private' || $group->isMember($viewer), 404);
+
         $this->annotateViewer(collect([$group]), $viewer);
 
         return $group;
     }
 
-    public function join(User $user, Group $group): void
+    /** [$viaInvite] is true only when called from GroupInviteService::accept — a private
+     * group can still be joined that way; self-service joins (the default) are refused for
+     * a private group instead of silently succeeding. */
+    public function join(User $user, Group $group, bool $viaInvite = false): void
     {
+        abort_if($group->visibility === 'private' && ! $viaInvite, 403, 'This group requires an invite to join.');
+
         DB::transaction(function () use ($user, $group): void {
             $locked = Group::query()->whereKey($group->id)->lockForUpdate()->firstOrFail();
             $existing = GroupMember::query()->where('group_id', $locked->id)->where('user_id', $user->id)->exists();
@@ -102,6 +120,9 @@ class GroupService
     /** @return CursorPaginator<int, Post> */
     public function posts(User $viewer, Group $group, int $perPage = 20): CursorPaginator
     {
+        // See show()'s kdoc — same 404-hides-existence treatment for a private group's posts.
+        abort_unless($group->visibility !== 'private' || $group->isMember($viewer), 404);
+
         $visiblePostIds = Post::query()->visibleTo($viewer)->select('id');
         $visiblePostIds = $this->blocks->excludeBlocked($visiblePostIds, $viewer, 'user_id');
 

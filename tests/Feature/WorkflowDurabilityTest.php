@@ -54,6 +54,36 @@ class WorkflowDurabilityTest extends TestCase
         $this->assertSame(SecurityOutboxStatus::Sent, $message->fresh()->status);
     }
 
+    public function test_security_outbox_delivery_transitions_to_failed_after_exhausting_all_attempts(): void
+    {
+        Mail::shouldReceive('to')->andThrow(new RuntimeException('smtp rejected'));
+
+        $message = SecurityOutboxMessage::create([
+            'type' => SecurityOutboxType::EmailChangedNotification,
+            'recipient' => 'bounces@example.com',
+            'payload' => ['new_email' => 'new@example.com'],
+            'status' => SecurityOutboxStatus::Pending,
+            'available_at' => now(),
+        ]);
+
+        $job = new DeliverSecurityOutboxMessage($message->id);
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            try {
+                $job->handle();
+            } catch (RuntimeException) {
+                // Expected — handle() rethrows so a real queue worker's own tries/backoff still
+                // observes the failure; this loop plays the role of 5 separate worker attempts.
+            }
+        }
+
+        $this->assertSame(SecurityOutboxStatus::Failed, $message->fresh()->status);
+
+        // A Failed row must never be picked up again by the scheduled dispatcher.
+        Queue::fake();
+        app(DispatchPendingSecurityOutbox::class)();
+        Queue::assertNotPushed(DeliverSecurityOutboxMessage::class);
+    }
+
     public function test_stale_security_outbox_messages_are_recovered_and_dispatched(): void
     {
         Queue::fake();
