@@ -4,7 +4,6 @@ namespace Tests\Feature\Api\V1;
 
 use App\Models\SocialAccount;
 use App\Models\User;
-use Firebase\JWT\JWT;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
@@ -12,7 +11,6 @@ use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\AbstractProvider;
 use Laravel\Socialite\Two\User as SocialiteUser;
 use Mockery;
-use OpenSSLAsymmetricKey;
 use Tests\TestCase;
 
 class SocialAuthTest extends TestCase
@@ -21,8 +19,6 @@ class SocialAuthTest extends TestCase
 
     private const GOOGLE_CLIENT_ID = 'test-google-client-id';
 
-    private const APPLE_CLIENT_ID = 'test-apple-client-id';
-
     protected function setUp(): void
     {
         parent::setUp();
@@ -30,7 +26,6 @@ class SocialAuthTest extends TestCase
 
         config([
             'services.google.client_id' => self::GOOGLE_CLIENT_ID,
-            'services.apple.client_id' => self::APPLE_CLIENT_ID,
             'services.facebook.app_id' => 'test-fb-app-id',
             'services.facebook.app_secret' => 'test-fb-app-secret',
         ]);
@@ -170,29 +165,6 @@ class SocialAuthTest extends TestCase
         $response->assertUnprocessable();
     }
 
-    public function test_apple_sign_in_uses_client_provided_name_since_the_token_never_carries_one(): void
-    {
-        $this->fakeAppleJwks($kid = 'kid-1', $privateKey);
-
-        $identityToken = $this->signJwt($privateKey, $kid, [
-            'iss' => 'https://appleid.apple.com',
-            'aud' => self::APPLE_CLIENT_ID,
-            'sub' => 'apple-user-1',
-            'email' => 'appleuser@example.com',
-            'email_verified' => 'true',
-        ]);
-
-        $response = $this->postJson('/api/v1/auth/social/apple', [
-            'identity_token' => $identityToken,
-            'given_name' => 'Grace',
-            'family_name' => 'Hopper',
-        ]);
-
-        $response->assertCreated();
-        $this->assertDatabaseHas('users', ['email' => 'appleuser@example.com', 'name' => 'Grace Hopper']);
-        $this->assertDatabaseHas('device_sessions', ['login_method' => 'apple']);
-    }
-
     public function test_login_against_a_social_only_account_without_a_password_is_rejected(): void
     {
         User::factory()->create(['username' => 'social-only', 'email' => 'social@example.com', 'password' => null]);
@@ -306,58 +278,5 @@ class SocialAuthTest extends TestCase
         $provider->shouldReceive('userFromToken')->andReturn($user);
 
         Socialite::shouldReceive('driver')->with('facebook')->andReturn($provider);
-    }
-
-    /**
-     * @param  OpenSSLAsymmetricKey|string|null  $privateKey
-     */
-    private function fakeAppleJwks(string $kid, &$privateKey): void
-    {
-        $jwks = $this->generateRsaJwks($kid, $privateKey);
-
-        Http::fake([
-            'https://appleid.apple.com/auth/keys' => Http::response($jwks),
-        ]);
-    }
-
-    /**
-     * @param  OpenSSLAsymmetricKey|string|null  $privateKey
-     * @return array<string, mixed>
-     */
-    private function generateRsaJwks(string $kid, &$privateKey): array
-    {
-        $resource = openssl_pkey_new([
-            'private_key_bits' => 2048,
-            'private_key_type' => OPENSSL_KEYTYPE_RSA,
-        ]);
-
-        openssl_pkey_export($resource, $privateKey);
-        $details = openssl_pkey_get_details($resource);
-
-        return [
-            'keys' => [[
-                'kty' => 'RSA',
-                'kid' => $kid,
-                'use' => 'sig',
-                'alg' => 'RS256',
-                'n' => $this->base64UrlEncode($details['rsa']['n']),
-                'e' => $this->base64UrlEncode($details['rsa']['e']),
-            ]],
-        ];
-    }
-
-    /**
-     * @param  array<string, mixed>  $claims
-     */
-    private function signJwt(string $privateKey, string $kid, array $claims): string
-    {
-        $claims += ['iat' => time(), 'exp' => time() + 3600];
-
-        return JWT::encode($claims, $privateKey, 'RS256', $kid);
-    }
-
-    private function base64UrlEncode(string $data): string
-    {
-        return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
     }
 }

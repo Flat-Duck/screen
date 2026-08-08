@@ -409,50 +409,6 @@
                 }
             }
         },
-        "/api/v1/auth/social/apple": {
-            "post": {
-                "operationId": "authControllerApple",
-                "tags": [
-                    "Auth"
-                ],
-                "responses": {
-                    "200": {
-                        "$ref": "#/components/responses/JsonSuccess"
-                    },
-                    "204": {
-                        "description": "Successful operation with no response body"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/Unauthenticated"
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/Forbidden"
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationError"
-                    },
-                    "429": {
-                        "$ref": "#/components/responses/RateLimited"
-                    }
-                },
-                "x-auth-principal": "device",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/JsonObject"
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/auth/social/facebook": {
             "post": {
                 "operationId": "authControllerFacebook",

@@ -23,7 +23,6 @@ class SocialAccountFactory extends Factory
             'provider' => fake()->randomElement([
                 SocialAccount::PROVIDER_GOOGLE,
                 SocialAccount::PROVIDER_FACEBOOK,
-                SocialAccount::PROVIDER_APPLE,
             ]),
             'provider_user_id' => fake()->uuid(),
             'avatar_url' => fake()->optional()->imageUrl(),

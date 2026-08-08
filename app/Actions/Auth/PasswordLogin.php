@@ -24,7 +24,7 @@ class PasswordLogin
 
         if ($user && $user->password === null) {
             throw ValidationException::withMessages([
-                'login' => __('This account signs in with Google, Facebook, or Apple. Continue with one of those, or set a password from your profile first.'),
+                'login' => __('This account signs in with Google or Facebook. Continue with one of those, or set a password from your profile first.'),
             ]);
         }
 

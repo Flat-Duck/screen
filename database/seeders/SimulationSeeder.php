@@ -276,7 +276,7 @@ class SimulationSeeder extends Seeder
 
             if ($index < 8) {
                 $users[$index]->socialAccounts()->create([
-                    'provider' => ['google', 'facebook', 'apple'][$index % 3],
+                    'provider' => ['google', 'facebook'][$index % 2],
                     'provider_user_id' => 'seed-provider-'.$users[$index]->id,
                     'avatar_url' => "https://picsum.photos/seed/avatar-{$users[$index]->username}/160/160",
                 ]);

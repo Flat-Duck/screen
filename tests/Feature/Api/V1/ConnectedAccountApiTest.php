@@ -43,7 +43,7 @@ class ConnectedAccountApiTest extends TestCase
         SocialAccount::factory()->for($user)->create(['provider' => SocialAccount::PROVIDER_GOOGLE]);
 
         $stranger = User::factory()->create();
-        SocialAccount::factory()->for($stranger)->create(['provider' => SocialAccount::PROVIDER_APPLE]);
+        SocialAccount::factory()->for($stranger)->create(['provider' => SocialAccount::PROVIDER_FACEBOOK]);
 
         $response = $this->withHeaderFor($user)->getJson('/api/v1/connected-accounts');
 
@@ -103,7 +103,7 @@ class ConnectedAccountApiTest extends TestCase
         $user = User::factory()->create(['password' => 'password123!']);
 
         $this->withHeaderFor($user)
-            ->deleteJson('/api/v1/connected-accounts/'.SocialAccount::PROVIDER_APPLE, ['current_password' => 'password123!'])
+            ->deleteJson('/api/v1/connected-accounts/'.SocialAccount::PROVIDER_FACEBOOK, ['current_password' => 'password123!'])
             ->assertNoContent();
     }
 

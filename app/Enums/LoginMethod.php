@@ -8,5 +8,4 @@ enum LoginMethod: string
     case Password = 'password';
     case Google = 'google';
     case Facebook = 'facebook';
-    case Apple = 'apple';
 }

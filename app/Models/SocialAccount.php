@@ -8,9 +8,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Links a `User` to an identity on an external OAuth provider (Google/Facebook/Apple).
+ * Links a `User` to an identity on an external OAuth provider (Google/Facebook).
  * One user can have several rows here (one per linked provider); a provider+provider_user_id
- * pair is globally unique, so a given Google/Facebook/Apple account can only ever map to one
+ * pair is globally unique, so a given Google/Facebook account can only ever map to one
  * `User`.
  *
  * @property int $id
@@ -27,8 +27,6 @@ class SocialAccount extends Model
     public const PROVIDER_GOOGLE = 'google';
 
     public const PROVIDER_FACEBOOK = 'facebook';
-
-    public const PROVIDER_APPLE = 'apple';
 
     protected $fillable = [
         'user_id',

@@ -854,8 +854,7 @@ of the original three (none of them mean "stayed inside the app, into an in-app 
 ## Shipped: 2026-08-08 — `POST /v1/auth/social/google` now takes `access_token`, not `id_token`
 
 **Breaking change for this one field only** — every other field on this endpoint
-(`device_name`) and every other social endpoint (`facebook`'s `access_token`, `apple`'s
-`identity_token`) is unchanged.
+(`device_name`) and every other social endpoint (`facebook`'s `access_token`) is unchanged.
 
 Google sign-in verification moved off this app's own hand-rolled JWT/JWKS code and onto
 `laravel/socialite`. Socialite's token-based verification is built around an OAuth **access**
@@ -870,5 +869,20 @@ behavior (`email_verified` still gates auto-linking to an existing password acco
 a missing/invalid token.
 
 `facebook`'s verification also moved onto Socialite (its access-token-based flow already matched
-what this endpoint expected — no client-facing change there). `apple` is untouched — still
-JWT/JWKS-verified the same way as before, since no client currently calls it.
+what this endpoint expected — no client-facing change there).
+
+---
+
+## Removed: 2026-08-08 — Apple sign-in
+
+`POST /v1/auth/social/apple` is gone — route, controller action, request validation, and the
+custom JWT/JWKS verifier all removed. It was never called by any client (no native Apple SDK on
+Android, no client code was ever written against it), so this is a clean removal, not a breaking
+change for anyone integrating against it today. `login_method`/`provider` values on every
+endpoint that surfaces them (`GET /v1/sessions`, `GET /v1/connected-accounts`, etc.) are now one
+of `registration`, `password`, `google`, `facebook` only — `apple` will never appear again,
+including on rows created before this change (there were none in production).
+
+`firebase/php-jwt` stays as a composer dependency — nothing to do with social login anymore
+(Google's verifier moved to Socialite earlier the same day), but `App\Services\Fcm\FcmClient`
+still uses it directly to sign its own JWTs for Firebase Cloud Messaging auth, an unrelated use.

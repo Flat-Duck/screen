@@ -50,7 +50,6 @@ Route::middleware(['auth:sanctum', 'auth.device:device:manage'])->group(function
     Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:auth-login');
     Route::post('auth/social/google', [AuthController::class, 'google'])->middleware('throttle:auth-social');
     Route::post('auth/social/facebook', [AuthController::class, 'facebook'])->middleware('throttle:auth-social');
-    Route::post('auth/social/apple', [AuthController::class, 'apple'])->middleware('throttle:auth-social');
     Route::post('auth/two-factor-challenge', [AuthController::class, 'twoFactorChallenge'])->middleware('throttle:two-factor-challenge');
 });
 

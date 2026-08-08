@@ -7,7 +7,6 @@ use App\Actions\Auth\CompleteTwoFactorLogin;
 use App\Actions\Auth\PasswordLogin;
 use App\Actions\Auth\RegisterUser;
 use App\Data\Auth\DeviceSessionContext;
-use App\Http\Requests\AppleLoginRequest;
 use App\Http\Requests\FacebookLoginRequest;
 use App\Http\Requests\GoogleLoginRequest;
 use App\Http\Requests\LoginRequest;
@@ -19,7 +18,6 @@ use App\Models\Device;
 use App\Models\User;
 use App\Services\Auth\IssuedAccessToken;
 use App\Services\AuthService;
-use App\Services\SocialAuth\AppleTokenVerifier;
 use App\Services\SocialAuth\FacebookTokenVerifier;
 use App\Services\SocialAuth\GoogleTokenVerifier;
 use App\Services\SocialAuth\SocialUserPayload;
@@ -63,20 +61,6 @@ class AuthController extends Controller
     public function facebook(FacebookLoginRequest $request, FacebookTokenVerifier $verifier, CompleteSocialLogin $socialLogin): JsonResponse
     {
         $payload = $verifier->verify($request->string('access_token')->toString());
-
-        return $this->respondToSocialLogin($request, $socialLogin, $payload);
-    }
-
-    public function apple(AppleLoginRequest $request, AppleTokenVerifier $verifier, CompleteSocialLogin $socialLogin): JsonResponse
-    {
-        $payload = $verifier->verify($request->string('identity_token')->toString());
-
-        // Apple's identity token never carries a name; the client sends it separately,
-        // and only on the very first authorization.
-        $name = trim(sprintf('%s %s', $request->string('given_name', ''), $request->string('family_name', '')));
-        if ($name !== '') {
-            $payload = $payload->withName($name);
-        }
 
         return $this->respondToSocialLogin($request, $socialLogin, $payload);
     }

@@ -59,12 +59,6 @@ return [
         'redirect' => null,
     ],
 
-    // Audience ("aud" claim) the Apple identity token must have — the Services ID
-    // (or app bundle ID) configured for Sign in with Apple.
-    'apple' => [
-        'client_id' => env('APPLE_CLIENT_ID'),
-    ],
-
     // Firebase Cloud Messaging (push notifications). Both must be set for FcmChannel to
     // actually send anything — see App\Services\Fcm\FcmClient::isConfigured(). Missing
     // credentials are not an error; push is skipped silently, same as this app runs fine

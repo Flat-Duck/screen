@@ -45,7 +45,7 @@ discovery, and moderation—not by copying every media format from larger social
 The existing backend already provides:
 
 - Device enrollment and scoped installation credentials
-- Email/password and Google, Facebook, and Apple authentication
+- Email/password and Google/Facebook authentication
 - Two-factor authentication, recovery codes, and durable device sessions
 - Profile and connected-account management
 - Required-image carousel posts with captions

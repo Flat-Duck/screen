@@ -2,11 +2,12 @@
 
 namespace App\Http\Resources;
 
+use App\Models\PrivateSave;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * @mixin \App\Models\PrivateSave
+ * @mixin PrivateSave
  */
 class PrivateSaveResource extends JsonResource
 {
