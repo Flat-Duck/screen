@@ -3,37 +3,48 @@
 namespace App\Services\SocialAuth;
 
 use App\Models\SocialAccount;
+use Laravel\Socialite\Facades\Socialite;
+use Laravel\Socialite\Two\AbstractProvider;
+use Throwable;
 
-class GoogleTokenVerifier extends JwtTokenVerifier
+/**
+ * Verifies the OAuth access token Android obtains via Google's Authorization API
+ * (`Identity.getAuthorizationClient()`) — a genuine access token, not the ID token used for the
+ * local Firebase exchange (see `GoogleAuthManagerImpl` on the client). `Socialite::userFromToken()`
+ * calls Google's userinfo endpoint with it as a bearer token.
+ */
+class GoogleTokenVerifier implements SocialTokenVerifier
 {
-    protected function jwksUrl(): string
+    public function verify(string $token): SocialUserPayload
     {
-        return 'https://www.googleapis.com/oauth2/v3/certs';
-    }
+        // Socialite::driver()'s return type is the generic Contracts\Provider interface, which
+        // doesn't declare userFromToken() — only Two\AbstractProvider (what every concrete OAuth2
+        // provider, including Google's, actually extends) does. This also catches a genuinely
+        // misconfigured 'google' driver at runtime, not just a static-analysis formality.
+        $provider = Socialite::driver('google');
+        if (! $provider instanceof AbstractProvider) {
+            throw new SocialTokenVerificationException('Google sign-in is not configured correctly.');
+        }
 
-    protected function issuers(): array
-    {
-        return ['accounts.google.com', 'https://accounts.google.com'];
-    }
+        try {
+            $user = $provider->userFromToken($token);
+        } catch (Throwable $e) {
+            throw new SocialTokenVerificationException('Invalid or expired token.', previous: $e);
+        }
 
-    protected function audience(): ?string
-    {
-        return config('services.google.client_id');
-    }
-
-    protected function payloadFromClaims(array $claims): SocialUserPayload
-    {
-        if (empty($claims['email'])) {
+        if (empty($user->getEmail())) {
             throw new SocialTokenVerificationException('Google token has no email claim.');
         }
 
+        $raw = $user->getRaw();
+
         return new SocialUserPayload(
             provider: SocialAccount::PROVIDER_GOOGLE,
-            providerUserId: (string) $claims['sub'],
-            email: $claims['email'],
-            emailVerified: filter_var($claims['email_verified'] ?? false, FILTER_VALIDATE_BOOLEAN),
-            name: $claims['name'] ?? null,
-            avatarUrl: $claims['picture'] ?? null,
+            providerUserId: (string) $user->getId(),
+            email: $user->getEmail(),
+            emailVerified: filter_var($raw['email_verified'] ?? $raw['verified_email'] ?? false, FILTER_VALIDATE_BOOLEAN),
+            name: $user->getName(),
+            avatarUrl: $user->getAvatar(),
         );
     }
 }

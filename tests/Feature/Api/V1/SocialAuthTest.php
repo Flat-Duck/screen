@@ -8,6 +8,10 @@ use Firebase\JWT\JWT;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
+use Laravel\Socialite\Facades\Socialite;
+use Laravel\Socialite\Two\AbstractProvider;
+use Laravel\Socialite\Two\User as SocialiteUser;
+use Mockery;
 use OpenSSLAsymmetricKey;
 use Tests\TestCase;
 
@@ -34,23 +38,19 @@ class SocialAuthTest extends TestCase
 
     public function test_google_sign_in_creates_a_new_account_when_none_exists(): void
     {
-        $this->fakeGoogleJwks($kid = 'kid-1', $privateKey);
-
-        $idToken = $this->signJwt($privateKey, $kid, [
-            'iss' => 'https://accounts.google.com',
-            'aud' => self::GOOGLE_CLIENT_ID,
-            'sub' => 'google-user-1',
-            'email' => 'newuser@example.com',
-            'email_verified' => true,
-            'name' => 'New User',
-            'picture' => 'https://example.com/avatar.jpg',
-        ]);
+        $this->fakeGoogleUser(
+            providerUserId: 'google-user-1',
+            email: 'newuser@example.com',
+            emailVerified: true,
+            name: 'New User',
+            avatar: 'https://example.com/avatar.jpg',
+        );
 
         Http::fake([
             'https://example.com/avatar.jpg' => Http::response('not-a-real-image', 200),
         ]);
 
-        $response = $this->postJson('/api/v1/auth/social/google', ['id_token' => $idToken]);
+        $response = $this->postJson('/api/v1/auth/social/google', ['access_token' => 'fake-google-access-token']);
 
         $response->assertCreated();
         $response->assertJsonPath('is_new_account', true);
@@ -75,26 +75,18 @@ class SocialAuthTest extends TestCase
 
     public function test_repeat_google_sign_in_logs_into_the_same_user(): void
     {
-        $this->fakeGoogleJwks($kid = 'kid-1', $privateKey);
+        $this->fakeGoogleUser(
+            providerUserId: 'google-user-1',
+            email: 'newuser@example.com',
+            emailVerified: true,
+            name: 'New User',
+        );
 
-        $claims = [
-            'iss' => 'https://accounts.google.com',
-            'aud' => self::GOOGLE_CLIENT_ID,
-            'sub' => 'google-user-1',
-            'email' => 'newuser@example.com',
-            'email_verified' => true,
-            'name' => 'New User',
-        ];
-
-        $first = $this->postJson('/api/v1/auth/social/google', [
-            'id_token' => $this->signJwt($privateKey, $kid, $claims),
-        ]);
+        $first = $this->postJson('/api/v1/auth/social/google', ['access_token' => 'fake-google-access-token']);
         $first->assertCreated();
         $userId = $first->json('user.id');
 
-        $second = $this->postJson('/api/v1/auth/social/google', [
-            'id_token' => $this->signJwt($privateKey, $kid, $claims),
-        ]);
+        $second = $this->postJson('/api/v1/auth/social/google', ['access_token' => 'fake-google-access-token']);
         $second->assertOk();
         $second->assertJsonPath('is_new_account', false);
         $second->assertJsonPath('user.id', $userId);
@@ -107,18 +99,14 @@ class SocialAuthTest extends TestCase
     {
         $existing = User::factory()->create(['email' => 'ada@example.com']);
 
-        $this->fakeGoogleJwks($kid = 'kid-1', $privateKey);
+        $this->fakeGoogleUser(
+            providerUserId: 'google-user-1',
+            email: 'ada@example.com',
+            emailVerified: true,
+            name: 'Ada',
+        );
 
-        $idToken = $this->signJwt($privateKey, $kid, [
-            'iss' => 'https://accounts.google.com',
-            'aud' => self::GOOGLE_CLIENT_ID,
-            'sub' => 'google-user-1',
-            'email' => 'ada@example.com',
-            'email_verified' => true,
-            'name' => 'Ada',
-        ]);
-
-        $response = $this->postJson('/api/v1/auth/social/google', ['id_token' => $idToken]);
+        $response = $this->postJson('/api/v1/auth/social/google', ['access_token' => 'fake-google-access-token']);
 
         $response->assertOk();
         $response->assertJsonPath('is_new_account', false);
@@ -131,18 +119,14 @@ class SocialAuthTest extends TestCase
     {
         User::factory()->create(['email' => 'ada@example.com']);
 
-        $this->fakeGoogleJwks($kid = 'kid-1', $privateKey);
+        $this->fakeGoogleUser(
+            providerUserId: 'google-user-1',
+            email: 'ada@example.com',
+            emailVerified: false,
+            name: 'Ada',
+        );
 
-        $idToken = $this->signJwt($privateKey, $kid, [
-            'iss' => 'https://accounts.google.com',
-            'aud' => self::GOOGLE_CLIENT_ID,
-            'sub' => 'google-user-1',
-            'email' => 'ada@example.com',
-            'email_verified' => false,
-            'name' => 'Ada',
-        ]);
-
-        $response = $this->postJson('/api/v1/auth/social/google', ['id_token' => $idToken]);
+        $response = $this->postJson('/api/v1/auth/social/google', ['access_token' => 'fake-google-access-token']);
 
         $response->assertUnprocessable();
         $response->assertJsonValidationErrors(['email']);
@@ -155,14 +139,15 @@ class SocialAuthTest extends TestCase
             'https://graph.facebook.com/debug_token*' => Http::response([
                 'data' => ['is_valid' => true, 'app_id' => 'test-fb-app-id'],
             ]),
-            'https://graph.facebook.com/me*' => Http::response([
-                'id' => 'fb-user-1',
-                'name' => 'Facebook User',
-                'email' => 'fbuser@example.com',
-                'picture' => ['data' => ['url' => 'https://example.com/pic.jpg']],
-            ]),
             'https://example.com/pic.jpg' => Http::response('not-a-real-image', 200),
         ]);
+
+        $this->fakeFacebookUser(
+            providerUserId: 'fb-user-1',
+            email: 'fbuser@example.com',
+            name: 'Facebook User',
+            avatar: 'https://example.com/pic.jpg',
+        );
 
         $response = $this->postJson('/api/v1/auth/social/facebook', ['access_token' => 'fake-fb-token']);
 
@@ -290,15 +275,37 @@ class SocialAuthTest extends TestCase
     }
 
     /**
-     * @param  OpenSSLAsymmetricKey|string|null  $privateKey
+     * Mocks the Socialite facade itself rather than faking HTTP — Socialite's providers make
+     * their calls through their own internal Guzzle client, not Laravel's `Http` facade, so
+     * `Http::fake()` never sees them (confirmed against the installed
+     * `vendor/laravel/socialite/src/Two/AbstractProvider::getHttpClient()`).
      */
-    private function fakeGoogleJwks(string $kid, &$privateKey): void
+    private function fakeGoogleUser(string $providerUserId, string $email, bool $emailVerified, ?string $name = null, ?string $avatar = null): void
     {
-        $jwks = $this->generateRsaJwks($kid, $privateKey);
+        $user = (new SocialiteUser)
+            ->setRaw(['email_verified' => $emailVerified])
+            ->map(['id' => $providerUserId, 'name' => $name, 'email' => $email, 'avatar' => $avatar]);
 
-        Http::fake([
-            'https://www.googleapis.com/oauth2/v3/certs' => Http::response($jwks),
-        ]);
+        // Must be a mock "of" AbstractProvider (not a bare Mockery::mock()) — GoogleTokenVerifier
+        // narrows Socialite::driver()'s return type with an instanceof check before calling
+        // userFromToken(), since the interface Socialite::driver() is typed to doesn't declare it.
+        $provider = Mockery::mock(AbstractProvider::class);
+        $provider->shouldReceive('userFromToken')->andReturn($user);
+
+        Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
+    }
+
+    /** See {@see fakeGoogleUser}'s kdoc — same reasoning. */
+    private function fakeFacebookUser(string $providerUserId, string $email, ?string $name = null, ?string $avatar = null): void
+    {
+        $user = (new SocialiteUser)
+            ->setRaw([])
+            ->map(['id' => $providerUserId, 'name' => $name, 'email' => $email, 'avatar' => $avatar]);
+
+        $provider = Mockery::mock(AbstractProvider::class);
+        $provider->shouldReceive('userFromToken')->andReturn($user);
+
+        Socialite::shouldReceive('driver')->with('facebook')->andReturn($provider);
     }
 
     /**

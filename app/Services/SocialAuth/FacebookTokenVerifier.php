@@ -4,6 +4,9 @@ namespace App\Services\SocialAuth;
 
 use App\Models\SocialAccount;
 use Illuminate\Support\Facades\Http;
+use Laravel\Socialite\Facades\Socialite;
+use Laravel\Socialite\Two\AbstractProvider;
+use Throwable;
 
 class FacebookTokenVerifier implements SocialTokenVerifier
 {
@@ -11,35 +14,40 @@ class FacebookTokenVerifier implements SocialTokenVerifier
     {
         $this->assertTokenBelongsToThisApp($token);
 
-        $profile = Http::get('https://graph.facebook.com/me', [
-            'fields' => 'id,name,email,picture.type(large)',
-            'access_token' => $token,
-        ]);
-
-        if ($profile->failed()) {
-            throw new SocialTokenVerificationException('Invalid or expired Facebook access token.');
+        // See GoogleTokenVerifier's matching check for why this instanceof narrowing is needed —
+        // Socialite::driver()'s declared return type doesn't include userFromToken().
+        $provider = Socialite::driver('facebook');
+        if (! $provider instanceof AbstractProvider) {
+            throw new SocialTokenVerificationException('Facebook sign-in is not configured correctly.');
         }
 
-        $data = $profile->json();
+        try {
+            $user = $provider->userFromToken($token);
+        } catch (Throwable $e) {
+            throw new SocialTokenVerificationException('Invalid or expired Facebook access token.', previous: $e);
+        }
 
-        if (empty($data['email'])) {
+        if (empty($user->getEmail())) {
             throw new SocialTokenVerificationException('Facebook account has no email available.');
         }
 
         return new SocialUserPayload(
             provider: SocialAccount::PROVIDER_FACEBOOK,
-            providerUserId: (string) $data['id'],
-            email: $data['email'],
+            providerUserId: (string) $user->getId(),
+            email: $user->getEmail(),
             emailVerified: true, // Meta only ever returns emails it has already confirmed
-            name: $data['name'] ?? null,
-            avatarUrl: $data['picture']['data']['url'] ?? null,
+            name: $user->getName(),
+            avatarUrl: $user->getAvatar(),
         );
     }
 
     /**
      * Confirms the token is valid and was minted for *this* app, not some other app
      * that happens to also use Facebook Login — otherwise any valid Facebook token
-     * from anywhere would be accepted.
+     * from anywhere would be accepted. Socialite's own access-token path adds an
+     * `appsecret_proof` when a client secret is configured, but that only stops a stolen
+     * token being replayed by someone who doesn't know our secret — it doesn't confirm the
+     * token itself was issued to our app, which is what this explicit check is for.
      */
     private function assertTokenBelongsToThisApp(string $token): void
     {

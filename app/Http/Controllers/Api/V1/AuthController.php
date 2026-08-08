@@ -55,7 +55,7 @@ class AuthController extends Controller
 
     public function google(GoogleLoginRequest $request, GoogleTokenVerifier $verifier, CompleteSocialLogin $socialLogin): JsonResponse
     {
-        $payload = $verifier->verify($request->string('id_token')->toString());
+        $payload = $verifier->verify($request->string('access_token')->toString());
 
         return $this->respondToSocialLogin($request, $socialLogin, $payload);
     }

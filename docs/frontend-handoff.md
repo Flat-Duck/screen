@@ -848,3 +848,27 @@ Also: `share`'s required `share_channel` metadata gains a fourth allowed value, 
 alongside `system`, `copy_link`, and `external` — for the existing "share into a group you've
 joined" action (`POST /v1/groups/{group}/posts/{post}`, shipped 2026-07-26), which doesn't fit any
 of the original three (none of them mean "stayed inside the app, into an in-app destination").
+
+---
+
+## Shipped: 2026-08-08 — `POST /v1/auth/social/google` now takes `access_token`, not `id_token`
+
+**Breaking change for this one field only** — every other field on this endpoint
+(`device_name`) and every other social endpoint (`facebook`'s `access_token`, `apple`'s
+`identity_token`) is unchanged.
+
+Google sign-in verification moved off this app's own hand-rolled JWT/JWKS code and onto
+`laravel/socialite`. Socialite's token-based verification is built around an OAuth **access**
+token (it calls Google's userinfo endpoint with it as a bearer token), not the ID token this
+endpoint accepted before — send the access token your Android client obtains via Google's
+Authorization API (`Identity.getAuthorizationClient()`, `email`/`profile`/`openid` scopes), not the
+Credential Manager ID token used for any local Firebase exchange you may still be doing on your
+own side.
+
+Everything else about this endpoint is unchanged: same response shape, same account-linking
+behavior (`email_verified` still gates auto-linking to an existing password account), same 422 on
+a missing/invalid token.
+
+`facebook`'s verification also moved onto Socialite (its access-token-based flow already matched
+what this endpoint expected — no client-facing change there). `apple` is untouched — still
+JWT/JWKS-verified the same way as before, since no client currently calls it.

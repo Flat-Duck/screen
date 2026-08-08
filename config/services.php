@@ -35,16 +35,28 @@ return [
         ],
     ],
 
-    // Audience ("aud" claim) the Android app's Google ID token must have — the OAuth
-    // "Web application" client ID from Google Cloud Console, not the Android client ID
-    // (see GoogleSignInOptions.Builder#requestIdToken on the client).
+    // Consumed by Socialite (App\Services\SocialAuth\GoogleTokenVerifier) to call Google's
+    // userinfo endpoint with the access token Android obtains via its Authorization API.
+    // 'redirect' is unused — this app never does Socialite's redirect-based OAuth flow for
+    // Google, only the stateless userFromToken() call, but Socialite's provider constructor
+    // requires the key to be present.
     'google' => [
         'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => null,
     ],
 
+    // 'client_id'/'client_secret' are Socialite's own naming convention (consumed by
+    // GoogleTokenVerifier's Facebook counterpart); 'app_id'/'app_secret' are this app's
+    // pre-existing names, still read directly by FacebookTokenVerifier::assertTokenBelongsToThisApp.
+    // Both pairs point at the same two credentials — not a duplicated secret, just two names
+    // for the same env vars so neither piece of code needs to change its own convention.
     'facebook' => [
         'app_id' => env('FACEBOOK_APP_ID'),
         'app_secret' => env('FACEBOOK_APP_SECRET'),
+        'client_id' => env('FACEBOOK_APP_ID'),
+        'client_secret' => env('FACEBOOK_APP_SECRET'),
+        'redirect' => null,
     ],
 
     // Audience ("aud" claim) the Apple identity token must have — the Services ID
