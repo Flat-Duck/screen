@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\V1\GroupInviteController;
 use App\Http\Controllers\Api\V1\HashtagController;
 use App\Http\Controllers\Api\V1\HiddenTermController;
 use App\Http\Controllers\Api\V1\InterestController;
+use App\Http\Controllers\Api\V1\InviteController;
 use App\Http\Controllers\Api\V1\LikeController;
 use App\Http\Controllers\Api\V1\MediaAnalysisController;
 use App\Http\Controllers\Api\V1\MuteController;
@@ -208,6 +209,8 @@ Route::middleware(['auth:sanctum', 'auth.user', 'session.touch'])->group(functio
     Route::get('group-invites/incoming', [GroupInviteController::class, 'incoming'])->middleware('throttle:reads');
     Route::post('group-invites/{groupInvite}/accept', [GroupInviteController::class, 'accept'])->middleware('throttle:writes-moderate');
     Route::post('group-invites/{groupInvite}/decline', [GroupInviteController::class, 'decline'])->middleware('throttle:writes-moderate');
+
+    Route::get('me/invites', [InviteController::class, 'index'])->middleware('throttle:reads');
 
     Route::get('posts/{post}/comments', [CommentController::class, 'index'])->middleware('throttle:reads');
     Route::post('posts/{post}/comments', [CommentController::class, 'store'])->middleware('throttle:writes-moderate');

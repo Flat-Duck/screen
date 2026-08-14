@@ -105,7 +105,8 @@ class AuthController extends Controller
 
     private function respondToSocialLogin(Request $request, CompleteSocialLogin $socialLogin, SocialUserPayload $payload): JsonResponse
     {
-        $result = $socialLogin($this->device($request), $payload, $this->context($request));
+        $inviteCode = $request->string('invite_code')->toString();
+        $result = $socialLogin($this->device($request), $payload, $this->context($request), $inviteCode !== '' ? $inviteCode : null);
 
         return $this->responses->make(
             $result,

@@ -33,6 +33,8 @@ use Laravel\Scout\Searchable;
  * @property int $id
  * @property string $name
  * @property string|null $username
+ * @property string|null $invite_code Auto-generated for every user at creation — see booted().
+ * @property int $points_balance Cached, denormalized — see PointTransaction for the audit trail.
  * @property string $email
  * @property string|null $pending_email
  * @property Carbon|null $email_verified_at
@@ -111,7 +113,27 @@ class User extends Authenticatable implements PasskeyUser
             'moderation_state' => UserModerationState::class,
             'account_visibility' => AccountVisibility::class,
             'moderated_at' => 'datetime',
+            'points_balance' => 'integer',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        // Every user gets their own personal invite code at creation, regardless of which path
+        // creates them (registration, social sign-up, admin tools, factories/seeders/tests) —
+        // a model event instead of setting this in each individual creation path guarantees no
+        // caller can forget it. Self-contained (no service-container reach-in from a model);
+        // the migration's own backfill for pre-existing rows uses an identical inline generator
+        // for the same "migrations shouldn't depend on app code" reason.
+        static::creating(function (User $user): void {
+            if ($user->invite_code !== null) {
+                return;
+            }
+            do {
+                $code = strtoupper(Str::random(8));
+            } while (static::query()->where('invite_code', $code)->exists());
+            $user->invite_code = $code;
+        });
     }
 
     /** @param Builder<User> $query */
@@ -303,6 +325,26 @@ class User extends Authenticatable implements PasskeyUser
     public function adminAuditLogsAsTarget(): MorphMany
     {
         return $this->morphMany(AdminAuditLog::class, 'target');
+    }
+
+    /** People this user has invited (redeemed this user's own invite_code at signup). */
+    /** @return HasMany<UserInvite, $this> */
+    public function sentInvites(): HasMany
+    {
+        return $this->hasMany(UserInvite::class, 'inviter_user_id');
+    }
+
+    /** The single row recording who invited this user, if anyone did. */
+    /** @return HasMany<UserInvite, $this> */
+    public function receivedInvite(): HasMany
+    {
+        return $this->hasMany(UserInvite::class, 'invitee_user_id');
+    }
+
+    /** @return HasMany<PointTransaction, $this> */
+    public function pointTransactions(): HasMany
+    {
+        return $this->hasMany(PointTransaction::class);
     }
 
     public function avatarUrl(): ?string

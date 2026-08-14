@@ -28,6 +28,9 @@
                             {{ __('Recommendations') }}
                         </flux:sidebar.item>
                     @endcan
+                    <flux:sidebar.item icon="user-plus" :href="route('registration.index')" :current="request()->routeIs('registration.*')" wire:navigate>
+                        {{ __('Registration') }}
+                    </flux:sidebar.item>
                     <flux:sidebar.item icon="device-phone-mobile" :href="route('devices.index')" :current="request()->routeIs('devices.*')" wire:navigate>
                         {{ __('Devices') }}
                     </flux:sidebar.item>

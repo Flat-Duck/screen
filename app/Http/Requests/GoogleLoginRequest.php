@@ -26,6 +26,10 @@ class GoogleLoginRequest extends FormRequest
     {
         return [
             'access_token' => ['required', 'string'],
+            // Structural shape only — see CompleteSocialLogin/InviteCodeService for the actual
+            // required-when-invite-only-active + resolves-to-a-real-user checks, which only apply
+            // when this call turns out to create a brand-new account.
+            'invite_code' => ['nullable', 'string', 'max:32'],
             'device_name' => ['nullable', 'string', 'max:255'],
         ];
     }

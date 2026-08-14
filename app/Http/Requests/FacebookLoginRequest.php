@@ -26,6 +26,8 @@ class FacebookLoginRequest extends FormRequest
     {
         return [
             'access_token' => ['required', 'string'],
+            // See GoogleLoginRequest's matching field for why this is structural-only here.
+            'invite_code' => ['nullable', 'string', 'max:32'],
             'device_name' => ['nullable', 'string', 'max:255'],
         ];
     }

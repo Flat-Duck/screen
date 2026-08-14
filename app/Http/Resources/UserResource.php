@@ -68,6 +68,20 @@ class UserResource extends JsonResource
                     'needs_interest_selection' => $this->needsInterestOnboarding(),
                 ],
             ),
+            // Same own-profile-only treatment as birth_date/onboarding above — nobody else's
+            // invite code or point balance is exposed.
+            'invite_code' => $this->when(
+                $request->user()?->is($this->resource),
+                fn (): ?string => $this->invite_code,
+            ),
+            // (int) cast, not a raw property read: a User just created earlier in this same
+            // request never round-trips the DB's points_balance default (0) back into memory —
+            // same "Eloquent only re-fetches the auto-increment id after an insert, nothing
+            // else" gotcha StartDeviceSession's own kdoc documents for is_active.
+            'points_balance' => $this->when(
+                $request->user()?->is($this->resource),
+                fn (): int => (int) $this->points_balance,
+            ),
         ];
     }
 }

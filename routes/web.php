@@ -13,6 +13,7 @@ use App\Http\Controllers\HealthCheckController;
 use App\Http\Controllers\ModerationCaseController;
 use App\Http\Controllers\OperationsDashboardController;
 use App\Http\Controllers\RecommendationAdminController;
+use App\Http\Controllers\RegistrationAdminController;
 use App\Http\Middleware\PreventSensitivePageCaching;
 use Illuminate\Support\Facades\Route;
 
@@ -35,6 +36,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('recommendations/posts/{post}/exclude', [RecommendationAdminController::class, 'exclude'])->middleware('can:manageModeration')->name('recommendations.exclude');
     Route::delete('recommendations/exclusions/{exclusion}', [RecommendationAdminController::class, 'restore'])->middleware('can:manageModeration')->name('recommendations.restore');
     Route::post('recommendations/serving', [RecommendationAdminController::class, 'serving'])->middleware('can:manageModeration')->name('recommendations.serving');
+
+    Route::get('registration', [RegistrationAdminController::class, 'index'])->middleware(['can:viewDashboard', PreventSensitivePageCaching::class])->name('registration.index');
+    Route::post('registration', [RegistrationAdminController::class, 'update'])->middleware('can:manageModeration')->name('registration.update');
 
     Route::middleware('can:viewTelemetry')->group(function () {
         Route::get('crash-groups', [CrashGroupController::class, 'index'])->name('crash-groups.index');

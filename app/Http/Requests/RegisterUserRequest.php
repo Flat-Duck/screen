@@ -18,6 +18,7 @@ class RegisterUserRequest extends FormRequest
             (string) $data['username'],
             (string) $data['email'],
             (string) $data['password'],
+            isset($data['invite_code']) ? (string) $data['invite_code'] : null,
         );
     }
 
@@ -43,6 +44,10 @@ class RegisterUserRequest extends FormRequest
             'username' => ['required', 'string', 'min:3', 'max:30', 'alpha_dash', 'unique:users,username'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'confirmed', Password::default()],
+            // Structural shape only — whether one is actually required (invite-only mode) and
+            // whether it resolves to a real user is checked inside RegisterUser/InviteCodeService,
+            // not here, since that's a business rule keyed on live flag state, not request shape.
+            'invite_code' => ['nullable', 'string', 'max:32'],
             'device_name' => ['nullable', 'string', 'max:255'],
         ];
     }

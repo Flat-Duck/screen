@@ -9,5 +9,6 @@ final readonly class RegisterUserData
         public string $username,
         public string $email,
         public string $password,
+        public ?string $inviteCode = null,
     ) {}
 }

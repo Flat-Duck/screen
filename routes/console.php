@@ -28,6 +28,8 @@ Schedule::command('analytics:aggregate')->dailyAt('00:15')->onOneServer()->witho
 
 Schedule::command('sessions:expire')->everyFifteenMinutes()->onOneServer()->withoutOverlapping();
 
+Schedule::command('invites:award-points')->daily()->onOneServer()->withoutOverlapping();
+
 Schedule::command('operations:capture-health')->everyMinute()->onOneServer()->withoutOverlapping();
 Schedule::command('model:prune', ['--model' => [ApiRequestMetric::class]])->daily()->onOneServer()->withoutOverlapping();
 

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api\V1;
 
+use App\Models\FeatureFlag;
 use App\Models\SocialAccount;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -152,6 +153,48 @@ class SocialAuthTest extends TestCase
         $this->assertDatabaseHas('device_sessions', ['login_method' => 'facebook']);
     }
 
+    public function test_google_sign_up_without_a_code_is_rejected_when_invite_only_is_on(): void
+    {
+        $this->enableInviteOnly();
+        $this->fakeGoogleUser(providerUserId: 'google-user-1', email: 'newuser@example.com', emailVerified: true, name: 'New User');
+
+        $response = $this->postJson('/api/v1/auth/social/google', ['access_token' => 'fake-google-access-token']);
+
+        $response->assertUnprocessable();
+        $response->assertJsonValidationErrors(['invite_code']);
+        $this->assertDatabaseCount('users', 0);
+    }
+
+    public function test_google_sign_up_with_a_valid_code_succeeds_when_invite_only_is_on(): void
+    {
+        $inviter = User::factory()->create();
+        $this->enableInviteOnly();
+        $this->fakeGoogleUser(providerUserId: 'google-user-1', email: 'newuser@example.com', emailVerified: true, name: 'New User');
+
+        $this->postJson('/api/v1/auth/social/google', [
+            'access_token' => 'fake-google-access-token',
+            'invite_code' => $inviter->invite_code,
+        ])->assertCreated();
+
+        $invitee = User::query()->where('email', 'newuser@example.com')->firstOrFail();
+        $this->assertDatabaseHas('user_invites', ['inviter_user_id' => $inviter->id, 'invitee_user_id' => $invitee->id]);
+    }
+
+    public function test_google_sign_in_to_an_existing_account_is_never_gated_by_invite_only(): void
+    {
+        $existing = User::factory()->create(['email' => 'ada@example.com']);
+        $this->enableInviteOnly();
+        $this->fakeGoogleUser(providerUserId: 'google-user-1', email: 'ada@example.com', emailVerified: true, name: 'Ada');
+
+        // No invite_code at all — must still succeed, since this resolves to an existing account
+        // (auto-linked by verified email), not a new one.
+        $response = $this->postJson('/api/v1/auth/social/google', ['access_token' => 'fake-google-access-token']);
+
+        $response->assertOk();
+        $response->assertJsonPath('is_new_account', false);
+        $response->assertJsonPath('user.id', $existing->id);
+    }
+
     public function test_facebook_sign_in_rejects_a_token_issued_for_a_different_app(): void
     {
         Http::fake([
@@ -278,5 +321,17 @@ class SocialAuthTest extends TestCase
         $provider->shouldReceive('userFromToken')->andReturn($user);
 
         Socialite::shouldReceive('driver')->with('facebook')->andReturn($provider);
+    }
+
+    private function enableInviteOnly(): void
+    {
+        FeatureFlag::create([
+            'key' => 'registration.invite_only',
+            'name' => 'Invite-only registration',
+            'scope' => 'product',
+            'is_enabled' => true,
+            'kill_switch' => false,
+            'rollout_basis_points' => 10000,
+        ]);
     }
 }

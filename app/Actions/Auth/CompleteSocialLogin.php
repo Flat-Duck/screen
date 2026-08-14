@@ -10,6 +10,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Services\Auth\IssuedAccessToken;
 use App\Services\Auth\TwoFactorRequired;
+use App\Services\InviteCodeService;
 use App\Services\SocialAuth\SocialUserPayload;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
@@ -22,14 +23,18 @@ final class CompleteSocialLogin
     public function __construct(
         private readonly StartDeviceSession $startSession,
         private readonly BeginTwoFactorChallenge $beginTwoFactor,
+        private readonly InviteCodeService $inviteCodes,
     ) {}
 
-    public function __invoke(Device $device, SocialUserPayload $payload, DeviceSessionContext $context): IssuedAccessToken|TwoFactorRequired
+    /** [$inviteCode] is only ever consulted when this turns out to be a brand-new account — an
+     * existing account signing in via Google/Facebook is never gated by invite-only mode, same as
+     * the password-login path never re-checks it either. */
+    public function __invoke(Device $device, SocialUserPayload $payload, DeviceSessionContext $context, ?string $inviteCode = null): IssuedAccessToken|TwoFactorRequired
     {
         $isNewAccount = false;
 
         try {
-            $user = DB::transaction(function () use ($payload, &$isNewAccount): User {
+            $user = DB::transaction(function () use ($payload, $inviteCode, &$isNewAccount): User {
                 $identity = SocialAccount::query()
                     ->where('provider', $payload->provider)
                     ->where('provider_user_id', $payload->providerUserId)
@@ -50,6 +55,11 @@ final class CompleteSocialLogin
                 }
 
                 if (! $user) {
+                    // Resolved before creating anything — throws (rolling back this whole
+                    // transaction) if a code was required-but-missing or present-but-invalid,
+                    // same rule RegisterUser enforces for the password path.
+                    $inviter = $this->inviteCodes->resolveOrFail($inviteCode);
+
                     $isNewAccount = true;
                     $user = User::create([
                         'name' => $payload->name ?: Str::before($payload->email, '@'),
@@ -58,6 +68,10 @@ final class CompleteSocialLogin
                         'password' => null,
                         'email_verified_at' => $payload->emailVerified ? Carbon::now() : null,
                     ]);
+
+                    if ($inviter !== null) {
+                        $this->inviteCodes->redeem($inviter, $user, (string) $inviteCode);
+                    }
                 }
 
                 SocialAccount::create([

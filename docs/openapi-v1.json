@@ -3223,6 +3223,40 @@
                 }
             }
         },
+        "/api/v1/me/invites": {
+            "get": {
+                "operationId": "inviteControllerIndex",
+                "tags": [
+                    "Me"
+                ],
+                "responses": {
+                    "200": {
+                        "$ref": "#/components/responses/JsonSuccess"
+                    },
+                    "204": {
+                        "description": "Successful operation with no response body"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/RateLimited"
+                    }
+                },
+                "x-auth-principal": "user",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/v1/media/analyses": {
             "post": {
                 "operationId": "mediaAnalysisControllerStore",
