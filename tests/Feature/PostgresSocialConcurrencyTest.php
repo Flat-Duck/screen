@@ -18,6 +18,28 @@ class PostgresSocialConcurrencyTest extends TestCase
 {
     use DatabaseTruncation;
 
+    /**
+     * Both tests below fork real child processes that write on their own connections, so
+     * their rows are committed rather than held in a rollback-able transaction — which is
+     * exactly why this class uses DatabaseTruncation instead of RefreshDatabase.
+     *
+     * DatabaseTruncation only truncates *before* each test, never after the last one, and
+     * on its very first run it returns early after `migrate:fresh` without truncating at
+     * all. Every other class in the CI PostgreSQL run uses RefreshDatabase, which finds
+     * RefreshDatabaseState::$migrated already true, skips its own `migrate:fresh`, and
+     * merely opens a transaction — so whatever this class leaves committed survives the
+     * entire run and breaks their absolute row counts (assertDatabaseCount). Clean up on
+     * the way out so this class cannot influence whatever runs after it.
+     */
+    protected function tearDown(): void
+    {
+        if (DB::getDriverName() === 'pgsql') {
+            $this->truncateTablesForAllConnections();
+        }
+
+        parent::tearDown();
+    }
+
     public function test_concurrent_first_social_login_creates_one_user_and_one_identity(): void
     {
         if (DB::getDriverName() !== 'pgsql') {
