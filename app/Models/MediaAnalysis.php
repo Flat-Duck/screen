@@ -39,4 +39,19 @@ class MediaAnalysis extends Model
     {
         return $this->expires_at->isPast();
     }
+
+    /**
+     * Flips this analysis to STATUS_READY once every item has resolved. Shared between
+     * AnalyzeStagedScreenshot (each sampled item resolving asynchronously) and
+     * CreateMediaAnalysis (a trusted, not-sampled item is resolved synchronously at creation
+     * time and never dispatches that job at all — see docs/SECURITY.md §12) so an
+     * all-trusted analysis doesn't get stuck at STATUS_PROCESSING forever with nothing left to
+     * flip it.
+     */
+    public function syncStatusIfReady(): void
+    {
+        if ($this->items()->where('ocr_status', '!=', PostMedia::PROCESSING_READY)->doesntExist()) {
+            $this->update(['status' => self::STATUS_READY]);
+        }
+    }
 }

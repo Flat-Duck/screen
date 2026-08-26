@@ -42,7 +42,7 @@ class AnalyzeStagedScreenshot implements ShouldQueue
 
         $item->update(['ocr_status' => PostMedia::PROCESSING_PROCESSING]);
         try {
-            $ocr = $extractor->extract($item->original_path);
+            $ocr = $extractor->extract($item->source_disk ?? config('social.media_disk'), $item->original_path);
             $text = mb_substr(str_replace("\0", '', $ocr->text), 0, (int) config('social.processing.ocr.max_characters', 50_000));
             $safety = $analyzer->analyze($text);
         } catch (Throwable) {
@@ -50,6 +50,11 @@ class AnalyzeStagedScreenshot implements ShouldQueue
         }
 
         $item->update([
+            // Server output always wins as the canonical value, even for a sampled item that
+            // started with a device claim in device_ocr_text — see docs/SECURITY.md §12.
+            // verification_status stays "pending" here; PublishMediaAnalysis resolves it once a
+            // caption exists to compare CategoryMatcher output against (comparing raw OCR text
+            // isn't reliable — see docs/SECURITY.md §4).
             'ocr_text' => $text === '' ? null : $text,
             'ocr_language' => $ocr->language,
             'ocr_status' => PostMedia::PROCESSING_READY,
@@ -57,7 +62,7 @@ class AnalyzeStagedScreenshot implements ShouldQueue
             'analysis_version' => $this->version($extractor, $analyzer),
             'findings' => $safety->findings,
         ]);
-        $this->syncAnalysis($item->analysis);
+        $item->analysis->syncStatusIfReady();
     }
 
     public function failed(Throwable $exception): void
@@ -68,13 +73,6 @@ class AnalyzeStagedScreenshot implements ShouldQueue
         }
         $item->update(['ocr_status' => PostMedia::PROCESSING_FAILED, 'safety_status' => PostMedia::PROCESSING_FAILED]);
         $item->analysis->update(['status' => MediaAnalysis::STATUS_FAILED]);
-    }
-
-    private function syncAnalysis(MediaAnalysis $analysis): void
-    {
-        if ($analysis->items()->where('ocr_status', '!=', PostMedia::PROCESSING_READY)->doesntExist()) {
-            $analysis->update(['status' => MediaAnalysis::STATUS_READY]);
-        }
     }
 
     private function version(ScreenshotTextExtractor $extractor, ScreenshotSafetyAnalyzer $analyzer): string

@@ -5677,6 +5677,104 @@
                 }
             }
         },
+        "/api/v1/uploads/prepare": {
+            "post": {
+                "operationId": "uploadControllerPrepare",
+                "tags": [
+                    "Uploads"
+                ],
+                "responses": {
+                    "200": {
+                        "$ref": "#/components/responses/JsonSuccess"
+                    },
+                    "204": {
+                        "description": "Successful operation with no response body"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/RateLimited"
+                    }
+                },
+                "x-auth-principal": "user",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UploadPrepareRequest"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/uploads/{uploadId}/commit": {
+            "post": {
+                "operationId": "uploadControllerCommit",
+                "tags": [
+                    "Uploads"
+                ],
+                "responses": {
+                    "200": {
+                        "$ref": "#/components/responses/JsonSuccess"
+                    },
+                    "204": {
+                        "description": "Successful operation with no response body"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/RateLimited"
+                    }
+                },
+                "x-auth-principal": "user",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "uploadId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UploadCommitRequest"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/users/{user}": {
             "get": {
                 "operationId": "userControllerShow",
@@ -6683,6 +6781,43 @@
                             "null"
                         ],
                         "format": "uuid"
+                    }
+                }
+            },
+            "UploadPrepareRequest": {
+                "type": "object",
+                "required": [
+                    "content_type",
+                    "byte_size"
+                ],
+                "properties": {
+                    "content_type": {
+                        "type": "string",
+                        "enum": [
+                            "image/jpeg",
+                            "image/png",
+                            "image/webp"
+                        ]
+                    },
+                    "byte_size": {
+                        "type": "integer"
+                    }
+                }
+            },
+            "UploadCommitRequest": {
+                "type": "object",
+                "required": [
+                    "image_sha256"
+                ],
+                "properties": {
+                    "image_sha256": {
+                        "type": "string"
+                    },
+                    "ocr_text": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     }
                 }
             },

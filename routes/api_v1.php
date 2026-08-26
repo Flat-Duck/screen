@@ -41,6 +41,7 @@ use App\Http\Controllers\Api\V1\SessionController;
 use App\Http\Controllers\Api\V1\SettingsController;
 use App\Http\Controllers\Api\V1\TelemetryController;
 use App\Http\Controllers\Api\V1\TwoFactorController;
+use App\Http\Controllers\Api\V1\UploadController;
 use App\Http\Controllers\Api\V1\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -107,6 +108,11 @@ Route::middleware(['auth:sanctum', 'auth.user', 'session.touch'])->group(functio
     Route::get('media/analyses/{token}', [MediaAnalysisController::class, 'show'])->middleware('throttle:reads');
     Route::post('media/analyses/{token}/publish', [MediaAnalysisController::class, 'publish'])->middleware('throttle:posts-store');
     Route::delete('media/analyses/{token}', [MediaAnalysisController::class, 'destroy'])->middleware('throttle:writes-moderate');
+
+    // Direct-to-R2 upload foundation — see docs/SECURITY.md (Android repo). The image itself
+    // never touches this app; these two calls only mint/confirm the R2 object.
+    Route::post('uploads/prepare', [UploadController::class, 'prepare'])->middleware('throttle:uploads-manage');
+    Route::post('uploads/{uploadId}/commit', [UploadController::class, 'commit'])->middleware('throttle:uploads-manage');
 
     Route::post('private-saves', [PrivateSaveController::class, 'store'])->middleware('throttle:posts-store');
     Route::get('private-saves', [PrivateSaveController::class, 'index'])->middleware('throttle:reads');

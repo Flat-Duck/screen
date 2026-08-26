@@ -55,6 +55,10 @@ class RateLimiterServiceProvider extends ServiceProvider
 
         RateLimiter::for('posts-store', fn (Request $request) => $this->byUser($request, 10));
 
+        // Covers both uploads/prepare and uploads/{id}/commit — one upload needs both calls,
+        // so this needs more headroom than posts-store's single-call budget.
+        RateLimiter::for('uploads-manage', fn (Request $request) => $this->byUser($request, 30));
+
         RateLimiter::for('reports', fn (Request $request) => $this->byUser($request, 10));
 
         RateLimiter::for('content-analytics', fn (Request $request) => $this->byUser($request, 30));

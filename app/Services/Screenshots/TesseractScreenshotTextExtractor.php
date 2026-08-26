@@ -10,7 +10,7 @@ use RuntimeException;
 
 class TesseractScreenshotTextExtractor implements ScreenshotTextExtractor
 {
-    public function extract(string $path): TextExtractionResult
+    public function extract(string $disk, string $path): TextExtractionResult
     {
         $temporaryPath = tempnam(sys_get_temp_dir(), 'screenshut-ocr-');
 
@@ -19,7 +19,7 @@ class TesseractScreenshotTextExtractor implements ScreenshotTextExtractor
         }
 
         try {
-            $contents = Storage::disk(config('social.media_disk'))->get($path);
+            $contents = Storage::disk($disk)->get($path);
             if (file_put_contents($temporaryPath, $contents) === false) {
                 throw new RuntimeException('OCR temporary storage is unavailable.');
             }

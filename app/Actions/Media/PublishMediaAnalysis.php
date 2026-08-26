@@ -10,9 +10,11 @@ use App\Models\Group;
 use App\Models\MediaAnalysis;
 use App\Models\Post;
 use App\Models\PostMedia;
+use App\Models\Upload;
 use App\Models\User;
 use App\Services\GroupService;
 use App\Services\Screenshots\CategoryMatcher;
+use App\Services\Screenshots\OcrTrustSampler;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
@@ -31,6 +33,7 @@ class PublishMediaAnalysis
         private readonly SyncPostMentions $syncMentions,
         private readonly CategoryMatcher $categoryMatcher,
         private readonly GroupService $groups,
+        private readonly OcrTrustSampler $sampler,
     ) {}
 
     /** @param array<string, mixed> $data */
@@ -61,6 +64,20 @@ class PublishMediaAnalysis
             $ocrText = $locked->items->pluck('ocr_text')->filter()->implode(' ');
             $category = $this->categoryMatcher->match($caption, $ocrText === '' ? null : $ocrText);
 
+            // Resolve any sampled items now that a caption exists — comparing raw OCR strings
+            // isn't reliable (formatting/whitespace differ even when both are right), so this
+            // compares the same CategoryMatcher decision each text would have produced instead.
+            // The server's own ocr_text (already canonical since AnalyzeStagedScreenshot ran) is
+            // never touched by this — a mismatch corrects the trust tier, never the post itself.
+            // See docs/SECURITY.md §4/§12.
+            foreach ($locked->items->where('verification_status', 'pending') as $item) {
+                $deviceCategory = $this->categoryMatcher->match($caption, $item->device_ocr_text);
+                $serverCategory = $this->categoryMatcher->match($caption, $item->ocr_text);
+                $matched = $deviceCategory?->id === $serverCategory?->id;
+                $item->update(['verification_status' => $matched ? 'verified_match' : 'verified_mismatch']);
+                $matched ? $this->sampler->recordMatch($user) : $this->sampler->recordMismatch($user);
+            }
+
             $versions = $locked->items->pluck('analysis_version')->filter()->unique()->sort()->implode(',');
             $post = Post::create([
                 'user_id' => $user->id,
@@ -86,6 +103,7 @@ class PublishMediaAnalysis
                 $media = $post->media()->create([
                     'position' => $item->position,
                     'original_path' => $item->original_path,
+                    'source_disk' => $item->source_disk,
                     'width' => $item->width,
                     'height' => $item->height,
                     'mime_type' => $item->mime_type,
@@ -100,6 +118,10 @@ class PublishMediaAnalysis
                     'safety_version' => $item->analysis_version,
                 ]);
                 GeneratePostMediaThumbnail::dispatch($media->id)->afterCommit();
+
+                if ($item->upload_id !== null) {
+                    Upload::whereKey($item->upload_id)->update(['status' => Upload::STATUS_PUBLISHED]);
+                }
             }
 
             if (isset($data['group_id'])) {

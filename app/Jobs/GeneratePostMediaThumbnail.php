@@ -49,7 +49,7 @@ class GeneratePostMediaThumbnail implements ShouldQueue
             pathinfo($media->original_path, PATHINFO_FILENAME),
         );
 
-        $images->generateThumbnail($media->original_path, $thumbnailPath);
+        $images->generateThumbnail($media->original_path, $thumbnailPath, $media->source_disk);
 
         $media->update([
             'thumbnail_path' => $thumbnailPath,

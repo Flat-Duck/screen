@@ -132,6 +132,8 @@ class ExportOpenApiContract extends Command
             $method === 'post' && $uri === 'analytics/content-events' => 'ContentEventBatchRequest',
             $method === 'post' && $uri === 'posts' => 'CreatePostRequest',
             $method === 'post' && str_ends_with($uri, '/messages') => 'CreateMessageRequest',
+            $method === 'post' && $uri === 'uploads/prepare' => 'UploadPrepareRequest',
+            $method === 'post' && str_ends_with($uri, '/commit') => 'UploadCommitRequest',
             default => in_array($method, ['post', 'put', 'patch'], true) ? 'JsonObject' : null,
         };
     }
@@ -188,6 +190,14 @@ class ExportOpenApiContract extends Command
             ]],
             'CreatePostRequest' => ['type' => 'object', 'required' => ['images'], 'properties' => ['images' => ['type' => 'array', 'minItems' => 1, 'maxItems' => 10, 'items' => ['type' => 'string', 'format' => 'binary']], 'caption' => ['type' => ['string', 'null']], 'category_id' => ['type' => ['integer', 'null']], 'content_warning' => ['type' => ['string', 'null'], 'enum' => ['sensitive', 'spoiler', null]]]],
             'CreateMessageRequest' => ['type' => 'object', 'required' => ['body'], 'properties' => ['body' => ['type' => 'string', 'maxLength' => 5000], 'client_message_id' => ['type' => ['string', 'null'], 'format' => 'uuid']]],
+            'UploadPrepareRequest' => ['type' => 'object', 'required' => ['content_type', 'byte_size'], 'properties' => [
+                'content_type' => ['type' => 'string', 'enum' => ['image/jpeg', 'image/png', 'image/webp']],
+                'byte_size' => ['type' => 'integer'],
+            ]],
+            'UploadCommitRequest' => ['type' => 'object', 'required' => ['image_sha256'], 'properties' => [
+                'image_sha256' => ['type' => 'string'],
+                'ocr_text' => ['type' => ['string', 'null']],
+            ]],
             'UserSummary' => ['type' => 'object', 'required' => ['id', 'username', 'name', 'avatar_url'], 'properties' => ['id' => ['type' => 'integer'], 'username' => ['type' => 'string'], 'name' => ['type' => 'string'], 'avatar_url' => ['type' => ['string', 'null']]]],
             'User' => ['allOf' => [['$ref' => '#/components/schemas/UserSummary'], ['type' => 'object', 'required' => ['bio', 'country_code', 'account_visibility', 'posts_count', 'followers_count', 'following_count', 'created_at'], 'properties' => ['bio' => ['type' => ['string', 'null']], 'country_code' => ['type' => ['string', 'null']], 'account_visibility' => ['enum' => ['public', 'private']], 'birth_date' => ['type' => ['string', 'null'], 'format' => 'date'], 'posts_count' => ['type' => 'integer'], 'followers_count' => ['type' => 'integer'], 'following_count' => ['type' => 'integer'], 'is_following' => ['type' => 'boolean'], 'follows_you' => ['type' => 'boolean'], 'follow_request_status' => ['type' => ['string', 'null']], 'is_blocked' => ['type' => 'boolean'], 'is_blocked_by' => ['type' => 'boolean'], 'created_at' => ['type' => 'string', 'format' => 'date-time']]]]],
             'PostMedia' => ['type' => 'object', 'required' => ['id', 'position', 'url', 'original_url', 'width', 'height', 'status', 'alt_text', 'safety_status'], 'properties' => ['id' => ['type' => 'integer'], 'position' => ['type' => 'integer'], 'url' => ['type' => 'string'], 'original_url' => ['type' => 'string'], 'width' => ['type' => ['integer', 'null']], 'height' => ['type' => ['integer', 'null']], 'status' => ['type' => 'string'], 'alt_text' => ['type' => ['string', 'null']], 'safety_status' => ['type' => 'string']]],

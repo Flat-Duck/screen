@@ -105,6 +105,11 @@
 			"key": "request_id",
 			"value": "6eebeaef-f26f-47d4-9094-d4fa7b44af0f",
 			"type": "string"
+		},
+		{
+			"key": "upload_id",
+			"value": "",
+			"type": "string"
 		}
 	],
 	"item": [
@@ -375,7 +380,7 @@
 										"push-token"
 									]
 								},
-								"description": "Call on logout so a signed-out device stops receiving pushes meant for this account. Scoped to the current user \u2014 only removes the token if it belongs to you."
+								"description": "Call on logout so a signed-out device stops receiving pushes meant for this account. Scoped to the current user — only removes the token if it belongs to you."
 							},
 							"response": [
 								{
@@ -457,7 +462,7 @@
 										"register"
 									]
 								},
-								"description": "Creates a user and issues a Sanctum token. Rate limited to 5 requests/min. Response includes `profile_completion` (is_complete/has_username/has_password/has_bio/has_avatar) so the client can prompt to finish setup \u2014 always `is_complete: true` for a password-based registration since it collects everything up front."
+								"description": "Creates a user and issues a Sanctum token. Rate limited to 5 requests/min. Response includes `profile_completion` (is_complete/has_username/has_password/has_bio/has_avatar) so the client can prompt to finish setup — always `is_complete: true` for a password-based registration since it collects everything up front."
 							},
 							"event": [
 								{
@@ -694,7 +699,7 @@
 										"google"
 									]
 								},
-								"description": "Verifies the Google ID token's signature/audience/issuer server-side and finds-or-creates the user \u2014 one idempotent call, no separate register step. A verified-email match against an existing account auto-links this provider to it. New accounts get `username`/`password` left null; see `profile_completion` in the response. Rate limited to 10 requests/min."
+								"description": "Verifies the Google ID token's signature/audience/issuer server-side and finds-or-creates the user — one idempotent call, no separate register step. A verified-email match against an existing account auto-links this provider to it. New accounts get `username`/`password` left null; see `profile_completion` in the response. Rate limited to 10 requests/min."
 							},
 							"event": [
 								{
@@ -827,7 +832,7 @@
 										"facebook"
 									]
 								},
-								"description": "Verifies the Facebook ID token's signature/audience/issuer server-side and finds-or-creates the user \u2014 one idempotent call, no separate register step. A verified-email match against an existing account auto-links this provider to it. New accounts get `username`/`password` left null; see `profile_completion` in the response. Rate limited to 10 requests/min."
+								"description": "Verifies the Facebook ID token's signature/audience/issuer server-side and finds-or-creates the user — one idempotent call, no separate register step. A verified-email match against an existing account auto-links this provider to it. New accounts get `username`/`password` left null; see `profile_completion` in the response. Rate limited to 10 requests/min."
 							},
 							"event": [
 								{
@@ -1076,7 +1081,7 @@
 										"logout"
 									]
 								},
-								"description": "Revokes only the token used on this request \u2014 other devices/sessions for the same user stay logged in."
+								"description": "Revokes only the token used on this request — other devices/sessions for the same user stay logged in."
 							},
 							"response": [
 								{
@@ -1153,7 +1158,7 @@
 										"password"
 									]
 								},
-								"description": "Sets a password \u2014 the optional step a social sign-in account can take to also be able to log in with email/username + password. `current_password` is required only if the account already has a password (omit it entirely for a social-only account's first password). Rate limited to 10 requests/min."
+								"description": "Sets a password — the optional step a social sign-in account can take to also be able to log in with email/username + password. `current_password` is required only if the account already has a password (omit it entirely for a social-only account's first password). Rate limited to 10 requests/min."
 							},
 							"response": [
 								{
@@ -1249,7 +1254,7 @@
 										"two-factor-challenge"
 									]
 								},
-								"description": "Completes a login that stopped at {\"requires_two_factor\": true, \"two_factor_token\": \"...\"} from Login/Continue with Google/Facebook. Send either `code` (TOTP) or `recovery_code`, not both. `two_factor_token` expires after 5 minutes and is single-use. Unauthenticated \u2014 no bearer token exists yet at this point.",
+								"description": "Completes a login that stopped at {\"requires_two_factor\": true, \"two_factor_token\": \"...\"} from Login/Continue with Google/Facebook. Send either `code` (TOTP) or `recovery_code`, not both. `two_factor_token` expires after 5 minutes and is single-use. Unauthenticated — no bearer token exists yet at this point.",
 								"body": {
 									"mode": "raw",
 									"raw": "{\n  \"two_factor_token\": \"{{two_factor_token}}\",\n  \"code\": \"123456\"\n}",
@@ -1382,7 +1387,7 @@
 										},
 										{
 											"key": "bio",
-											"value": "Screenshot enthusiast \ud83d\udcf8",
+											"value": "Screenshot enthusiast 📸",
 											"type": "text"
 										},
 										{
@@ -1412,7 +1417,7 @@
 										"profile"
 									]
 								},
-								"description": "Both fields optional. Uploading a new avatar deletes the previous file from disk. Rate limited to 20 requests/min. Also accepts `name` (display name, editable after registration) and `username` (to complete a social sign-up's profile). Response includes `profile_completion`. Also accepts `birth_date` (`YYYY-MM-DD`, must be in the past) and `country_code` (ISO 3166-1 alpha-2, e.g. `EG`) \u2014 `birth_date` is only ever returned on your own profile (see Users > Get Profile), never on someone else's."
+								"description": "Both fields optional. Uploading a new avatar deletes the previous file from disk. Rate limited to 20 requests/min. Also accepts `name` (display name, editable after registration) and `username` (to complete a social sign-up's profile). Response includes `profile_completion`. Also accepts `birth_date` (`YYYY-MM-DD`, must be in the past) and `country_code` (ISO 3166-1 alpha-2, e.g. `EG`) — `birth_date` is only ever returned on your own profile (see Users > Get Profile), never on someone else's."
 							},
 							"response": [
 								{
@@ -1484,7 +1489,7 @@
 										"sessions"
 									]
 								},
-								"description": "Lists every active Sanctum token (\"device/session\") for the current user \u2014 device_name is whatever the client sent at register/login/social sign-in. is_current flags the token used for this very request."
+								"description": "Lists every active Sanctum token (\"device/session\") for the current user — device_name is whatever the client sent at register/login/social sign-in. is_current flags the token used for this very request."
 							},
 							"response": [
 								{
@@ -1629,7 +1634,7 @@
 										"revoke-others"
 									]
 								},
-								"description": "Logs out every device except the one used for this request. `current_password` is only required if the account has a password set \u2014 a social-only account can omit it entirely, same rule as Set Password."
+								"description": "Logs out every device except the one used for this request. `current_password` is only required if the account has a password set — a social-only account can omit it entirely, same rule as Set Password."
 							},
 							"response": [
 								{
@@ -2221,7 +2226,7 @@
 										"email"
 									]
 								},
-								"description": "Requests an email change. The live `email` field does NOT change until the user clicks the confirmation link mailed to the NEW address \u2014 there is no API call to complete this from the app itself.",
+								"description": "Requests an email change. The live `email` field does NOT change until the user clicks the confirmation link mailed to the NEW address — there is no API call to complete this from the app itself.",
 								"body": {
 									"mode": "raw",
 									"raw": "{\n  \"current_password\": \"password123!\",\n  \"email\": \"new@example.com\"\n}",
@@ -2545,7 +2550,7 @@
 										"google"
 									]
 								},
-								"description": "Unlinks a provider (google/facebook). Idempotent \u2014 unlinking an already-unlinked provider is a silent 204. Refused with 422 if it would leave the account with no way to sign in (no password + only linked provider)."
+								"description": "Unlinks a provider (google/facebook). Idempotent — unlinking an already-unlinked provider is a silent 204. Refused with 422 if it would leave the account with no way to sign in (no password + only linked provider)."
 							},
 							"response": [
 								{
@@ -2717,7 +2722,7 @@
 										"settings"
 									]
 								},
-								"description": "Send only the keys you're changing \u2014 untouched keys/sub-keys are left as they were. Only gates push delivery; in-app/database notifications are unaffected.",
+								"description": "Send only the keys you're changing — untouched keys/sub-keys are left as they were. Only gates push delivery; in-app/database notifications are unaffected.",
 								"body": {
 									"mode": "raw",
 									"raw": "{\n  \"notifications\": {\n    \"likes\": false\n  }\n}",
@@ -3247,7 +3252,7 @@
 										"follow"
 									]
 								},
-								"description": "Idempotent. Bookmark-only in v1 \u2014 doesn't notify on new tagged posts or inject into the main feed."
+								"description": "Idempotent. Bookmark-only in v1 — doesn't notify on new tagged posts or inject into the main feed."
 							},
 							"response": [
 								{
@@ -3282,7 +3287,7 @@
 												"follow"
 											]
 										},
-										"description": "Idempotent. Bookmark-only in v1 \u2014 doesn't notify on new tagged posts or inject into the main feed."
+										"description": "Idempotent. Bookmark-only in v1 — doesn't notify on new tagged posts or inject into the main feed."
 									},
 									"status": "OK",
 									"code": 200,
@@ -3480,7 +3485,7 @@
 									}
 								],
 								"url": "{{base_url}}/v1/hashtags/trending?limit=10&days=7",
-								"description": "Mobile API operation: hashtagControllerTrending. Ranked by post activity within the `days` window (default 7, max 90); `limit` caps the result count (default 10, max 50). `posts_count` on each hashtag is still its real all-time total, not the windowed count \u2014 the window only decides which tags rank, not the number shown. Registered ahead of the `{hashtag}` wildcard route, same as `hashtags/followed`."
+								"description": "Mobile API operation: hashtagControllerTrending. Ranked by post activity within the `days` window (default 7, max 90); `limit` caps the result count (default 10, max 50). `posts_count` on each hashtag is still its real all-time total, not the windowed count — the window only decides which tags rank, not the number shown. Registered ahead of the `{hashtag}` wildcard route, same as `hashtags/followed`."
 							},
 							"response": [
 								{
@@ -3504,7 +3509,7 @@
 											}
 										],
 										"url": "{{base_url}}/v1/hashtags/trending?limit=10&days=7",
-										"description": "Mobile API operation: hashtagControllerTrending. Ranked by post activity within the `days` window (default 7, max 90); `limit` caps the result count (default 10, max 50). `posts_count` on each hashtag is still its real all-time total, not the windowed count \u2014 the window only decides which tags rank, not the number shown. Registered ahead of the `{hashtag}` wildcard route, same as `hashtags/followed`."
+										"description": "Mobile API operation: hashtagControllerTrending. Ranked by post activity within the `days` window (default 7, max 90); `limit` caps the result count (default 10, max 50). `posts_count` on each hashtag is still its real all-time total, not the windowed count — the window only decides which tags rank, not the number shown. Registered ahead of the `{hashtag}` wildcard route, same as `hashtags/followed`."
 									},
 									"status": "OK",
 									"code": 200,
@@ -3688,7 +3693,7 @@
 										"{{user_b_id}}"
 									]
 								},
-								"description": "Public profile. `is_following` reflects whether the authenticated caller follows this user (omitted when viewing your own profile). `birth_date` is deliberately never included here \u2014 only on your own profile via Update Profile's response."
+								"description": "Public profile. `is_following` reflects whether the authenticated caller follows this user (omitted when viewing your own profile). `birth_date` is deliberately never included here — only on your own profile via Update Profile's response."
 							},
 							"response": [
 								{
@@ -3989,7 +3994,7 @@
 										"follow"
 									]
 								},
-								"description": "Idempotent \u2014 following an already-followed user is a no-op. Rate limited to 30 requests/min."
+								"description": "Idempotent — following an already-followed user is a no-op. Rate limited to 30 requests/min."
 							},
 							"response": [
 								{
@@ -4089,7 +4094,7 @@
 										"follow"
 									]
 								},
-								"description": "Idempotent \u2014 unfollowing a user you don't follow is a no-op."
+								"description": "Idempotent — unfollowing a user you don't follow is a no-op."
 							},
 							"response": [
 								{
@@ -4155,7 +4160,7 @@
 										"block"
 									]
 								},
-								"description": "Idempotent \u2014 blocking an already-blocked user is a no-op. Severs any existing follow relationship in both directions. Rate limited to 30 requests/min."
+								"description": "Idempotent — blocking an already-blocked user is a no-op. Severs any existing follow relationship in both directions. Rate limited to 30 requests/min."
 							},
 							"response": [
 								{
@@ -4255,7 +4260,7 @@
 										"block"
 									]
 								},
-								"description": "Idempotent \u2014 unblocking a user you haven't blocked is a no-op. Rate limited to 30 requests/min."
+								"description": "Idempotent — unblocking a user you haven't blocked is a no-op. Rate limited to 30 requests/min."
 							},
 							"response": [
 								{
@@ -4321,7 +4326,7 @@
 										"mute"
 									]
 								},
-								"description": "Idempotent \u2014 muting an already-muted user is a no-op. One-directional and doesn't restrict the muted user at all (unlike Block) \u2014 only filters the muter's own feed and notifications. Rate limited to 30 requests/min."
+								"description": "Idempotent — muting an already-muted user is a no-op. One-directional and doesn't restrict the muted user at all (unlike Block) — only filters the muter's own feed and notifications. Rate limited to 30 requests/min."
 							},
 							"response": [
 								{
@@ -4421,7 +4426,7 @@
 										"mute"
 									]
 								},
-								"description": "Idempotent \u2014 unmuting a user you haven't muted is a no-op. Rate limited to 30 requests/min."
+								"description": "Idempotent — unmuting a user you haven't muted is a no-op. Rate limited to 30 requests/min."
 							},
 							"response": [
 								{
@@ -4928,7 +4933,7 @@
 										}
 									]
 								},
-								"description": "Reverse-chronological posts from accounts you follow. Excludes your own posts. Cursor-paginated \u2014 pass `meta.next_cursor` back as the `cursor` query param for the next page."
+								"description": "Reverse-chronological posts from accounts you follow. Excludes your own posts. Cursor-paginated — pass `meta.next_cursor` back as the `cursor` query param for the next page."
 							},
 							"response": [
 								{
@@ -5125,7 +5130,7 @@
 									"key": "category",
 									"value": "memes",
 									"disabled": true,
-									"description": "ScreenshotCategory slug \u2014 see Screenshot Categories > Index."
+									"description": "ScreenshotCategory slug — see Screenshot Categories > Index."
 								},
 								{
 									"key": "country",
@@ -5135,7 +5140,7 @@
 								}
 							]
 						},
-						"description": "Standalone trending/discovery feed \u2014 offset-paginated by `page` (not cursor-paginated like every other list endpoint, since the ranked set lives in a Redis sorted set, not a SQL table). Excludes only the viewer's own posts and anyone blocked either-way; unlike the feed's inline discovery splice, this does include posts from accounts you already follow. `category` (a ScreenshotCategory slug) and `country` (ISO alpha-2) both narrow the same Redis-ranked candidate batch further \u2014 neither guarantees a full page of filtered results (same honesty the unfiltered query already has)."
+						"description": "Standalone trending/discovery feed — offset-paginated by `page` (not cursor-paginated like every other list endpoint, since the ranked set lives in a Redis sorted set, not a SQL table). Excludes only the viewer's own posts and anyone blocked either-way; unlike the feed's inline discovery splice, this does include posts from accounts you already follow. `category` (a ScreenshotCategory slug) and `country` (ISO alpha-2) both narrow the same Redis-ranked candidate batch further — neither guarantees a full page of filtered results (same honesty the unfiltered query already has)."
 					},
 					"response": [
 						{
@@ -5176,7 +5181,7 @@
 											"key": "category",
 											"value": "memes",
 											"disabled": true,
-											"description": "ScreenshotCategory slug \u2014 see Screenshot Categories > Index."
+											"description": "ScreenshotCategory slug — see Screenshot Categories > Index."
 										},
 										{
 											"key": "country",
@@ -5186,7 +5191,7 @@
 										}
 									]
 								},
-								"description": "Standalone trending/discovery feed \u2014 offset-paginated by `page` (not cursor-paginated like every other list endpoint, since the ranked set lives in a Redis sorted set, not a SQL table). Excludes only the viewer's own posts and anyone blocked either-way; unlike the feed's inline discovery splice, this does include posts from accounts you already follow. `category` (a ScreenshotCategory slug) and `country` (ISO alpha-2) both narrow the same Redis-ranked candidate batch further \u2014 neither guarantees a full page of filtered results (same honesty the unfiltered query already has)."
+								"description": "Standalone trending/discovery feed — offset-paginated by `page` (not cursor-paginated like every other list endpoint, since the ranked set lives in a Redis sorted set, not a SQL table). Excludes only the viewer's own posts and anyone blocked either-way; unlike the feed's inline discovery splice, this does include posts from accounts you already follow. `category` (a ScreenshotCategory slug) and `country` (ISO alpha-2) both narrow the same Redis-ranked candidate batch further — neither guarantees a full page of filtered results (same honesty the unfiltered query already has)."
 							},
 							"status": "OK",
 							"code": 200,
@@ -5254,7 +5259,7 @@
 										"posts"
 									]
 								},
-								"description": "Sent as Bob so Alice has something to see once she follows him. 1\u201310 images, each mime jpeg/png/webp, \u2264 10MB, min 200x200. The post is visible immediately with `original_url`; `status` flips to `ready` (and `url` switches to the generated thumbnail) once the queue processes each image. Rate limited to 10 requests/min."
+								"description": "Sent as Bob so Alice has something to see once she follows him. 1–10 images, each mime jpeg/png/webp, ≤ 10MB, min 200x200. The post is visible immediately with `original_url`; `status` flips to `ready` (and `url` switches to the generated thumbnail) once the queue processes each image. Rate limited to 10 requests/min."
 							},
 							"event": [
 								{
@@ -5367,7 +5372,7 @@
 										"{{post_id}}"
 									]
 								},
-								"description": "Poll this after Create Post \u2014 once the queue worker runs, `status` becomes `ready` and each media's `url` switches from the original to its generated thumbnail."
+								"description": "Poll this after Create Post — once the queue worker runs, `status` becomes `ready` and each media's `url` switches from the original to its generated thumbnail."
 							},
 							"response": [
 								{
@@ -5479,7 +5484,7 @@
 										"{{post_id}}"
 									]
 								},
-								"description": "Caption-only edit \u2014 media (images) can't be changed after creation. Omitting `caption` entirely leaves it unchanged; sending it as an empty value clears it. Hashtags are re-parsed from the new caption. Rate limited to 30 requests/min."
+								"description": "Caption-only edit — media (images) can't be changed after creation. Omitting `caption` entirely leaves it unchanged; sending it as an empty value clears it. Hashtags are re-parsed from the new caption. Rate limited to 30 requests/min."
 							},
 							"response": [
 								{
@@ -5523,7 +5528,7 @@
 												"{{post_id}}"
 											]
 										},
-										"description": "Caption-only edit \u2014 media (images) can't be changed after creation. Omitting `caption` entirely leaves it unchanged; sending it as an empty value clears it. Hashtags are re-parsed from the new caption. Rate limited to 30 requests/min."
+										"description": "Caption-only edit — media (images) can't be changed after creation. Omitting `caption` entirely leaves it unchanged; sending it as an empty value clears it. Hashtags are re-parsed from the new caption. Rate limited to 30 requests/min."
 									},
 									"status": "OK",
 									"code": 200,
@@ -5570,7 +5575,7 @@
 										"save"
 									]
 								},
-								"description": "Bookmark a post privately \u2014 never visible to anyone but you. Idempotent. Rate limited to 60 requests/min."
+								"description": "Bookmark a post privately — never visible to anyone but you. Idempotent. Rate limited to 60 requests/min."
 							},
 							"response": [
 								{
@@ -5605,7 +5610,7 @@
 												"save"
 											]
 										},
-										"description": "Bookmark a post privately \u2014 never visible to anyone but you. Idempotent. Rate limited to 60 requests/min."
+										"description": "Bookmark a post privately — never visible to anyone but you. Idempotent. Rate limited to 60 requests/min."
 									},
 									"status": "OK",
 									"code": 200,
@@ -5732,7 +5737,7 @@
 										"saved-posts"
 									]
 								},
-								"description": "Always the authenticated user's own saved posts \u2014 cursor-paginated, ordered by post creation time. Rate limited to 60 requests/min."
+								"description": "Always the authenticated user's own saved posts — cursor-paginated, ordered by post creation time. Rate limited to 60 requests/min."
 							},
 							"response": [
 								{
@@ -5765,7 +5770,7 @@
 												"saved-posts"
 											]
 										},
-										"description": "Always the authenticated user's own saved posts \u2014 cursor-paginated, ordered by post creation time. Rate limited to 60 requests/min."
+										"description": "Always the authenticated user's own saved posts — cursor-paginated, ordered by post creation time. Rate limited to 60 requests/min."
 									},
 									"status": "OK",
 									"code": 200,
@@ -5825,7 +5830,7 @@
 										"repost"
 									]
 								},
-								"description": "Optional `comment` for a quote-repost. Idempotent (re-reposting doesn't update an existing comment). Cannot repost your own post (422). Surfaces only on the reposting user's own profile (GET /users/{id}/reposts) in v1 \u2014 never blended into followers' feeds. Rate limited to 30 requests/min."
+								"description": "Optional `comment` for a quote-repost. Idempotent (re-reposting doesn't update an existing comment). Cannot repost your own post (422). Surfaces only on the reposting user's own profile (GET /users/{id}/reposts) in v1 — never blended into followers' feeds. Rate limited to 30 requests/min."
 							},
 							"response": [
 								{
@@ -5873,7 +5878,7 @@
 												"repost"
 											]
 										},
-										"description": "Optional `comment` for a quote-repost. Idempotent (re-reposting doesn't update an existing comment). Cannot repost your own post (422). Surfaces only on the reposting user's own profile (GET /users/{id}/reposts) in v1 \u2014 never blended into followers' feeds. Rate limited to 30 requests/min."
+										"description": "Optional `comment` for a quote-repost. Idempotent (re-reposting doesn't update an existing comment). Cannot repost your own post (422). Surfaces only on the reposting user's own profile (GET /users/{id}/reposts) in v1 — never blended into followers' feeds. Rate limited to 30 requests/min."
 									},
 									"status": "OK",
 									"code": 200,
@@ -7022,7 +7027,7 @@
 										"like"
 									]
 								},
-								"description": "Idempotent \u2014 liking an already-liked post just returns the current count."
+								"description": "Idempotent — liking an already-liked post just returns the current count."
 							},
 							"response": [
 								{
@@ -7093,7 +7098,7 @@
 										"like"
 									]
 								},
-								"description": "Idempotent \u2014 unliking a post you haven't liked just returns the current count."
+								"description": "Idempotent — unliking a post you haven't liked just returns the current count."
 							},
 							"response": [
 								{
@@ -7506,7 +7511,7 @@
 										"comments"
 									]
 								},
-								"description": "Optional `parent_id` replies to a top-level comment (one level of nesting only \u2014 replying to a reply is rejected). Rate limited to 30 requests/min."
+								"description": "Optional `parent_id` replies to a top-level comment (one level of nesting only — replying to a reply is rejected). Rate limited to 30 requests/min."
 							},
 							"event": [
 								{
@@ -7694,7 +7699,7 @@
 										"conversations"
 									]
 								},
-								"description": "Idempotent find-or-create \u2014 starting a conversation you already have with this user just returns the existing thread. 422 if user_id is yourself or a blocked-either-way user.",
+								"description": "Idempotent find-or-create — starting a conversation you already have with this user just returns the existing thread. 422 if user_id is yourself or a blocked-either-way user.",
 								"body": {
 									"mode": "raw",
 									"raw": "{\n  \"user_id\": 2\n}",
@@ -7740,7 +7745,7 @@
 												"conversations"
 											]
 										},
-										"description": "Idempotent find-or-create \u2014 starting a conversation you already have with this user just returns the existing thread. 422 if user_id is yourself or a blocked-either-way user.",
+										"description": "Idempotent find-or-create — starting a conversation you already have with this user just returns the existing thread. 422 if user_id is yourself or a blocked-either-way user.",
 										"body": {
 											"mode": "raw",
 											"raw": "{\n  \"user_id\": 2\n}",
@@ -7969,7 +7974,7 @@
 										"messages"
 									]
 								},
-								"description": "Default: cursor-paginated, newest first (loading history). Pass `?after=<message_id>` to switch to the lightweight polling view instead \u2014 everything newer than that id, oldest first, capped (not cursor-paginated) \u2014 intended for a client polling an open thread."
+								"description": "Default: cursor-paginated, newest first (loading history). Pass `?after=<message_id>` to switch to the lightweight polling view instead — everything newer than that id, oldest first, capped (not cursor-paginated) — intended for a client polling an open thread."
 							},
 							"response": [
 								{
@@ -8004,7 +8009,7 @@
 												"messages"
 											]
 										},
-										"description": "Default: cursor-paginated, newest first (loading history). Pass `?after=<message_id>` to switch to the lightweight polling view instead \u2014 everything newer than that id, oldest first, capped (not cursor-paginated) \u2014 intended for a client polling an open thread."
+										"description": "Default: cursor-paginated, newest first (loading history). Pass `?after=<message_id>` to switch to the lightweight polling view instead — everything newer than that id, oldest first, capped (not cursor-paginated) — intended for a client polling an open thread."
 									},
 									"status": "OK",
 									"code": 200,
@@ -8055,7 +8060,7 @@
 										"messages"
 									]
 								},
-								"description": "403 if the other participant is now blocked either-way (history remains visible via List Messages even after a block \u2014 only sending is blocked). Rate limited to 60 requests/min (looser than the general writes-moderate bucket).",
+								"description": "403 if the other participant is now blocked either-way (history remains visible via List Messages even after a block — only sending is blocked). Rate limited to 60 requests/min (looser than the general writes-moderate bucket).",
 								"body": {
 									"mode": "raw",
 									"raw": "{\n  \"body\": \"Hello there\"\n}",
@@ -8103,7 +8108,7 @@
 												"messages"
 											]
 										},
-										"description": "403 if the other participant is now blocked either-way (history remains visible via List Messages even after a block \u2014 only sending is blocked). Rate limited to 60 requests/min (looser than the general writes-moderate bucket).",
+										"description": "403 if the other participant is now blocked either-way (history remains visible via List Messages even after a block — only sending is blocked). Rate limited to 60 requests/min (looser than the general writes-moderate bucket).",
 										"body": {
 											"mode": "raw",
 											"raw": "{\n  \"body\": \"Hello there\"\n}",
@@ -12351,7 +12356,7 @@
 									}
 								],
 								"url": "{{base_url}}/v1/groups",
-								"description": "Mobile API operation: groupControllerStore. `photo` and `is_discoverable` are both optional \u2014 `is_discoverable` defaults to true, independent of `visibility` (a private group can still choose whether it's findable in search once someone has a direct link/invite).",
+								"description": "Mobile API operation: groupControllerStore. `photo` and `is_discoverable` are both optional — `is_discoverable` defaults to true, independent of `visibility` (a private group can still choose whether it's findable in search once someone has a direct link/invite).",
 								"body": {
 									"mode": "formdata",
 									"formdata": [
@@ -12878,7 +12883,7 @@
 									}
 								],
 								"url": "{{base_url}}/v1/groups/{{group_id}}/invites",
-								"description": "Mobile API operation: groupInviteControllerStore. Admin-only \u2014 403 if the caller isn't an admin of the group, 422 if the target user is already a member. Idempotent per (group, invitee): inviting an already-pending invitee just refreshes it.",
+								"description": "Mobile API operation: groupInviteControllerStore. Admin-only — 403 if the caller isn't an admin of the group, 422 if the target user is already a member. Idempotent per (group, invitee): inviting an already-pending invitee just refreshes it.",
 								"body": {
 									"mode": "raw",
 									"raw": "{\n    \"user_id\": 2\n}",
@@ -12915,7 +12920,7 @@
 											}
 										],
 										"url": "{{base_url}}/v1/groups/{{group_id}}/invites",
-										"description": "Mobile API operation: groupInviteControllerStore. Admin-only \u2014 403 if the caller isn't an admin of the group, 422 if the target user is already a member. Idempotent per (group, invitee): inviting an already-pending invitee just refreshes it.",
+										"description": "Mobile API operation: groupInviteControllerStore. Admin-only — 403 if the caller isn't an admin of the group, 422 if the target user is already a member. Idempotent per (group, invitee): inviting an already-pending invitee just refreshes it.",
 										"body": {
 											"mode": "raw",
 											"raw": "{\n    \"user_id\": 2\n}",
@@ -12962,7 +12967,7 @@
 											}
 										],
 										"url": "{{base_url}}/v1/groups/{{group_id}}/invites",
-										"description": "Mobile API operation: groupInviteControllerStore. Admin-only \u2014 403 if the caller isn't an admin of the group, 422 if the target user is already a member. Idempotent per (group, invitee): inviting an already-pending invitee just refreshes it.",
+										"description": "Mobile API operation: groupInviteControllerStore. Admin-only — 403 if the caller isn't an admin of the group, 422 if the target user is already a member. Idempotent per (group, invitee): inviting an already-pending invitee just refreshes it.",
 										"body": {
 											"mode": "raw",
 											"raw": "{\n    \"user_id\": 2\n}",
@@ -13009,7 +13014,7 @@
 											}
 										],
 										"url": "{{base_url}}/v1/groups/{{group_id}}/invites",
-										"description": "Mobile API operation: groupInviteControllerStore. Admin-only \u2014 403 if the caller isn't an admin of the group, 422 if the target user is already a member. Idempotent per (group, invitee): inviting an already-pending invitee just refreshes it.",
+										"description": "Mobile API operation: groupInviteControllerStore. Admin-only — 403 if the caller isn't an admin of the group, 422 if the target user is already a member. Idempotent per (group, invitee): inviting an already-pending invitee just refreshes it.",
 										"body": {
 											"mode": "raw",
 											"raw": "{\n    \"user_id\": 2\n}",
@@ -13309,6 +13314,318 @@
 										}
 									],
 									"body": ""
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "Uploads",
+					"item": [
+						{
+							"name": "Upload  Prepare",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"url": "{{base_url}}/v1/uploads/prepare",
+								"description": "Mobile API operation: uploadControllerPrepare.",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"content_type\": \"image/jpeg\",\n    \"byte_size\": 123456\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								}
+							},
+							"response": [
+								{
+									"name": "201 Created",
+									"originalRequest": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "POST",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"url": "{{base_url}}/v1/uploads/prepare",
+										"description": "Mobile API operation: uploadControllerPrepare.",
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"content_type\": \"image/jpeg\",\n    \"byte_size\": 123456\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										}
+									},
+									"status": "Created",
+									"code": 201,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"body": "{\n    \"data\": {\n        \"upload_id\": \"{{upload_id}}\",\n        \"object_key\": \"screenshots/1/{{upload_id}}.jpg\",\n        \"status\": \"uploading\",\n        \"expires_at\": \"2026-08-23T12:10:00Z\"\n    },\n    \"upload_url\": \"https://example.r2.cloudflarestorage.com/screenshots/1/{{upload_id}}.jpg?X-Amz-Signature=...\",\n    \"headers\": {\n        \"Content-Type\": \"image/jpeg\"\n    }\n}"
+								},
+								{
+									"name": "422 Validation Error",
+									"originalRequest": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "POST",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"url": "{{base_url}}/v1/uploads/prepare",
+										"description": "Mobile API operation: uploadControllerPrepare.",
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"content_type\": \"image/jpeg\",\n    \"byte_size\": 123456\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										}
+									},
+									"status": "Unprocessable Content",
+									"code": 422,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"body": "{\n    \"message\": \"The given data was invalid.\",\n    \"errors\": {\n        \"content_type\": [\n            \"The selected content type is invalid.\"\n        ]\n    }\n}"
+								}
+							]
+						},
+						{
+							"name": "Upload  Commit",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"url": "{{base_url}}/v1/uploads/{{upload_id}}/commit",
+								"description": "Mobile API operation: uploadControllerCommit.",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"image_sha256\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\n    \"ocr_text\": \"hello world\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								}
+							},
+							"response": [
+								{
+									"name": "200 OK",
+									"originalRequest": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "POST",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"url": "{{base_url}}/v1/uploads/{{upload_id}}/commit",
+										"description": "Mobile API operation: uploadControllerCommit.",
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"image_sha256\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\n    \"ocr_text\": \"hello world\"\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"body": "{\n    \"data\": {\n        \"upload_id\": \"{{upload_id}}\",\n        \"object_key\": \"screenshots/1/{{upload_id}}.jpg\",\n        \"status\": \"uploaded\",\n        \"expires_at\": \"2026-08-23T12:10:00Z\"\n    }\n}"
+								},
+								{
+									"name": "422 Object Missing",
+									"originalRequest": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "POST",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"url": "{{base_url}}/v1/uploads/{{upload_id}}/commit",
+										"description": "Mobile API operation: uploadControllerCommit.",
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"image_sha256\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\n    \"ocr_text\": \"hello world\"\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										}
+									},
+									"status": "Unprocessable Content",
+									"code": 422,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"body": "{\n    \"message\": \"The uploaded object could not be found in storage.\"\n}"
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "Invites",
+					"item": [
+						{
+							"name": "Me Invites  Index",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"url": "{{base_url}}/v1/me/invites",
+								"description": "Mobile API operation: inviteControllerIndex."
+							},
+							"response": [
+								{
+									"name": "200 OK",
+									"originalRequest": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"url": "{{base_url}}/v1/me/invites",
+										"description": "Mobile API operation: inviteControllerIndex."
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"body": "{\n    \"data\": [\n        {\n            \"id\": 1,\n            \"invitee\": {\n                \"id\": 2,\n                \"username\": \"newuser\",\n                \"name\": \"New User\",\n                \"avatar_url\": null\n            },\n            \"redeemed_at\": \"2026-08-20T10:00:00Z\",\n            \"points_matured\": false,\n            \"points_awarded\": null\n        }\n    ]\n}"
 								}
 							]
 						}

@@ -6,6 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
+/** ocr_source: 'server' (legacy/local Tesseract) | 'device' (client-claimed, see docs/SECURITY.md
+ * §12). verification_status: null (not applicable) | 'pending' (sampled, awaiting the publish-time
+ * comparison) | 'verified_match' | 'verified_mismatch'. */
 class MediaAnalysisItem extends Model
 {
     protected $guarded = [];
@@ -18,6 +21,7 @@ class MediaAnalysisItem extends Model
             'height' => 'integer',
             'size_bytes' => 'integer',
             'ocr_text' => 'encrypted',
+            'device_ocr_text' => 'encrypted',
             'findings' => 'array',
         ];
     }
@@ -26,6 +30,12 @@ class MediaAnalysisItem extends Model
     public function analysis(): BelongsTo
     {
         return $this->belongsTo(MediaAnalysis::class, 'media_analysis_id');
+    }
+
+    /** @return BelongsTo<Upload, $this> Null for the legacy local-disk path. */
+    public function upload(): BelongsTo
+    {
+        return $this->belongsTo(Upload::class);
     }
 
     /**

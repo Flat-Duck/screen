@@ -28,7 +28,11 @@ class MediaAnalysisController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
-        $analysis = $create($user, array_values($request->file('images', [])));
+        $analysis = $create(
+            $user,
+            array_values($request->file('images', [])),
+            array_values($request->input('upload_ids', [])),
+        );
 
         return (new MediaAnalysisResource($analysis))->response()->setStatusCode(202);
     }

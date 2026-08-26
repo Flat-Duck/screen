@@ -46,6 +46,25 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Direct-to-R2 Uploads
+    |--------------------------------------------------------------------------
+    |
+    | See docs/SECURITY.md (Android repo) — the image itself goes straight from the device to
+    | this disk via a presigned PUT; Laravel only mints the URL and later verifies the object
+    | landed. Separate from 'media_disk' above, which still backs the existing analyze/publish
+    | pipeline untouched by this.
+    |
+    */
+
+    'uploads' => [
+        'disk' => env('SOCIAL_UPLOADS_DISK', 'r2'),
+        'presign_ttl_seconds' => (int) env('SOCIAL_UPLOADS_PRESIGN_TTL_SECONDS', 600),
+        'max_size_bytes' => (int) env('SOCIAL_UPLOADS_MAX_SIZE_BYTES', 10 * 1024 * 1024),
+        'allowed_mime_types' => ['image/jpeg', 'image/png', 'image/webp'],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Post Retention
     |--------------------------------------------------------------------------
     |

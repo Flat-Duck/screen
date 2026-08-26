@@ -112,11 +112,14 @@ class ImageProcessingService
 
     /**
      * Scales the already-clean original down (never up) to fit within a maxDimension x
-     * maxDimension box and writes a WebP thumbnail to the destination path.
+     * maxDimension box and writes a WebP thumbnail to the destination path. The thumbnail is
+     * always written to the same disk the source lives on ($diskName, defaulting to the legacy
+     * local media_disk) — an R2-backed original gets an R2-backed thumbnail alongside it, never
+     * routed through the local disk (see docs/SECURITY.md §12).
      */
-    public function generateThumbnail(string $sourcePath, string $destinationPath, int $maxDimension = 640): void
+    public function generateThumbnail(string $sourcePath, string $destinationPath, ?string $diskName = null, int $maxDimension = 640): void
     {
-        $disk = Storage::disk(config('social.media_disk'));
+        $disk = Storage::disk($diskName ?? config('social.media_disk'));
 
         $encoded = $this->manager->read($disk->get($sourcePath))
             ->scaleDown($maxDimension, $maxDimension)

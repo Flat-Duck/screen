@@ -40,6 +40,7 @@ class PostMedia extends Model
         'post_id',
         'position',
         'original_path',
+        'source_disk',
         'thumbnail_path',
         'width',
         'height',
@@ -83,7 +84,7 @@ class PostMedia extends Model
             return $this->original_path;
         }
 
-        return Storage::disk(config('social.media_disk'))->url($this->original_path);
+        return Storage::disk($this->source_disk ?? config('social.media_disk'))->url($this->original_path);
     }
 
     public function thumbnailUrl(): ?string
@@ -93,7 +94,7 @@ class PostMedia extends Model
         }
 
         return $this->thumbnail_path
-            ? Storage::disk(config('social.media_disk'))->url($this->thumbnail_path)
+            ? Storage::disk($this->source_disk ?? config('social.media_disk'))->url($this->thumbnail_path)
             : null;
     }
 }

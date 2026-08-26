@@ -9,9 +9,9 @@ use RuntimeException;
 
 class DifferenceHashService implements PerceptualHasher
 {
-    public function hash(string $path): string
+    public function hash(string $disk, string $path): string
     {
-        $source = imagecreatefromstring(Storage::disk(config('social.media_disk'))->get($path));
+        $source = imagecreatefromstring(Storage::disk($disk)->get($path));
         if ($source === false) {
             throw new RuntimeException('Screenshot could not be decoded for duplicate detection.');
         }

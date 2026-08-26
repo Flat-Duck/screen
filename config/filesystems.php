@@ -77,6 +77,28 @@ return [
             'report' => false,
         ],
 
+        // Cloudflare R2 — direct-from-device screenshot uploads (see docs/SECURITY.md's "Upload
+        // Protocol" in the Android repo). Deliberately its own disk, not a config swap on 's3'
+        // above: different credentials, and R2 always uses region "auto" + path-style addressing.
+        'r2' => [
+            'driver' => 's3',
+            'key' => env('R2_ACCESS_KEY_ID'),
+            'secret' => env('R2_SECRET_ACCESS_KEY'),
+            'region' => 'auto',
+            'bucket' => env('R2_BUCKET'),
+            'endpoint' => env('R2_ENDPOINT'),
+            'use_path_style_endpoint' => env('R2_USE_PATH_STYLE_ENDPOINT', true),
+            // Without this, ->url() (used by PostMedia::originalUrl()/thumbnailUrl() to serve
+            // published R2-backed images) falls back to the private S3-API endpoint above, which
+            // isn't publicly fetchable. Must be set to a public R2 bucket URL or a Cloudflare
+            // custom domain before any R2-backed post can actually render for a viewer — see
+            // docs/SECURITY.md §12's "not yet configured" note. Left unset (null) is a real
+            // operational blocker, not a default anyone should ship with.
+            'url' => env('R2_PUBLIC_URL'),
+            'throw' => false,
+            'report' => false,
+        ],
+
     ],
 
     /*

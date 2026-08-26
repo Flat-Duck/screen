@@ -37,7 +37,7 @@ class ComputePostMediaPerceptualHash implements ShouldQueue
 
         $media->update(['hash_status' => PostMedia::PROCESSING_PROCESSING]);
         $media->update([
-            'perceptual_hash' => $hasher->hash($media->original_path),
+            'perceptual_hash' => $hasher->hash($media->source_disk ?? config('social.media_disk'), $media->original_path),
             'hash_status' => PostMedia::PROCESSING_READY,
             'hash_version' => $hasher->version(),
         ]);

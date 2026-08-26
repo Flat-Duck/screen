@@ -38,7 +38,7 @@ class ExtractPostMediaText implements ShouldQueue
 
         $media->update(['ocr_status' => PostMedia::PROCESSING_PROCESSING]);
         try {
-            $result = $extractor->extract($media->original_path);
+            $result = $extractor->extract($media->source_disk ?? config('social.media_disk'), $media->original_path);
         } catch (Throwable) {
             // A provider exception may contain recognized text. Replace it before the
             // queue serializes the failure into failed_jobs or telemetry.
