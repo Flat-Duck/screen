@@ -4,6 +4,7 @@ use App\Models\ApiRequestMetric;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
+use Laravel\Telescope\Telescope;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -40,8 +41,14 @@ Schedule::command('posts:refresh-trending')->everyTenMinutes()->onOneServer()->w
 Schedule::command('recommendations:refresh-pools')->everyTenMinutes()->onOneServer()->withoutOverlapping();
 Schedule::command('recommendations:prune-sessions')->hourly()->onOneServer()->withoutOverlapping();
 
-// Telescope records every request/exception in every environment (see
-// TelescopeServiceProvider::register()), not just failures, so telescope_entries
-// grows continuously. 48h is short-lived debugging data, not the app's durable
+// Telescope is local-only (require-dev, registered by AppServiceProvider::registerTelescope()),
+// so this command simply does not exist in production — scheduling it unconditionally would fail
+// the scheduler run there. Locally it records every request/exception, not just failures, so
+// telescope_entries grows continuously; 48h is short-lived debugging data, not the app's durable
 // telemetry — that's TelemetryEvent's own TELEMETRY_RETENTION_DAYS-based pruning.
-Schedule::command('telescope:prune --hours=48')->daily()->onOneServer()->withoutOverlapping();
+//
+// Pulse (the production monitoring surface) needs no equivalent entry: it trims on ingest per
+// config('pulse.storage.trim.keep').
+if (class_exists(Telescope::class)) {
+    Schedule::command('telescope:prune --hours=48')->daily()->onOneServer()->withoutOverlapping();
+}

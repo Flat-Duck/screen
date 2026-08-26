@@ -92,7 +92,7 @@ grant/revoke it via `php artisan users:make-admin {email} [--revoke]`.
   telemetry-specific pages and their Livewire table partials.
 - `resources/views/flux/**` — local overrides/extensions of Flux UI components.
 
-### Operational monitoring (Horizon, Telescope)
+### Operational monitoring (Horizon, Pulse, Telescope)
 
 - `QUEUE_CONNECTION` is `redis` (not `database`) — required for Horizon to manage queues.
   Three supervisors in `config/horizon.php` (`supervisor-default`, `supervisor-security`,
@@ -113,14 +113,35 @@ grant/revoke it via `php artisan users:make-admin {email} [--revoke]`.
   `Horizon::auth()`/`Telescope::auth()` checks wired into each package's own controller
   middleware, independent of Sentinel and of `config('horizon.middleware')` /
   `config('telescope.middleware')`.
-- Telescope's `register()` filter records every request/exception in every environment
-  (not just failures) — this is deliberate, so production request monitoring actually
-  works, not just crash capture. That means `telescope_entries` grows continuously;
-  `telescope:prune --hours=48` runs daily via `routes/console.php`, separate from
-  `TelemetryEvent`'s own `TELEMETRY_RETENTION_DAYS`-based retention (different data,
-  different lifecycle — Telescope is short-lived debugging data, not durable telemetry).
-  `config/telescope.php`'s `ignore_paths` excludes `horizon*`/`telescope*` so each
-  dashboard's own polling doesn't flood the other's (or its own) entries.
+- **Pulse is the production monitoring surface; Telescope is local-only.** Telescope is a
+  `require-dev` package, listed under `extra.laravel.dont-discover`, and registered *only* by
+  `AppServiceProvider::registerTelescope()` — which returns early outside `local`/`testing` and
+  is additionally `class_exists()`-guarded so a production `composer install --no-dev` is a
+  no-op rather than a fatal. It is deliberately absent from `bootstrap/providers.php`.
+  `tests/Feature/MonitoringAccessTest.php` locks both halves of this boundary; don't "fix" a
+  failure there by re-adding the provider.
+- Because Telescope does not exist in production, `telescope:prune` is wrapped in a
+  `class_exists(\Laravel\Telescope\Telescope::class)` check in `routes/console.php` —
+  scheduling it unconditionally would fail the production scheduler run.
+- Telescope's `register()` filter still records every request/exception (not just failures)
+  where it *is* loaded, so `telescope_entries` grows continuously in local dev; the guarded
+  daily `telescope:prune --hours=48` bounds it. `config/telescope.php`'s `ignore_paths`
+  excludes `horizon*`/`telescope*` so each dashboard's polling doesn't flood the other's.
+- `/pulse` is gated by `viewPulse` (`PulseServiceProvider`), the same admin-only boundary as
+  `viewHorizon`/`viewTelescope`/`viewTelemetry` — Pulse exposes slow-query SQL, exception
+  messages and locations, and per-user activity. The gate takes `?User` because Pulse
+  evaluates it for guests too.
+- Pulse uses `PULSE_INGEST_DRIVER=redis` in production so request handling stays off the write
+  path: requests push to a Redis stream and a separate `pulse:work` daemon drains it into
+  PostgreSQL. `pulse:check` is a second daemon for per-server stats. Locally the default
+  `storage` ingest writes straight to the DB, so neither daemon is needed. Pulse trims itself
+  on ingest (`PULSE_STORAGE_KEEP`) and needs no scheduled prune — unlike Telescope, and
+  separate again from `TelemetryEvent`'s `TELEMETRY_RETENTION_DAYS` (different data, different
+  lifecycle).
+- `config/pulse.php` and the published Pulse migration are analysed by PHPStan like any other
+  app code: the stock stubs fail level 7 (an `env()` that can return `bool` fed to `explode`,
+  and `match` expressions with no `default` arm), so both carry local fixes. Re-publishing
+  Pulse's assets will reintroduce those errors.
 
 ### Notable non-obvious packages
 

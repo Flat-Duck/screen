@@ -36,7 +36,10 @@ jobs:
           --health-retries 5
     strategy:
       matrix:
-        php-version: ['8.3', '8.4', '8.5']
+        # 8.4 is the floor: composer.json requires ^8.4 (laravel/framework 13 pulls
+        # symfony/filesystem, which needs >= 8.4.1 — on 8.3 composer's platform check fatals
+        # before the app can boot at all).
+        php-version: ['8.4', '8.5']
 
     steps:
       - name: Checkout code
@@ -65,6 +68,11 @@ jobs:
       - name: Install Dependencies
         run: composer install --no-interaction --prefer-dist --optimize-autoloader
 
+      # Fails the build on a known-vulnerable dependency. Caught guzzlehttp/guzzle 7.13.1
+      # (6 advisories, one high) and league/commonmark sitting in the lock file unnoticed.
+      - name: Audit Dependencies
+        run: composer audit --no-interaction
+
       - name: Copy Environment File
         run: cp .env.example .env
 
@@ -81,7 +89,7 @@ jobs:
         run: php artisan test
 
       - name: Run PostgreSQL device and workflow tests
-        if: matrix.php-version == '8.3'
+        if: matrix.php-version == '8.4'
         env:
           DB_CONNECTION: pgsql
           DB_HOST: 127.0.0.1

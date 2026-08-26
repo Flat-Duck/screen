@@ -19,9 +19,12 @@ class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
 
         $this->hideSensitiveRequestDetails();
 
-        // Records everything (not just failures) in every environment, per the
-        // explicit call to monitor crashes *and* requests in production — this
-        // means telescope_entries grows continuously, so it relies on the daily
+        // Records everything, not just failures — this provider is only ever registered
+        // in local/testing (see AppServiceProvider::registerTelescope()), where full-fidelity
+        // capture is the entire point. Production monitoring is Pulse instead, which
+        // aggregates rather than storing every request body and query binding.
+        //
+        // telescope_entries still grows continuously locally, so it relies on the daily
         // `telescope:prune` schedule (routes/console.php) to bound storage.
         Telescope::filter(fn (IncomingEntry $entry): bool => true);
     }
@@ -47,9 +50,10 @@ class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
     /**
      * Register the Telescope gate.
      *
-     * This gate determines who can access Telescope in non-local environments.
-     * Mirrors `viewTelemetry` in AppServiceProvider — same admin-only boundary,
-     * since Telescope exposes full request/response bodies and query bindings.
+     * Telescope only loads in local/testing now, so this gate is a defence-in-depth
+     * backstop rather than the primary boundary — it mirrors `viewTelemetry` in
+     * AppServiceProvider, since Telescope exposes full request/response bodies and
+     * query bindings. The production equivalent is `viewPulse` (PulseServiceProvider).
      */
     protected function gate(): void
     {

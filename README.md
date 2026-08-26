@@ -156,27 +156,77 @@ The project uses Pest for testing.
 
 ## Production Workers and Scheduler
 
-Run the scheduler once per minute on every deployment, with Laravel's single-server
-locks backed by a shared cache:
+Copy `.env.production.example` to the server as `.env` before any of this — it documents
+every required value and repeats the process list below.
+
+**PHP 8.4.1+ is required** (`composer.json` is `^8.4`; `symfony/filesystem` needs 8.4.1).
+A bare `php` on the host may still be 8.2/8.3, so pin the absolute path in every cron and
+supervisor unit.
+
+Run the scheduler once per minute, with Laravel's single-server locks backed by a shared
+cache — 16 scheduled tasks depend on it:
 
 ```bash
-* * * * * php /path/to/artisan schedule:run
+* * * * * /usr/bin/php8.4 /path/to/artisan schedule:run >> /dev/null 2>&1
 ```
 
-Run independent workers so security notifications are not delayed by image processing:
+Queues are managed by **Horizon**, not by raw `queue:work`. `QUEUE_CONNECTION=redis` and
+`config/horizon.php` defines three supervisors (`supervisor-default`, `supervisor-security`,
+`supervisor-media`) mapping 1:1 to the queues jobs declare via `onQueue()`, so security
+notifications are never delayed behind image processing. Run one process:
 
 ```bash
-php83 artisan queue:work --queue=security
-php83 artisan queue:work --queue=media
-php83 artisan queue:work --queue=default
+/usr/bin/php8.4 /path/to/artisan horizon
 ```
 
-`composer dev` consumes `security,media,default` in priority order for local development.
+Do **not** also run `queue:work` — it would double-consume the same queues alongside Horizon.
+
+Pulse needs two more daemons in production (see Monitoring below):
+
+```bash
+/usr/bin/php8.4 /path/to/artisan pulse:work    # drains the Redis ingest stream
+/usr/bin/php8.4 /path/to/artisan pulse:check   # per-server CPU/memory/storage stats
+```
+
+On deploy, restart the daemons so they pick up new code:
+
+```bash
+php artisan horizon:terminate && php artisan pulse:restart
+```
+
+`composer dev` boots Horizon locally and consumes `security,media,default` in priority order.
 Security email delivery uses a transactional outbox recovered every minute. Abandoned post
 staging directories are retained in a cleanup ledger and retried every ten minutes.
 
-## 🔐 Security
+## 📈 Monitoring
 
+Two surfaces with a deliberate production/dev split:
+
+| | Pulse | Telescope |
+|---|---|---|
+| Environment | **production** (and local) | **local/testing only** |
+| Installed as | `require` | `require-dev`, `dont-discover` |
+| Path | `/pulse` | `/telescope` |
+| Gate | `viewPulse` (admin-only) | `viewTelescope` (admin-only) |
+| Captures | aggregates: slow queries/requests/jobs, exceptions, queue depth, per-user activity | full request/response bodies and query bindings, every request |
+
+Telescope is registered only by `AppServiceProvider::registerTelescope()`, which returns early
+outside `local`/`testing` and is additionally guarded by `class_exists()` so a production
+`composer install --no-dev` is a no-op rather than a fatal. `tests/Feature/MonitoringAccessTest.php`
+locks both halves of that boundary.
+
+Pulse uses the Redis ingest in production (`PULSE_INGEST_DRIVER=redis`), keeping request
+handling off the write path — requests push to a Redis stream and `pulse:work` drains it into
+PostgreSQL. Locally it defaults to the `storage` driver, so no daemon is needed. Pulse trims
+itself on ingest per `PULSE_STORAGE_KEEP`; it needs no scheduled prune.
+
+Horizon (`/horizon`, `viewHorizon`) covers queue throughput and failed jobs.
+
+All three dashboards share the same admin-only boundary as `viewTelemetry`, because `User` is
+*also* the mobile API's end-user principal — without the gates, any registered app user could
+browse them by logging into the web dashboard.
+
+## 🔐 Security
 - Sanctum handles API authentication
 - Password reset via email
 - Two-factor authentication support

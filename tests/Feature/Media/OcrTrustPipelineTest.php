@@ -12,6 +12,7 @@ use App\Models\MediaAnalysisItem;
 use App\Models\Upload;
 use App\Models\User;
 use App\Models\UserOcrTrust;
+use App\Services\Screenshots\OcrTrustSampler;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
@@ -36,6 +37,14 @@ class OcrTrustPipelineTest extends TestCase
         UserOcrTrust::create(['user_id' => $user->id, 'trust_tier' => UserOcrTrust::TIER_TRUSTED, 'consecutive_verified_count' => 25]);
         $upload = $this->uploadedFor($user, 'ordinary screen with no sensitive content at all');
         Sanctum::actingAs($user);
+
+        // A trusted account is still spot-checked at OcrTrustSampler::TRUSTED_SAMPLE_RATE_PERCENT
+        // (8%), so asserting the not-sampled outcome against the real sampler fails roughly one
+        // run in twelve. This test is about what happens *when* the sampler says "don't sample",
+        // so pin that decision; the sample rate itself is covered by OcrTrustSamplerTest.
+        $sampler = Mockery::mock(OcrTrustSampler::class);
+        $sampler->shouldReceive('shouldSample')->andReturn(false);
+        $this->instance(OcrTrustSampler::class, $sampler);
 
         $response = $this->postJson('/api/v1/media/analyses', ['upload_ids' => [$upload->upload_id]]);
 

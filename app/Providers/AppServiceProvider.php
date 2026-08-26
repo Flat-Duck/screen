@@ -36,6 +36,32 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(ScreenshotTextExtractor::class, TesseractScreenshotTextExtractor::class);
         $this->app->bind(PerceptualHasher::class, DifferenceHashService::class);
         $this->app->bind(ScreenshotSafetyAnalyzer::class, SensitiveInformationAnalyzer::class);
+
+        $this->registerTelescope();
+    }
+
+    /**
+     * Telescope is a local-only debugging tool: it is a require-dev package, excluded from
+     * package discovery (composer.json `extra.laravel.dont-discover`), and registered only
+     * here. Production monitoring is Pulse (PulseServiceProvider) — Telescope captures full
+     * request/response bodies and query bindings on every request, which is both a storage
+     * and a data-exposure cost that a live deployment should not carry.
+     *
+     * The class_exists() guard is what makes `composer install --no-dev` safe: on a production
+     * box the package is simply absent, and this becomes a no-op rather than a fatal.
+     */
+    protected function registerTelescope(): void
+    {
+        if (! $this->app->environment(['local', 'testing'])) {
+            return;
+        }
+
+        if (! class_exists(\Laravel\Telescope\TelescopeServiceProvider::class)) {
+            return;
+        }
+
+        $this->app->register(\Laravel\Telescope\TelescopeServiceProvider::class);
+        $this->app->register(TelescopeServiceProvider::class);
     }
 
     /**
