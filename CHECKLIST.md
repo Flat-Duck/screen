@@ -1,13 +1,13 @@
 # Production Readiness Checklist
 
-**First analysis:** 2026-08-26 · **Last updated:** 2026-08-27
+**First analysis:** 2026-08-26 · **Last updated:** 2026-08-27 (backend deploy-readiness pass)
 **Scope:** `screenshut-telemetry` (Laravel backend) + `screenshot-detector` (Android app)
 
 ## Verdict
 
 | Component | Status |
 |---|---|
-| **Backend** | **Ready to deploy.** All gates green, monitoring split done, dependencies clean, server env template written. Remaining work is operational (wire alerting, run the drills). |
+| **Backend** | **Ready to deploy — deploy path rehearsed.** CI fully green including the first-ever PostgreSQL run. A production install (`--no-dev`, cached, real Postgres) was dry-run end to end and verified. Runbook and process units shipped. Everything left needs server or staging access. |
 | **Android** | **Blocked on Play Store compliance only.** CI is green again, code fixes landed. The signing-key items are explicitly deferred by the owner. |
 
 > **Verification caveat:** the backend is fully executed and verified on this machine (PHP 8.4.24).
@@ -117,17 +117,71 @@ retention pruning for telemetry, analytics, posts, users, and Telescope.
 
 ---
 
-## Still open — backend
+## Backend — done since first analysis
 
-- [ ] **B3 — Unpushed commits.** Push and get a green CI run (now that B1 is fixed), including the
-  PostgreSQL job that has never actually executed.
-- [ ] **Wire the alerting.** Pulse gives you the dashboard; it does not page anyone. Point an uptime
-  monitor at `/up/deep` with `HEALTH_CHECK_SECRET`, and decide who gets woken up.
-- [ ] **B6** — Run the k6 load suite against staging and record a baseline.
-- [ ] **B7** — Execute `docs/runbooks/backup_restore.md` as a real drill. An untested restore is not a backup.
-- [ ] **B8** — Verify the scheduler cron and Horizon/Pulse supervisors are live on the production
-      host, **pinned to PHP 8.4+**. Prior ops notes pin `/usr/bin/php8.3`, which will now fatal.
-- [ ] Run `php artisan migrate --force` for the new `pulse_*` tables on deploy.
+- [x] **B3 — Pushed, CI fully green.** Both matrix legs pass, and the **PostgreSQL job succeeded for
+  the first time in the project's history**. It immediately earned its keep: see the two CI fixes below.
+
+- [x] **CI was non-deterministic across the matrix.** PHPStan inherited each runner's PHP, so the
+  8.5 leg failed on `DifferenceHashService.php:20` while 8.4 passed — on 8.5 `imagecopyresampled()`
+  declares a `true` return type rather than `bool`, making the defensive branch provably dead.
+  Pre-existing code, newly visible. Pinned `phpVersion: 80400` in `phpstan.neon` (composer.json's
+  floor) so analysis is deterministic everywhere; the runtime guard stays, since it is reachable on 8.4.
+
+- [x] **`fail-fast` was hiding the PostgreSQL result.** The 8.5 failure *cancelled* the 8.4 leg
+  mid-run — the leg carrying the Postgres job. Added `fail-fast: false`.
+
+- [x] **Real test-isolation bug found by the Postgres job.** Three tests failed with "one extra row
+  than expected". `PostgresSocialConcurrencyTest` forks child processes that write on their own
+  connections, so it correctly uses `DatabaseTruncation` — but that trait truncates only *before*
+  each test, and returns early after `migrate:fresh` on its first run. Every later class uses
+  `RefreshDatabase`, which finds `RefreshDatabaseState::$migrated` already true, skips its own
+  `migrate:fresh`, and merely opens a transaction — so the forked children's committed rows survived
+  the whole run and broke downstream `assertDatabaseCount` assertions. Long-standing, invisible until
+  the job first ran. Isolated by re-running the same list minus that class (88/88 pass, DB left empty),
+  fixed with a truncating `tearDown()`. Now **90/90, stable over three consecutive runs.**
+
+- [x] **Production install dry run.** Rehearsed the whole deploy in an isolated git worktree against
+  real PostgreSQL, to de-risk the `require-dev` Telescope move — exactly the change that breaks a
+  production boot. `composer install --no-dev` → `migrate --force` (creates `pulse_*`) →
+  `config/route/view/event:cache` → boot. All clean. Verified in that production-mode instance:
+
+  | Check | Result |
+  |---|---|
+  | `artisan about` | `production`, Debug **OFF**, all four caches CACHED, redis + pgsql |
+  | Telescope routes / commands | **0 / 0** — absent, as designed |
+  | Pulse route + `pulse:work`/`pulse:check` | present |
+  | `schedule:list` | 15 tasks, `telescope:prune` correctly absent |
+  | `/up` | 200 |
+  | `/up/deep` (no secret / wrong secret) | **404 / 404** |
+  | `/up/deep` (correct secret) | 200 — `database ok, queue ok (backlog 0), storage ok` |
+  | `/pulse`, `/horizon` logged out | **403** — never 200 |
+  | `/telescope` | **404** |
+
+- [x] **Deployment runbook + process units.** `docs/runbooks/deploy.md` (first install, per-deploy,
+  post-deploy verification, rollback, and a table of failure modes), plus ready-to-install
+  `deploy/supervisor/*.conf` and `deploy/cron/screenshut-scheduler`. Every command is pinned to
+  `/usr/bin/php8.4`. Commands referenced in it were verified to exist — which caught a bad
+  `--render="errors::503"` flag (no `resources/views/errors` in this app) before it reached the runbook.
+
+## Still open — backend (all require server or staging access)
+
+- [ ] **Deploy.** Follow `docs/runbooks/deploy.md`. The dry run above rehearsed every step, so this
+      should hold no surprises — but `migrate --force` for the `pulse_*` tables is part of it.
+- [ ] **B8 — Install the four processes** from `deploy/`. Scheduler cron, `horizon`, `pulse:work`,
+      `pulse:check`. Prior ops notes pin `/usr/bin/php8.3`, which now fatals on Composer's platform
+      check — the shipped units pin 8.4.
+- [ ] **Wire the alerting.** The highest-value remaining item. Pulse is a dashboard, not a pager;
+      `/up/deep` is verified working and correctly returns 404 without the secret, so it is ready
+      for a monitor — but nothing is watching it yet, and nobody gets woken up.
+- [ ] **B6 — k6 baseline.** Cannot run here: k6 is not installed and there is no staging target, and
+      `docs/future_12_release_readiness.md` forbids aiming it at production without written change
+      authority. The script itself was syntax-checked and parses cleanly, so it will not fail on
+      first use during a load window.
+- [ ] **B7 — Backup/restore drill.** Needs the managed snapshot facility, R2 versioning, and an
+      isolated environment — not reproducible locally. The runbook's own verification commands
+      (`about`, `migrate:status`, `api:export-contract --check`) were confirmed working in the
+      production-mode install, so the drill will not stall on a broken step.
 
 ## Still open — Android
 

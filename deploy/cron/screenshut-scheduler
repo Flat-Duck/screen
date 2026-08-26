@@ -1,0 +1,16 @@
+# Laravel scheduler for screenshut-telemetry. Install to /etc/cron.d/screenshut-scheduler
+# (mode 0644, owned by root, and it MUST end with a newline or cron ignores the file).
+#
+# 15 scheduled tasks depend on this single entry, including security-outbox dispatch (every
+# minute), media orphan cleanup, session expiry, analytics aggregation, trending/recommendation
+# refresh, and every retention prune. Nothing else triggers them.
+#
+# Every task declares ->onOneServer()->withoutOverlapping(), so this same line is safe to install
+# on multiple app servers: the locks are held in the shared Redis cache.
+#
+# php8.4 is pinned deliberately — a bare `php` may be 8.2/8.3 here and will fatal on Composer's
+# platform check (composer.json requires ^8.4).
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+
+* * * * * www-data /usr/bin/php8.4 /var/www/screenshut-telemetry/artisan schedule:run >> /dev/null 2>&1
