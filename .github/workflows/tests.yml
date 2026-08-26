@@ -35,6 +35,11 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     strategy:
+      # Let every leg finish. With the default fail-fast, one leg failing cancels the
+      # others mid-run — which cancelled 8.4 (the leg that carries the PostgreSQL job)
+      # because of an unrelated static-analysis failure on 8.5, hiding the pgsql result
+      # entirely.
+      fail-fast: false
       matrix:
         # 8.4 is the floor: composer.json requires ^8.4 (laravel/framework 13 pulls
         # symfony/filesystem, which needs >= 8.4.1 — on 8.3 composer's platform check fatals

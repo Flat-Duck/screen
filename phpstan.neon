@@ -11,3 +11,13 @@ parameters:
         - routes/
 
     level: 7
+
+    # Pin the analysed language version instead of inheriting the runner's PHP.
+    # Without this the CI matrix analyses each leg under a different PHP and can
+    # disagree with itself: on 8.5 several GD functions (e.g. imagecopyresampled)
+    # declare a `true` return type rather than `bool`, so DifferenceHashService's
+    # defensive failure branch becomes provably dead and level 7 fails there while
+    # passing on 8.4. 80400 is composer.json's floor (^8.4), so analysis targets the
+    # oldest PHP this app supports — the conventional choice, and deterministic
+    # everywhere. The guard itself stays: it is still reachable on 8.4.
+    phpVersion: 80400
