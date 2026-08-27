@@ -1,0 +1,61 @@
+Akukas turns the screenshots you already take into something you can actually find, keep and share.
+
+Most screenshots disappear into a crowded gallery and are never seen again. Akukas notices the moment you take one, offers to act on it right away, and gives it a place to live — privately in your own library, or publicly with people who care about the same things you do.
+
+━━━━━━━━━━━━━━━━━━━━
+CAPTURE THE MOMENT YOU TAKE IT
+━━━━━━━━━━━━━━━━━━━━
+• Akukas detects a new screenshot as soon as it is saved and offers to edit, save or post it
+• Take a screenshot from anywhere with the Quick Settings tile — no need to open the app
+• Crop, mark up and clean an image before you share it
+
+━━━━━━━━━━━━━━━━━━━━
+KEEP IT PRIVATE, OR SHARE IT
+━━━━━━━━━━━━━━━━━━━━
+• Cloud Save keeps screenshots in a private space only you can see
+• Collections let you group what you keep — receipts, recipes, design ideas, anything
+• Post to your timeline when you do want to share, with a caption and alt text
+• Archive, restore or permanently delete anything you have posted
+
+━━━━━━━━━━━━━━━━━━━━
+A FEED WORTH FOLLOWING
+━━━━━━━━━━━━━━━━━━━━
+• Two feeds: the people you follow, and a For You feed built from the topics you pick
+• Follow hashtags and explore what is trending
+• Comment, reply, like, repost and save what you find
+• Search people, posts and tags
+• Tell the feed to show fewer posts like a given one — it listens
+
+━━━━━━━━━━━━━━━━━━━━
+GROUPS AND MESSAGES
+━━━━━━━━━━━━━━━━━━━━
+• Create or join groups around a shared interest and share screenshots into them
+• Invite people directly, and manage the invitations you receive
+• Direct messages, with message requests so strangers cannot land in your inbox uninvited
+
+━━━━━━━━━━━━━━━━━━━━
+CONTROL THAT ACTUALLY WORKS
+━━━━━━━━━━━━━━━━━━━━
+• A private account, if you want one — approve every follower yourself
+• Block and mute anyone; hide words you would rather not see
+• Decide who can comment on and interact with your posts
+• Two-factor authentication, and a list of every active session you can revoke
+• Delete your account and its content from inside the app, whenever you want
+
+━━━━━━━━━━━━━━━━━━━━
+ARABIC AND ENGLISH
+━━━━━━━━━━━━━━━━━━━━
+Akukas is fully available in Arabic and English, including right-to-left layout throughout, plus a dark theme.
+
+━━━━━━━━━━━━━━━━━━━━
+ABOUT PERMISSIONS
+━━━━━━━━━━━━━━━━━━━━
+Akukas asks for an Accessibility Service so it can tell when you take a screenshot. That is the entire purpose of the app, and it is the only reason the permission is used — Akukas does not read the contents of your screen, and it never uploads a screenshot on its own. A screenshot leaves your device only when you choose to post or cloud-save it.
+
+A foreground service keeps detection running reliably in the background, and text recognition runs on your device rather than on our servers.
+
+We do not sell your personal data.
+
+Privacy Policy: https://akukas.ly/privacy
+Terms of Service: https://akukas.ly/terms
+Delete your account: https://akukas.ly/account-deletion
