@@ -22,7 +22,9 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:17-alpine
+        # Match production: Neon runs PostgreSQL 18. Testing a different major than you
+        # ship on means CI can pass while production breaks (and vice versa).
+        image: postgres:18-alpine
         env:
           POSTGRES_DB: screenshut_test
           POSTGRES_USER: postgres

@@ -247,19 +247,32 @@ return [
     ],
 
     'environments' => [
+        // Env-driven so worker counts track the box rather than being hardcoded. The per-worker
+        // `memory` ceilings in `defaults` above (128MB default/security, 256MB media) mean the
+        // worst-case Horizon footprint is:
+        //
+        //     (default x 128) + (security x 128) + (media x 256) MB
+        //
+        // The defaults below total ~1.0GB, sized for the 2 vCPU / 4GB production droplet where
+        // PHP-FPM, PostgreSQL, Redis, and both Pulse daemons share the same RAM. The previous
+        // hardcoded 6/2/4 totalled ~2.0GB, which overcommits that box — and Tesseract spawns as a
+        // subprocess *outside* PHP's memory accounting, on top of the media workers.
+        //
+        // Raise these when the droplet is resized; media is the expensive one (image decode + OCR)
+        // and is also CPU-bound, so keep it at or below the vCPU count.
         'production' => [
             'supervisor-default' => [
-                'maxProcesses' => 6,
+                'maxProcesses' => (int) env('HORIZON_DEFAULT_MAX_PROCESSES', 3),
                 'balanceMaxShift' => 1,
                 'balanceCooldown' => 3,
             ],
             'supervisor-security' => [
-                'maxProcesses' => 2,
+                'maxProcesses' => (int) env('HORIZON_SECURITY_MAX_PROCESSES', 1),
                 'balanceMaxShift' => 1,
                 'balanceCooldown' => 3,
             ],
             'supervisor-media' => [
-                'maxProcesses' => 4,
+                'maxProcesses' => (int) env('HORIZON_MEDIA_MAX_PROCESSES', 2),
                 'balanceMaxShift' => 1,
                 'balanceCooldown' => 3,
             ],

@@ -19,6 +19,20 @@ class PostgresSocialConcurrencyTest extends TestCase
     use DatabaseTruncation;
 
     /**
+     * `screenshot_categories` is reference data INSERTed by the migration that creates it
+     * (2026_07_20_000010_add_screenshot_metadata), not by a seeder — so truncating it
+     * destroys it for the rest of the process. Later classes use RefreshDatabase, which
+     * finds RefreshDatabaseState::$migrated already true and never re-runs migrations, so
+     * the rows never come back and every `ScreenshotCategory::firstOrFail()` downstream
+     * blows up (RecommendationCandidateGenerationTest, RecommendationFeedbackAdministrationTest).
+     *
+     * The trait merges this with the migrations table, so both are preserved.
+     *
+     * @var list<string>
+     */
+    protected array $exceptTables = ['screenshot_categories'];
+
+    /**
      * Both tests below fork real child processes that write on their own connections, so
      * their rows are committed rather than held in a rollback-able transaction — which is
      * exactly why this class uses DatabaseTruncation instead of RefreshDatabase.

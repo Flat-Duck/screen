@@ -174,10 +174,23 @@ retention pruning for telemetry, analytics, posts, users, and Telescope.
 - [ ] **Wire the alerting.** The highest-value remaining item. Pulse is a dashboard, not a pager;
       `/up/deep` is verified working and correctly returns 404 without the secret, so it is ready
       for a monitor — but nothing is watching it yet, and nobody gets woken up.
-- [ ] **B6 — k6 baseline.** Cannot run here: k6 is not installed and there is no staging target, and
-      `docs/future_12_release_readiness.md` forbids aiming it at production without written change
-      authority. The script itself was syntax-checked and parses cleanly, so it will not fail on
-      first use during a load window.
+- [ ] **B6 — k6 baseline (harness now validated; capacity number still needs staging).**
+      Installed k6 2.2.0 and ran the suite end to end against a disposable local instance
+      (scratch PostgreSQL, seeded account). The harness works — scenarios execute, metrics
+      collect, thresholds evaluate. **Two defects in the harness were found and documented in
+      `load/README.md`:**
+      1. *The analytics scenario could never pass.* `POST /v1/analytics/content-events` requires
+         an active `DeviceSession` bound to the exact token presented, but `load/README.md` said
+         any "user Sanctum token". A `createToken()` token returns 401 every time; a token from
+         the device-backed login flow returns 200. Verified both ways. Fixing the token alone cut
+         the failure rate from **42.5% to 14%**.
+      2. *One token cannot generate load.* Every limiter is per-user, and `readJourneys` calls
+         `search/posts` each iteration against a **20/min** budget (confirmed via
+         `X-RateLimit-Limit: 20`). A single `USER_TOKEN` measures the rate limiter, not the app —
+         a real run needs a pool of accounts sharded across VUs.
+      Timings from that run are **not** a capacity baseline: `artisan serve` on a laptop was the
+      bottleneck. A real baseline still needs staging, and `docs/future_12_release_readiness.md`
+      forbids aiming this at production without written change authority.
 - [ ] **B7 — Backup/restore drill.** Needs the managed snapshot facility, R2 versioning, and an
       isolated environment — not reproducible locally. The runbook's own verification commands
       (`about`, `migrate:status`, `api:export-contract --check`) were confirmed working in the

@@ -13,4 +13,4 @@
 SHELL=/bin/sh
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 
-* * * * * www-data /usr/bin/php8.4 /var/www/screenshut-telemetry/artisan schedule:run >> /dev/null 2>&1
+* * * * * www-data /usr/bin/php8.4 /var/www/akukas/artisan schedule:run >> /dev/null 2>&1
