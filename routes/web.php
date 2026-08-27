@@ -10,6 +10,7 @@ use App\Http\Controllers\EmailChangeVerificationController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\ExperimentStatusController;
 use App\Http\Controllers\HealthCheckController;
+use App\Http\Controllers\LegalController;
 use App\Http\Controllers\ModerationCaseController;
 use App\Http\Controllers\OperationsDashboardController;
 use App\Http\Controllers\RecommendationAdminController;
@@ -20,6 +21,20 @@ use Illuminate\Support\Facades\Route;
 Route::view('/', 'welcome')->name('home');
 
 Route::get('/up/deep', HealthCheckController::class)->name('health.deep');
+
+/*
+ * Public legal documents. Play Console requires a reachable Privacy Policy URL, and the
+ * Android app links out to these rather than embedding the text — legal copy changes far
+ * more often than app releases.
+ *
+ * `/privacy` and `/terms` negotiate the language from Accept-Language; the `/{locale}`
+ * variants are the stable links to give Play, app menus, and anyone else. Deliberately
+ * unauthenticated and cacheable — Cloudflare should serve these from the edge.
+ */
+Route::get('/{document}/{locale?}', LegalController::class)
+    ->whereIn('document', ['privacy', 'terms'])
+    ->whereIn('locale', ['en', 'ar'])
+    ->name('legal.show');
 
 // Opened from an email client (see EmailChangeService), never called by the Android app
 // itself — not under /api/v1 for that reason. `signed` alone verifies the link wasn't
