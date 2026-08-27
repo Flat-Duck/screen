@@ -17,6 +17,7 @@ use Illuminate\Console\Events\ScheduledTaskFailed;
 use Illuminate\Console\Events\ScheduledTaskFinished;
 use Illuminate\Console\Events\ScheduledTaskStarting;
 use Illuminate\Foundation\DevCommands;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -70,10 +71,51 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         DevCommands::artisan('horizon', 'queue');
+        $this->configureTrustedProxies();
         $this->configureDefaults();
         $this->configureGates();
         $this->configureOperationsMonitoring();
         URL::forceScheme('https');
+    }
+
+    /**
+     * Production sits behind Cloudflare *and* nginx, so without this every request reports the
+     * proxy's address as the client IP. That is not cosmetic: `$request->ip()` is the throttle
+     * key for `auth-register`, `auth-login`, `auth-social` and `two-factor-challenge`, the
+     * fallback key for every per-user limiter, and part of Fortify's login throttle. Left
+     * untrusted, all traffic collapses onto ONE key — the 10/min login limit then applies to the
+     * entire internet at once, locking real users out while barely slowing a distributed
+     * attacker. It also poisons the audit trail: `AuthController` stores it on the DeviceSession
+     * users see on the Sessions screen, and `AdminAuditLogger` records it.
+     *
+     * This lives here rather than in bootstrap/app.php's `trustProxies()` for two reasons: the
+     * container has no config repository that early, and `env()` there returns null once the
+     * config is cached — which production always is, so the setting would silently do nothing.
+     *
+     * `config('app.trusted_proxies')` is a comma-separated list, or '*'. Use '*' ONLY when the
+     * origin cannot be reached except through the proxy — otherwise X-Forwarded-For is
+     * attacker-supplied and this becomes a throttle bypass. Behind Cloudflare that means
+     * firewalling 80/443 to Cloudflare's published ranges.
+     */
+    protected function configureTrustedProxies(): void
+    {
+        $configured = config('app.trusted_proxies', '127.0.0.1');
+
+        if (! is_string($configured) || trim($configured) === '') {
+            return;
+        }
+
+        $proxies = trim($configured) === '*'
+            ? '*'
+            : array_values(array_filter(array_map(trim(...), explode(',', $configured))));
+
+        Request::setTrustedProxies(
+            $proxies === '*' ? ['0.0.0.0/0', '2000::/3'] : $proxies,
+            Request::HEADER_X_FORWARDED_FOR
+                | Request::HEADER_X_FORWARDED_HOST
+                | Request::HEADER_X_FORWARDED_PORT
+                | Request::HEADER_X_FORWARDED_PROTO,
+        );
     }
 
     /**

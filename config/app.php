@@ -65,6 +65,21 @@ return [
     |
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | Trusted Proxies
+    |--------------------------------------------------------------------------
+    |
+    | Comma-separated proxy IPs/CIDRs, or '*'. Consumed by bootstrap/app.php's
+    | trustProxies() call — see the note there on why an unset value silently
+    | collapses every IP-keyed rate limiter onto a single key. It lives here
+    | rather than being read with env() at bootstrap because env() returns null
+    | once the config is cached, which production always is.
+    |
+    */
+
+    'trusted_proxies' => env('TRUSTED_PROXIES', '127.0.0.1'),
+
     'timezone' => 'UTC',
 
     /*
