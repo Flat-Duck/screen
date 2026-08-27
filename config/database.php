@@ -99,6 +99,37 @@ return [
             'sslmode' => env('DB_SSLMODE', 'prefer'),
         ],
 
+        /*
+         * Same database, reached WITHOUT the connection pooler.
+         *
+         * Neon (and any PgBouncer in transaction mode) breaks Laravel Pulse: its
+         * `DatabaseStorage::store()` runs several upserts inside one transaction, and
+         * through the pooled endpoint the very first statement comes back
+         * `SQLSTATE[25P02] current transaction is aborted` — the transaction is already
+         * dead before Pulse issues anything. Verified empirically: identical digest, same
+         * data, pooled endpoint fails 100%, direct endpoint succeeds 100%.
+         *
+         * Symptom if this is misconfigured: `pulse:work` dies on a loop, supervisor gives
+         * up, and the Pulse dashboard silently stays empty while the Redis ingest stream
+         * grows. Nothing else in the app is affected — ordinary queries pool fine.
+         *
+         * DB_DIRECT_HOST defaults to DB_HOST so non-Neon environments (local, CI) need no
+         * extra configuration and this stays a single-host setup there.
+         */
+        'pgsql_direct' => [
+            'driver' => 'pgsql',
+            'host' => env('DB_DIRECT_HOST', env('DB_HOST', '127.0.0.1')),
+            'port' => env('DB_PORT', '5432'),
+            'database' => env('DB_DATABASE', 'laravel'),
+            'username' => env('DB_USERNAME', 'root'),
+            'password' => env('DB_PASSWORD', ''),
+            'charset' => env('DB_CHARSET', 'utf8'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'search_path' => 'public',
+            'sslmode' => env('DB_SSLMODE', 'prefer'),
+        ],
+
         'sqlsrv' => [
             'driver' => 'sqlsrv',
             'url' => env('DB_URL'),

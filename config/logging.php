@@ -70,6 +70,12 @@ return [
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
             'days' => env('LOG_DAILY_DAYS', 14),
+            // Group-writable: in production the web/queue processes run as www-data while
+            // deploy runs artisan by hand. Monolog creates the daily file 0644 owned by
+            // whichever user wrote first, so the other one then fails to append — and a
+            // failed log write throws, which is enough to kill a long-running daemon
+            // (it took out pulse:work on first deploy). 0664 lets both write.
+            'permission' => 0664,
             'replace_placeholders' => true,
         ],
 
