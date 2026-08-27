@@ -32,7 +32,7 @@ Route::get('/up/deep', HealthCheckController::class)->name('health.deep');
  * unauthenticated and cacheable — Cloudflare should serve these from the edge.
  */
 Route::get('/{document}/{locale?}', LegalController::class)
-    ->whereIn('document', ['privacy', 'terms'])
+    ->whereIn('document', ['privacy', 'terms', 'account-deletion'])
     ->whereIn('locale', ['en', 'ar'])
     ->name('legal.show');
 

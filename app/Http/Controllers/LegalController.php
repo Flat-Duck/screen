@@ -20,7 +20,7 @@ use Symfony\Component\HttpFoundation\Response as HttpResponse;
 class LegalController extends Controller
 {
     /** Documents this controller will serve. Anything else 404s rather than probing the disk. */
-    private const DOCUMENTS = ['privacy', 'terms'];
+    private const DOCUMENTS = ['privacy', 'terms', 'account-deletion'];
 
     /** Locales with a translation. `en` is the fallback when a translation is missing. */
     private const LOCALES = ['en', 'ar'];

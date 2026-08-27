@@ -7,7 +7,7 @@ Covers a first production install and every subsequent deploy. Companion files l
 
 | Thing | Value |
 |---|---|
-| App root | `/var/www/screenshut-telemetry` |
+| App root | `/var/www/akukas` |
 | PHP binary | `/usr/bin/php8.4` |
 | Web/CLI user | `www-data` |
 
@@ -110,7 +110,7 @@ never mass-assignable:
 ## 2. Every deploy
 
 ```bash
-cd /var/www/screenshut-telemetry
+cd /var/www/akukas
 /usr/bin/php8.4 artisan down --retry=60                 # optional, for migrations
 
 git pull
@@ -122,6 +122,11 @@ npm ci && npm run build
 /usr/bin/php8.4 artisan route:cache
 /usr/bin/php8.4 artisan view:cache
 /usr/bin/php8.4 artisan event:cache
+
+# MANDATORY — not an optimisation. FPM runs with opcache.validate_timestamps=0, so it
+# never re-reads changed files. bootstrap/cache/routes-v7.php is itself a PHP file, so a
+# freshly rebuilt route cache keeps serving the PREVIOUS compiled version until this runs.
+sudo systemctl reload php8.4-fpm
 
 /usr/bin/php8.4 artisan horizon:terminate
 /usr/bin/php8.4 artisan pulse:restart
@@ -186,6 +191,7 @@ git checkout <previous-tag>
 composer install --no-dev --optimize-autoloader
 npm ci && npm run build
 /usr/bin/php8.4 artisan config:cache route:cache view:cache event:cache
+sudo systemctl reload php8.4-fpm          # mandatory — see the note in section 2
 /usr/bin/php8.4 artisan horizon:terminate && /usr/bin/php8.4 artisan pulse:restart
 ```
 
@@ -203,6 +209,7 @@ there for exactly this moment.
 |---|---|
 | `Composer detected issues in your platform ... requires >= 8.4.1` | A bare `php` resolved to 8.2/8.3. Use the absolute 8.4 path |
 | Config change has no effect | `config:cache` not re-run; cached config ignores `.env` |
+| **New route 404s, or code changes don't apply, even after `route:cache`** | **`php8.4-fpm` not reloaded.** With `opcache.validate_timestamps=0` FPM serves the previously compiled bytecode. Symptom is confusing because `artisan route:list` shows the route correctly — the CLI has `validate_timestamps=1`, so it reads the real file while FPM does not |
 | Pulse dashboard empty under real traffic | `pulse:work` not running with `PULSE_INGEST_DRIVER=redis` |
 | Jobs queue up, nothing processes | Horizon not running, or `QUEUE_CONNECTION` is not `redis` |
 | Jobs processed twice / erratically | A stray `queue:work` running alongside Horizon |

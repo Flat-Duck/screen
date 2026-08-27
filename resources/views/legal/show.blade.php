@@ -2,6 +2,7 @@
     $titles = [
         'privacy' => ['en' => 'Privacy Policy', 'ar' => 'سياسة الخصوصية'],
         'terms' => ['en' => 'Terms of Service', 'ar' => 'شروط الخدمة'],
+        'account-deletion' => ['en' => 'Delete your account', 'ar' => 'حذف الحساب'],
     ];
     $localeNames = ['en' => 'English', 'ar' => 'العربية'];
     $title = $titles[$document][$locale] ?? ucfirst($document);

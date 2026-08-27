@@ -13,7 +13,7 @@ class LegalPagesTest extends TestCase
 {
     public static function documentProvider(): array
     {
-        return [['privacy'], ['terms']];
+        return [['privacy'], ['terms'], ['account-deletion']];
     }
 
     #[DataProvider('documentProvider')]
@@ -33,6 +33,13 @@ class LegalPagesTest extends TestCase
     {
         $this->get('/privacy', ['Accept-Language' => 'ar'])->assertOk()->assertSee('lang="ar"', false);
         $this->get('/privacy', ['Accept-Language' => 'en-GB,en;q=0.9'])->assertOk()->assertSee('lang="en"', false);
+    }
+
+    /** Play Console requires a web-reachable account-deletion URL; a 404 here blocks submission. */
+    public function test_account_deletion_page_documents_both_routes(): void
+    {
+        $this->get('/account-deletion')->assertOk()->assertSee('akukasapp@gmail.com', false);
+        $this->get('/account-deletion/ar')->assertOk()->assertSee('dir="rtl"', false);
     }
 
     public function test_unknown_documents_and_locales_are_not_found(): void
