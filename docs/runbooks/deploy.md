@@ -34,7 +34,7 @@ blank or wrong:
 |---|---|
 | `APP_URL` | Passkeys derive their relying-party ID from it (`config/fortify.php`); a mismatch breaks passkey login for everyone |
 | `MAIL_*` | Left at `log`, email verification and password resets are written to a file and never sent — with no error |
-| `R2_PUBLIC_URL` | Uploads succeed but no post image ever renders for a viewer |
+| `R2_BUCKET` privacy | Anonymous/public access bypasses account privacy even when the API rejects the viewer; the bucket must deny unauthenticated reads |
 | `FIREBASE_*` | Push sending is **silently skipped**, not an error |
 | `HEALTH_CHECK_SECRET` | Unset means `/up/deep` 404s for everyone, so uptime monitoring is dark |
 | `PASSKEYS_USER_HANDLE_SECRET` | Defaults to `APP_KEY`; set it explicitly or a future key rotation invalidates every registered passkey |
@@ -140,6 +140,9 @@ last release's job code against this release's database.
 
 Caching config is what makes `.env` stop being read at runtime — re-run `config:cache` after any
 env change, or the change appears to have no effect.
+
+For the first deployment of signed media delivery, follow
+[`docs/runbooks/private-media-cutover.md`](private-media-cutover.md) before reopening traffic.
 
 ---
 

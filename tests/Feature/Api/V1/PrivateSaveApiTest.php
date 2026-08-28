@@ -16,7 +16,7 @@ class PrivateSaveApiTest extends TestCase
 
     public function test_storing_a_private_save_uploads_and_returns_it(): void
     {
-        Storage::fake('public');
+        Storage::fake('local');
         Sanctum::actingAs($user = User::factory()->create());
 
         $response = $this->postJson('/api/v1/private-saves', [
@@ -28,7 +28,8 @@ class PrivateSaveApiTest extends TestCase
             ->assertJsonPath('data.height', 800);
         $save = PrivateSave::firstOrFail();
         $this->assertSame($user->id, $save->user_id);
-        Storage::disk('public')->assertExists($save->path);
+        $this->assertSame('local', $save->source_disk);
+        Storage::disk('local')->assertExists($save->path);
     }
 
     public function test_index_only_returns_the_viewers_own_saves(): void
@@ -44,16 +45,19 @@ class PrivateSaveApiTest extends TestCase
 
     public function test_destroy_deletes_the_file_and_the_row(): void
     {
-        Storage::fake('public');
+        Storage::fake('local');
         Sanctum::actingAs($user = User::factory()->create());
-        Storage::disk('public')->put('private-saves/1/shot.jpg', 'fake');
-        $save = PrivateSave::factory()->for($user)->create(['path' => 'private-saves/1/shot.jpg']);
+        Storage::disk('local')->put('private-saves/1/shot.jpg', 'fake');
+        $save = PrivateSave::factory()->for($user)->create([
+            'path' => 'private-saves/1/shot.jpg',
+            'source_disk' => 'local',
+        ]);
 
         $response = $this->deleteJson("/api/v1/private-saves/{$save->id}");
 
         $response->assertNoContent();
         $this->assertModelMissing($save);
-        Storage::disk('public')->assertMissing('private-saves/1/shot.jpg');
+        Storage::disk('local')->assertMissing('private-saves/1/shot.jpg');
     }
 
     public function test_destroy_is_not_allowed_for_someone_elses_save(): void

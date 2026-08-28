@@ -67,7 +67,8 @@ Card-level changes needed vs. the mockup: drop the "source badge" (TWITTER/FIGMA
   `docs/frontend-handoff.md`'s 2026-07-19 entry for the exact endpoints/response shape
   (`POST /v1/comments/{id}/like`, `GET /v1/comments/{id}/replies`, one level of nesting
   only). This supersedes the "drop" guidance that used to be here.
-- "Download Original" — just fetch `media[].original_url` directly, no API endpoint needed.
+- "Download Original" — fetch the short-lived signed `media[].original_url` returned by the API.
+  Do not persist it as a permanent object URL; refresh the post if it expires.
 - Overflow menu (`more_vert`): show "Delete Post" only when the current user owns the post, wired to `DELETE /v1/posts/{id}`.
 - "Share" (top bar icon): native Android share sheet with the image/deep link — not an API call.
 
@@ -125,7 +126,11 @@ client explicitly.
 Every list endpoint (`feed`, `users/{id}/posts`, `followers`, `following`, `posts/{id}/comments`) is cursor-paginated (`meta.next_cursor`, `links.next`). Use Jetpack Paging 3 with a `PagingSource` keyed on the cursor param, not page numbers.
 
 ### Images
-Use Coil (Kotlin-first, simpler than Glide for this). Load `media[].url` for feed/grid thumbnails (already resolved server-side to thumbnail-or-original) and `original_url` for the detail view / download. For uploads, multipart the same local screenshot files the app already indexes.
+Use Coil (Kotlin-first, simpler than Glide for this). Load `media[].url` for feed/grid thumbnails
+(already resolved server-side to thumbnail-or-original) and `original_url` for the detail view /
+download. These are twenty-minute signed URLs, so refresh the containing API resource after a 403
+instead of caching the URL string as durable data. For uploads, multipart the same local screenshot
+files the app already indexes.
 
 ### Error handling
 - `401` → token invalid/expired, force re-login.

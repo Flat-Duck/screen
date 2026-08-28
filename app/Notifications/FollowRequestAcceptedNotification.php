@@ -27,7 +27,7 @@ class FollowRequestAcceptedNotification extends Notification implements FcmNotif
         return [
             'user_id' => $this->user->id,
             'username' => $this->user->username,
-            'avatar_url' => $this->user->avatarUrl(),
+            'avatar_url' => $notifiable instanceof User ? $this->user->avatarUrl($notifiable) : null,
         ];
     }
 

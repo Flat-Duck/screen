@@ -14,11 +14,13 @@ class CreatePrivateSave
     public function __invoke(User $user, UploadedFile $image): PrivateSave
     {
         $directory = 'private-saves/'.$user->id;
-        $stored = $this->images->storeOriginal($image, $directory);
+        $disk = (string) config('social.private_media_disk', 'local');
+        $stored = $this->images->storeOriginal($image, $directory, diskName: $disk);
 
         return PrivateSave::create([
             'user_id' => $user->id,
             'path' => $stored['path'],
+            'source_disk' => $disk,
             'width' => $stored['width'],
             'height' => $stored['height'],
             'mime_type' => $stored['mime'],

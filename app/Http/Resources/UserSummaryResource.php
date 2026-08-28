@@ -19,11 +19,16 @@ class UserSummaryResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $viewer = $request->user();
+        if (! $viewer instanceof User) {
+            $viewer = $this->resource;
+        }
+
         return [
             'id' => $this->id,
             'username' => $this->username,
             'name' => $this->name,
-            'avatar_url' => $this->avatarUrl(),
+            'avatar_url' => $this->avatarUrl($viewer),
             'account_visibility' => $this->account_visibility->value,
         ];
     }

@@ -6,7 +6,7 @@ use Database\Factories\PostMediaFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 
 /**
  * One image within a Post's carousel. `original_path` is always servable immediately
@@ -78,23 +78,37 @@ class PostMedia extends Model
         return $this->belongsTo(Post::class);
     }
 
-    public function originalUrl(): string
+    public function originalUrl(User $viewer): string
     {
         if (str_starts_with($this->original_path, 'https://') || str_starts_with($this->original_path, 'http://')) {
             return $this->original_path;
         }
 
-        return Storage::disk($this->source_disk ?? config('social.media_disk'))->url($this->original_path);
+        return $this->deliveryUrl('original', $viewer);
     }
 
-    public function thumbnailUrl(): ?string
+    public function thumbnailUrl(User $viewer): ?string
     {
         if ($this->thumbnail_path && (str_starts_with($this->thumbnail_path, 'https://') || str_starts_with($this->thumbnail_path, 'http://'))) {
             return $this->thumbnail_path;
         }
 
         return $this->thumbnail_path
-            ? Storage::disk($this->source_disk ?? config('social.media_disk'))->url($this->thumbnail_path)
+            ? $this->deliveryUrl('thumbnail', $viewer)
             : null;
+    }
+
+    public function sourceDisk(): string
+    {
+        return $this->source_disk ?? (string) config('social.media_disk');
+    }
+
+    private function deliveryUrl(string $variant, User $viewer): string
+    {
+        return URL::temporarySignedRoute(
+            'media.posts.show',
+            now()->addSeconds((int) config('social.media_url_ttl_seconds', 1200)),
+            ['media' => $this->getKey(), 'variant' => $variant, 'viewer' => $viewer->getKey()],
+        );
     }
 }

@@ -38,8 +38,12 @@ class ImageProcessingService
      *
      * @return array{path: string, width: int, height: int, mime: string, size: int}
      */
-    public function storeOriginal(UploadedFile $file, string $directory, ?int $maxDimension = null): array
-    {
+    public function storeOriginal(
+        UploadedFile $file,
+        string $directory,
+        ?int $maxDimension = null,
+        ?string $diskName = null,
+    ): array {
         $image = $this->manager->read($file->getRealPath())->orient();
 
         if ($maxDimension !== null) {
@@ -52,7 +56,7 @@ class ImageProcessingService
 
         $path = sprintf('%s/%s.%s', $directory, (string) Str::uuid(), $extension);
 
-        if (! Storage::disk(config('social.media_disk'))->put($path, (string) $encoded)) {
+        if (! Storage::disk($diskName ?? config('social.media_disk'))->put($path, (string) $encoded)) {
             throw new RuntimeException("Failed to store original image [{$path}].");
         }
 

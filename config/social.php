@@ -16,6 +16,16 @@ return [
 
     'media_disk' => env('SOCIAL_MEDIA_DISK', 'public'),
 
+    // Owner-only files must never be written to the web-served public disk. Production can use
+    // the same private R2 disk as post media; local development uses storage/app/private.
+    'private_media_disk' => env('SOCIAL_PRIVATE_MEDIA_DISK', 'local'),
+
+    // API resources return signed application URLs, never raw object-store paths. A short TTL
+    // bounds capability leakage while still allowing image clients to retry and cache briefly.
+    'media_url_ttl_seconds' => (int) env('SOCIAL_MEDIA_URL_TTL_SECONDS', 1200),
+
+    'public_media_cache_seconds' => (int) env('SOCIAL_PUBLIC_MEDIA_CACHE_SECONDS', 300),
+
     'media_cleanup_grace_minutes' => (int) env('SOCIAL_MEDIA_CLEANUP_GRACE_MINUTES', 60),
 
     'media_job_timeout_seconds' => (int) env('SOCIAL_MEDIA_JOB_TIMEOUT_SECONDS', 60),

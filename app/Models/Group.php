@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 
 /**
  * @property bool|null $is_member Set per-request by GroupService for the current viewer — not a DB column.
@@ -48,10 +48,14 @@ class Group extends Model
         return $this->members()->where('user_id', $user->id)->value('role');
     }
 
-    public function photoUrl(): ?string
+    public function photoUrl(User $viewer): ?string
     {
         return $this->photo_path
-            ? Storage::disk(config('social.media_disk'))->url($this->photo_path)
+            ? URL::temporarySignedRoute(
+                'media.groups.show',
+                now()->addSeconds((int) config('social.media_url_ttl_seconds', 1200)),
+                ['group' => $this->getKey(), 'viewer' => $viewer->getKey()],
+            )
             : null;
     }
 }

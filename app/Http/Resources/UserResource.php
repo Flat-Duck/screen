@@ -20,12 +20,17 @@ class UserResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $viewer = $request->user();
+        if (! $viewer instanceof User) {
+            $viewer = $this->resource;
+        }
+
         return [
             'id' => $this->id,
             'username' => $this->username,
             'name' => $this->name,
             'bio' => $this->bio,
-            'avatar_url' => $this->avatarUrl(),
+            'avatar_url' => $this->avatarUrl($viewer),
             'country_code' => $this->country_code,
             'account_visibility' => $this->account_visibility->value,
             // Unlike every other field here, birth_date is only ever included on your

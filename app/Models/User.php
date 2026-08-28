@@ -20,7 +20,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
@@ -347,10 +347,14 @@ class User extends Authenticatable implements PasskeyUser
         return $this->hasMany(PointTransaction::class);
     }
 
-    public function avatarUrl(): ?string
+    public function avatarUrl(User $viewer): ?string
     {
         return $this->avatar_path
-            ? Storage::disk(config('social.media_disk'))->url($this->avatar_path)
+            ? URL::temporarySignedRoute(
+                'media.avatars.show',
+                now()->addSeconds((int) config('social.media_url_ttl_seconds', 1200)),
+                ['user' => $this->getKey(), 'viewer' => $viewer->getKey()],
+            )
             : null;
     }
 

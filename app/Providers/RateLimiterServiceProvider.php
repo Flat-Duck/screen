@@ -43,6 +43,13 @@ class RateLimiterServiceProvider extends ServiceProvider
 
         RateLimiter::for('reads', fn (Request $request) => $this->byUser($request, 60));
 
+        // Signed media routes have no authenticated principal. The signature protects `viewer`,
+        // so pair it with IP to avoid one carrier-NAT address sharing a tiny global image budget
+        // while also preventing a remote caller from exhausting a victim's viewer-only key.
+        RateLimiter::for('media-delivery', fn (Request $request) => Limit::perMinute(600)->by(
+            (string) $request->query('viewer', 'unknown').'|'.$request->ip(),
+        ));
+
         // Tighter than 'reads' — a LIKE-based search is a heavier query per request than
         // a typical indexed list fetch.
         RateLimiter::for('search', fn (Request $request) => $this->byUser($request, 20));

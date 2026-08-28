@@ -10,7 +10,7 @@ class AdminPostMediaController extends Controller
 {
     public function __invoke(PostMedia $media): StreamedResponse
     {
-        $disk = Storage::disk(config('social.media_disk'));
+        $disk = Storage::disk($media->sourceDisk());
         abort_unless($disk->exists($media->original_path), 404);
 
         return response()->stream(function () use ($disk, $media): void {

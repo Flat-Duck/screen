@@ -53,7 +53,7 @@ class GroupApiTest extends TestCase
         $group = Group::findOrFail($response->json('data.id'));
         $this->assertNotNull($group->photo_path);
         Storage::disk('public')->assertExists($group->photo_path);
-        $this->assertSame($group->photoUrl(), $response->json('data.photo_url'));
+        $this->assertSame($group->photoUrl($creator), $response->json('data.photo_url'));
     }
 
     public function test_discover_lists_groups_and_annotates_the_viewers_own_membership(): void

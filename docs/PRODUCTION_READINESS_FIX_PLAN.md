@@ -56,13 +56,14 @@ Acceptance criteria:
 
 Repository: Backend
 
-- [ ] Define which media classes are public, follower-restricted, owner-only, archived, and deleted.
-- [ ] Move private/restricted objects to a non-public bucket or prefix.
-- [ ] Return short-lived signed URLs or serve media through an authorization-checked endpoint.
-- [ ] Ensure blocks, privacy changes, archive, deletion, and private saves revoke future access.
-- [ ] Define cache headers and maximum signed-URL lifetime.
-- [ ] Add authorization and expired-URL feature tests.
-- [ ] Document migration of existing R2 objects without exposing them during cutover.
+- [x] Define access rules for posts, private saves, avatars, group photos, archives, and deleted media.
+- [x] Configure production media and direct uploads for a private R2 bucket with no public URL.
+- [x] Return twenty-minute, viewer-bound signed URLs through authorization-checked endpoints.
+- [x] Recheck blocks, privacy, membership, archive, deletion, and ownership when media is fetched.
+- [x] Define bounded public caching and `no-store` for restricted media.
+- [x] Add authorization, revocation, tampering, and expired-URL feature tests.
+- [x] Document the zero-public-exposure R2 cutover and legacy-object verification procedure.
+- [ ] Apply the production R2 cutover and confirm an old permanent URL is anonymously denied.
 
 Acceptance criteria:
 
