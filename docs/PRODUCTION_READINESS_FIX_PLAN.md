@@ -74,14 +74,15 @@ Acceptance criteria:
 
 Repository/external system: Android and Google Play Console
 
-- [ ] Declare `READ_MEDIA_VISUAL_USER_SELECTED` and test Android 14+ partial access.
-- [ ] Implement a prominent accessibility disclosure shown before opening system settings.
-- [ ] Capture affirmative consent independently of the Android permission screen.
-- [ ] Explain screenshot capture, gesture use, data collection, upload, retention, and opt-out behavior.
-- [ ] Add graceful behavior for denied, limited, revoked, and permanently denied access.
-- [ ] Prepare AccessibilityService, broad photo-access, and special-use foreground-service declarations.
+- [x] Declare `READ_MEDIA_VISUAL_USER_SELECTED` and add Android 14+ full/partial/revoked access tests.
+- [x] Implement a prominent accessibility disclosure shown before opening system settings.
+- [x] Capture versioned affirmative consent independently of the Android permission screen.
+- [x] Explain screenshot capture, gesture use, data collection, upload, retention, and opt-out behavior.
+- [x] Add graceful behavior for denied, limited, revoked, and permanently denied access.
+- [x] Prepare AccessibilityService, broad photo-access, and special-use foreground-service declarations in the Android submission packet.
 - [ ] Record the required demonstration videos and ensure store copy matches actual behavior.
-- [ ] Validate Data Safety answers against backend retention and telemetry behavior.
+- [ ] Approve the drafted Data Safety answers after resolving the hosted privacy-policy mismatches and verifying Firebase production settings.
+- [x] Run the new Android tests and Android lint with the configured `/Volumes/devDSK` toolchain.
 
 Acceptance criteria:
 
@@ -93,11 +94,12 @@ Acceptance criteria:
 
 Repository: Backend
 
-- [ ] Update deployment and rollback commands to select `pgsql_direct` explicitly.
-- [ ] Ensure configuration caching does not cause migrations to reuse the pooled host.
-- [ ] Add a safe preflight that identifies the selected connection without printing credentials.
-- [ ] Exercise deploy, rollback, and recovery on a Neon branch cloned from production.
-- [ ] Update CI or deployment automation to enforce the direct migration connection.
+- [x] Update deployment and rollback commands to select `pgsql_direct` explicitly.
+- [x] Refresh and validate configuration caching before migrations so a stale pooled host cannot be reused.
+- [x] Add a safe preflight that identifies the selected connection without printing credentials.
+- [x] Exercise deploy, rollback, recovery, and schema diff on an expiring Neon child cloned from production.
+- [x] Update CI and deployment automation to enforce the direct migration connection.
+- [ ] Enable Neon branch protection for `production` (reported `protected=false` during the drill).
 
 Acceptance criteria:
 

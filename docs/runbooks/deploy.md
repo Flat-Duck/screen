@@ -63,10 +63,16 @@ a fatal.
 ### 1.3 Database
 
 ```bash
-/usr/bin/php8.4 artisan migrate --force
+deploy/database.sh migrate
 ```
 
-On an existing install this is also what creates the `pulse_*` tables.
+The wrapper refreshes Laravel's configuration cache first, runs a sanitized connectivity preflight,
+and explicitly selects `pgsql_direct`. This prevents a stale cached `DB_HOST` or an inline env
+override from silently routing DDL through Neon's pooler. Its output includes only the connection,
+driver, host, cache state, and connectivity result—never the username, password, or URL.
+
+On an existing install this is also what creates the `pulse_*` tables. Application requests keep
+using the default pooled `pgsql` connection.
 
 ### 1.4 Permissions
 
@@ -116,7 +122,7 @@ cd /var/www/akukas
 git pull
 composer install --no-dev --optimize-autoloader
 npm ci && npm run build
-/usr/bin/php8.4 artisan migrate --force
+deploy/database.sh migrate
 
 /usr/bin/php8.4 artisan config:cache
 /usr/bin/php8.4 artisan route:cache
@@ -189,6 +195,19 @@ taking traffic almost always means `pulse:work` is not running.
 
 ## 4. Rollback
 
+If the release ran migrations, decide whether each `down()` is known-good and non-destructive
+**before checking out the previous tag**. When rollback is approved, inspect and roll back through
+the same direct-connection guard:
+
+```bash
+deploy/database.sh status
+deploy/database.sh rollback --step=1
+deploy/database.sh status
+```
+
+If rollback is destructive or uncertain, do not run it; restore the tested database/media recovery
+set instead. Record the migration batch, command output, operator, and UTC time.
+
 ```bash
 git checkout <previous-tag>
 composer install --no-dev --optimize-autoloader
@@ -198,11 +217,13 @@ sudo systemctl reload php8.4-fpm          # mandatory — see the note in sectio
 /usr/bin/php8.4 artisan horizon:terminate && /usr/bin/php8.4 artisan pulse:restart
 ```
 
-**Migrations do not roll back cleanly.** If the bad release migrated, decide deliberately between
-`migrate:rollback` (only when the down migrations are known-good and non-destructive) and a
-restore from backup — see `docs/runbooks/backup_restore.md`. Never run `migrate:fresh` on
+**Migrations do not always roll back cleanly.** Decide deliberately between the guarded rollback
+above and a restore from backup — see `docs/runbooks/backup_restore.md`. Never run `migrate:fresh` on
 production; `AppServiceProvider::boot()` prohibits destructive commands there, and that guard is
 there for exactly this moment.
+
+Before production, complete the production-clone procedure in
+[`docs/runbooks/neon-migration-drill.md`](neon-migration-drill.md).
 
 ---
 

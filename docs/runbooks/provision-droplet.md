@@ -174,11 +174,11 @@ DB_PASSWORD=<neon-password>
 DB_SSLMODE=require          # Neon refuses plaintext; without this every connection fails
 ```
 
-Run schema changes against the **direct** host (drop `-pooler`), so DDL is not competing with a
-transaction pooler:
+Run schema changes through the guarded **direct** connection (drop `-pooler` from
+`DB_DIRECT_HOST`), so cached configuration cannot route DDL through a transaction pooler:
 
 ```bash
-DB_HOST=ep-xxxx.eu-central-1.aws.neon.tech /usr/bin/php8.4 artisan migrate --force
+deploy/database.sh migrate
 ```
 
 ### Scale-to-zero

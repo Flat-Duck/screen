@@ -100,12 +100,14 @@ jobs:
         env:
           DB_CONNECTION: pgsql
           DB_HOST: 127.0.0.1
+          DB_DIRECT_HOST: 127.0.0.1
           DB_PORT: 5432
           DB_DATABASE: screenshut_test
           DB_USERNAME: postgres
           DB_PASSWORD: postgres
         run: |
-          php artisan migrate:fresh --force
+          php artisan database:migration-preflight --database=pgsql_direct
+          php artisan migrate:fresh --database=pgsql_direct --force
           php artisan test \
             tests/Feature/PostgresSocialConcurrencyTest.php \
             tests/Feature/UnifiedDeviceLifecycleTest.php \
