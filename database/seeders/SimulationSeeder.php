@@ -48,6 +48,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
+use function fake;
 class SimulationSeeder extends Seeder
 {
     public function run(): void

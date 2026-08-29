@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
 
+use function fake;
 class PostSeeder extends Seeder
 {
     public const POSTS_PER_USER = 10;
