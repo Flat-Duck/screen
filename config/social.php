@@ -73,6 +73,13 @@ return [
         'allowed_mime_types' => ['image/jpeg', 'image/png', 'image/webp'],
     ],
 
+    'images' => [
+        'max_dimension' => (int) env('SOCIAL_IMAGE_MAX_DIMENSION', 12000),
+        'max_pixels' => (int) env('SOCIAL_IMAGE_MAX_PIXELS', 40000000),
+        'remote_avatar_max_bytes' => (int) env('SOCIAL_REMOTE_AVATAR_MAX_BYTES', 5 * 1024 * 1024),
+        'remote_avatar_max_redirects' => (int) env('SOCIAL_REMOTE_AVATAR_MAX_REDIRECTS', 2),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Post Retention

@@ -3,17 +3,24 @@
 namespace App\Actions\Uploads;
 
 use App\Models\Upload;
+use App\Services\ImageSafetyInspector;
 use Illuminate\Support\Facades\Storage;
+use InvalidArgumentException;
 
 class CommitUpload
 {
-    public function __invoke(Upload $upload, string $imageSha256, ?string $ocrText): Upload
+    public function __construct(private readonly ImageSafetyInspector $inspector) {}
+
+    public function __invoke(Upload $upload, string $nonce, int $protocolVersion, string $imageSha256, ?string $ocrText): Upload
     {
         if ($upload->isExpired()) {
             abort(410, 'This upload has expired.');
         }
         if ($upload->status !== Upload::STATUS_UPLOADING) {
             abort(409, 'This upload has already been committed.');
+        }
+        if (! hash_equals($upload->nonce, $nonce) || $upload->protocol_version !== $protocolVersion) {
+            abort(422, 'The upload commit binding is invalid.');
         }
 
         $disk = Storage::disk(config('social.uploads.disk', 'r2'));
@@ -23,18 +30,24 @@ class CommitUpload
             abort(422, 'The uploaded object could not be found in storage.');
         }
 
-        // The client declared a size at prepare() time, before it had ever touched R2 — a
-        // mismatch against what actually landed means either a different file was substituted
-        // or the upload is otherwise not what it claims to be. Cheap integrity check even before
-        // any signature/hash-binding work (Phase 4) exists.
-        $actualSize = $disk->size($upload->object_key);
-        if ($upload->size_bytes !== null && $actualSize !== $upload->size_bytes) {
+        try {
+            $actual = $this->inspector->inspectObject($disk, $upload->object_key);
+        } catch (InvalidArgumentException $exception) {
             $upload->update(['status' => Upload::STATUS_REJECTED]);
-            abort(422, 'The uploaded object size does not match what was declared.');
+            abort(422, $exception->getMessage());
+        }
+
+        if ($upload->size_bytes !== $actual['size']
+            || $upload->mime_type !== $actual['mime']
+            || ! hash_equals(strtolower($imageSha256), $actual['sha256'])) {
+            $upload->update(['status' => Upload::STATUS_REJECTED]);
+            abort(422, 'The uploaded object does not match its declared size, type, or hash.');
         }
 
         $upload->update([
-            'image_sha256' => $imageSha256,
+            'image_sha256' => $actual['sha256'],
+            'width' => $actual['width'],
+            'height' => $actual['height'],
             'ocr_text' => $ocrText,
             'status' => Upload::STATUS_UPLOADED,
         ]);

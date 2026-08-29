@@ -16,6 +16,7 @@ class PrepareUploadRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'protocol_version' => ['required', 'integer', 'in:1'],
             'content_type' => ['required', 'string', Rule::in(config('social.uploads.allowed_mime_types'))],
             'byte_size' => ['required', 'integer', 'min:1', 'max:'.config('social.uploads.max_size_bytes')],
         ];

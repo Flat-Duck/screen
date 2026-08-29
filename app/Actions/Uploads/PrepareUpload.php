@@ -2,6 +2,7 @@
 
 namespace App\Actions\Uploads;
 
+use App\Models\DeviceSession;
 use App\Models\Upload;
 use App\Models\User;
 use Illuminate\Support\Facades\Storage;
@@ -10,7 +11,7 @@ use Illuminate\Support\Str;
 class PrepareUpload
 {
     /** @return array{upload: Upload, upload_url: string, headers: array<string, string>} */
-    public function __invoke(User $user, string $contentType, int $byteSize): array
+    public function __invoke(User $user, DeviceSession $session, string $contentType, int $byteSize, int $protocolVersion): array
     {
         $uploadId = (string) Str::uuid();
         $extension = match ($contentType) {
@@ -29,10 +30,12 @@ class PrepareUpload
         $upload = Upload::create([
             'upload_id' => $uploadId,
             'user_id' => $user->id,
+            'device_id' => $session->device_id,
             'object_key' => $objectKey,
             // Not consumed by anything on this Phase 1 path — see the migration's comment on
             // this column. Generated now so it exists for Phase 4 without another migration.
             'nonce' => Str::random(43),
+            'protocol_version' => $protocolVersion,
             'mime_type' => $contentType,
             'size_bytes' => $byteSize,
             'status' => Upload::STATUS_UPLOADING,

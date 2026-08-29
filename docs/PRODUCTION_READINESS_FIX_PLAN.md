@@ -117,7 +117,7 @@ Repositories: Backend and Android
 - [x] Define behavior for social accounts without a password.
 - [x] Rate-limit verification and recovery endpoints and avoid account enumeration.
 - [x] Add backend feature tests and Android UI/repository tests.
-- [ ] Execute the new Android tests and lint after the `/Volumes/devDSK` build JDK is reconnected.
+- [ ] **Side note — deferred:** execute the new Android tests and lint after the `/Volumes/devDSK` build JDK is reconnected.
 - [ ] Publish Android App Links `assetlinks.json` with the production signing fingerprint (manual/external release task).
 
 Acceptance criteria:
@@ -129,24 +129,27 @@ Acceptance criteria:
 
 ### 7. Preserve telemetry across transient outages
 
-- [ ] Separate permanent payload failures from retryable network/server failures.
-- [ ] Stop deleting crash data solely because a transient retry count was reached.
-- [ ] Bound storage using age and byte limits with explicit eviction priority.
-- [ ] Add exponential backoff with jitter and tests for offline, timeout, 429, and 5xx cases.
+- [x] Separate permanent payload failures from retryable network/server failures.
+- [x] Stop deleting crash data solely because a transient retry count was reached.
+- [x] Bound storage using age and byte limits with explicit eviction priority.
+- [x] Add exponential backoff with jitter and tests for offline, timeout, 429, and 5xx cases.
+- [ ] **Side note — deferred:** execute the telemetry unit tests and Android lint after the Android SDK/JDK toolchain is available.
 
 ### 8. Enforce or remove Firebase App Check
 
-- [ ] Verify App Check tokens server-side on the selected enrollment/auth/write endpoints.
-- [ ] Support staged enforcement, metrics, and development/debug tokens.
-- [ ] Define behavior during Firebase verification outages.
-- [ ] Remove the Android interceptor if App Check will not be enforced.
+- [x] Verify App Check tokens server-side on enrollment/auth/write endpoints.
+- [x] Support staged enforcement, structured metrics, and development/debug tokens.
+- [x] Define fail-closed behavior with cached keys during Firebase verification outages.
+- [x] Retain the Android interceptor because the backend now supports enforcement.
+- [ ] **Side note — external:** register release signing fingerprints and debug tokens in Firebase, monitor production verification results, then switch `FIREBASE_APP_CHECK_MODE` from `monitor` to `enforce`.
 
 ### 9. Implement push-notification deep links
 
-- [ ] Define a versioned notification payload contract.
-- [ ] Route post, conversation, follow, and other supported types to their intended destinations.
-- [ ] Validate IDs and provide a safe feed fallback for stale/deleted targets.
-- [ ] Test foreground, background, killed-process, authenticated, and signed-out states.
+- [x] Define and emit a versioned notification payload contract.
+- [x] Route post, conversation, follow, and other supported types to their intended destinations.
+- [x] Validate IDs and provide a safe feed fallback for invalid or stale/deleted targets.
+- [x] Route notification taps through current authentication and email-verification state.
+- [ ] **Side note — deferred:** execute Android unit/lint checks and device-test foreground, background, killed-process, authenticated, and signed-out notification states when the Android toolchain/device is available.
 
 ### 10. Harden image and direct-upload processing
 

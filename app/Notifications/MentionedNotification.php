@@ -50,6 +50,9 @@ class MentionedNotification extends Notification implements FcmNotification, Sho
             'body' => "{$this->mentioner->name}: ".Str::limit($this->excerpt(), 80),
             'data' => [
                 'type' => 'mention',
+                'post_id' => (string) ($this->mentionable instanceof Post
+                    ? $this->mentionable->id
+                    : $this->mentionable->post_id),
                 'mentionable_type' => $this->type(),
                 'mentionable_id' => (string) $this->mentionable->id,
             ],

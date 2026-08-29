@@ -15,6 +15,8 @@ class CommitUploadRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'protocol_version' => ['required', 'integer', 'in:1'],
+            'nonce' => ['required', 'string', 'size:43'],
             'image_sha256' => ['required', 'string', 'size:64', 'regex:/^[a-f0-9]{64}$/i'],
             // Device-claimed OCR text (see docs/SECURITY.md §4) — stored as-is for now. Nothing
             // reads or trusts this yet: no CategoryMatcher/spot-check wiring exists on this path,
