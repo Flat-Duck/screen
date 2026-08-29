@@ -13,6 +13,8 @@ use App\Services\Screenshots\SensitiveInformationAnalyzer;
 use App\Services\Screenshots\TesseractScreenshotTextExtractor;
 use App\Services\Storage\LaravelMediaFileStore;
 use Carbon\CarbonImmutable;
+use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Console\Events\ScheduledTaskFailed;
 use Illuminate\Console\Events\ScheduledTaskFinished;
 use Illuminate\Console\Events\ScheduledTaskStarting;
@@ -73,9 +75,25 @@ class AppServiceProvider extends ServiceProvider
         DevCommands::artisan('horizon', 'queue');
         $this->configureTrustedProxies();
         $this->configureDefaults();
+        $this->configureMobileAuthLinks();
         $this->configureGates();
         $this->configureOperationsMonitoring();
         URL::forceScheme('https');
+    }
+
+    /** Email links land on HTTPS first, then offer the native custom-scheme handoff. */
+    protected function configureMobileAuthLinks(): void
+    {
+        VerifyEmail::createUrlUsing(fn (User $notifiable): string => URL::temporarySignedRoute(
+            'mobile.email.verify',
+            now()->addMinutes(60),
+            ['user' => $notifiable->getKey(), 'hash' => sha1($notifiable->getEmailForVerification())],
+        ));
+
+        ResetPassword::createUrlUsing(fn (User $notifiable, string $token): string => route(
+            'mobile.password.reset',
+            ['token' => $token, 'email' => $notifiable->getEmailForPasswordReset()],
+        ));
     }
 
     /**

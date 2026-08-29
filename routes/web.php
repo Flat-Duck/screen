@@ -12,6 +12,8 @@ use App\Http\Controllers\ExperimentStatusController;
 use App\Http\Controllers\GroupPhotoDeliveryController;
 use App\Http\Controllers\HealthCheckController;
 use App\Http\Controllers\LegalController;
+use App\Http\Controllers\MobileEmailVerificationController;
+use App\Http\Controllers\MobilePasswordResetController;
 use App\Http\Controllers\ModerationCaseController;
 use App\Http\Controllers\OperationsDashboardController;
 use App\Http\Controllers\PostMediaDeliveryController;
@@ -25,6 +27,14 @@ use Illuminate\Support\Facades\Route;
 Route::view('/', 'welcome')->name('home');
 
 Route::get('/up/deep', HealthCheckController::class)->name('health.deep');
+
+Route::get('/mobile/email/verify/{user}/{hash}', MobileEmailVerificationController::class)
+    ->whereNumber('user')
+    ->middleware(['signed', 'throttle:6,1'])
+    ->name('mobile.email.verify');
+Route::get('/mobile/password/reset/{token}', MobilePasswordResetController::class)
+    ->middleware('throttle:30,1')
+    ->name('mobile.password.reset');
 
 // Image clients cannot reliably attach a Sanctum bearer token, so API resources issue these
 // short-lived signed capability URLs. The controllers still recheck the encoded viewer's current

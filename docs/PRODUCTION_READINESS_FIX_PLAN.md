@@ -111,12 +111,14 @@ Acceptance criteria:
 
 Repositories: Backend and Android
 
-- [ ] Decide which actions require a verified email address.
-- [ ] Prevent an unverified registration from permanently claiming another person's address.
-- [ ] Add mobile verification, resend, forgot-password, and reset-password flows.
-- [ ] Define behavior for social accounts without a password.
-- [ ] Rate-limit verification and recovery endpoints and avoid account enumeration.
-- [ ] Add backend feature tests and Android UI/repository tests.
+- [x] Decide which actions require a verified email address.
+- [x] Prevent an unverified registration from permanently claiming another person's address.
+- [x] Add mobile verification, resend, forgot-password, and reset-password flows.
+- [x] Define behavior for social accounts without a password.
+- [x] Rate-limit verification and recovery endpoints and avoid account enumeration.
+- [x] Add backend feature tests and Android UI/repository tests.
+- [ ] Execute the new Android tests and lint after the `/Volumes/devDSK` build JDK is reconnected.
+- [ ] Publish Android App Links `assetlinks.json` with the production signing fingerprint (manual/external release task).
 
 Acceptance criteria:
 

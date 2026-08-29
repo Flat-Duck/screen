@@ -233,6 +233,128 @@
                 ]
             }
         },
+        "/api/v1/auth/email-verification": {
+            "get": {
+                "operationId": "emailVerificationControllerShow",
+                "tags": [
+                    "Auth"
+                ],
+                "responses": {
+                    "200": {
+                        "$ref": "#/components/responses/JsonSuccess"
+                    },
+                    "204": {
+                        "description": "Successful operation with no response body"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/RateLimited"
+                    }
+                },
+                "x-auth-principal": "user",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/auth/email-verification/notification": {
+            "post": {
+                "operationId": "emailVerificationControllerStore",
+                "tags": [
+                    "Auth"
+                ],
+                "responses": {
+                    "200": {
+                        "$ref": "#/components/responses/JsonSuccess"
+                    },
+                    "204": {
+                        "description": "Successful operation with no response body"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/RateLimited"
+                    }
+                },
+                "x-auth-principal": "user",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/JsonObject"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/forgot-password": {
+            "post": {
+                "operationId": "accountRecoveryControllerForgotPassword",
+                "tags": [
+                    "Auth"
+                ],
+                "responses": {
+                    "200": {
+                        "$ref": "#/components/responses/JsonSuccess"
+                    },
+                    "204": {
+                        "description": "Successful operation with no response body"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/RateLimited"
+                    }
+                },
+                "x-auth-principal": "device",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/JsonObject"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/auth/login": {
             "post": {
                 "operationId": "authControllerLogin",
@@ -368,6 +490,50 @@
         "/api/v1/auth/register": {
             "post": {
                 "operationId": "authControllerRegister",
+                "tags": [
+                    "Auth"
+                ],
+                "responses": {
+                    "200": {
+                        "$ref": "#/components/responses/JsonSuccess"
+                    },
+                    "204": {
+                        "description": "Successful operation with no response body"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/RateLimited"
+                    }
+                },
+                "x-auth-principal": "device",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/JsonObject"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/reset-password": {
+            "post": {
+                "operationId": "accountRecoveryControllerResetPassword",
                 "tags": [
                     "Auth"
                 ],

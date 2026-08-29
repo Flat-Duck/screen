@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AccountController;
+use App\Http\Controllers\Api\V1\AccountRecoveryController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BlockController;
 use App\Http\Controllers\Api\V1\CommentController;
@@ -9,6 +10,7 @@ use App\Http\Controllers\Api\V1\ContentAnalyticsController;
 use App\Http\Controllers\Api\V1\ConversationController;
 use App\Http\Controllers\Api\V1\ConversationMessageController;
 use App\Http\Controllers\Api\V1\DeviceController;
+use App\Http\Controllers\Api\V1\EmailVerificationController;
 use App\Http\Controllers\Api\V1\ExploreController;
 use App\Http\Controllers\Api\V1\FeatureConfigurationController;
 use App\Http\Controllers\Api\V1\FeedController;
@@ -53,6 +55,8 @@ Route::middleware(['auth:sanctum', 'auth.device:device:manage'])->group(function
     Route::post('auth/social/google', [AuthController::class, 'google'])->middleware('throttle:auth-social');
     Route::post('auth/social/facebook', [AuthController::class, 'facebook'])->middleware('throttle:auth-social');
     Route::post('auth/two-factor-challenge', [AuthController::class, 'twoFactorChallenge'])->middleware('throttle:two-factor-challenge');
+    Route::post('auth/forgot-password', [AccountRecoveryController::class, 'forgotPassword'])->middleware('throttle:auth-recovery');
+    Route::post('auth/reset-password', [AccountRecoveryController::class, 'resetPassword'])->middleware('throttle:auth-recovery');
 });
 
 Route::middleware(['auth:sanctum', 'auth.device:push-token:write'])->group(function () {
@@ -63,9 +67,13 @@ Route::middleware(['auth:sanctum', 'auth.device:push-token:write'])->group(funct
 Route::post('telemetry/events', [TelemetryController::class, 'events'])
     ->middleware(['auth:sanctum', 'auth.device:telemetry:write', 'telemetry.size', 'throttle:120,1']);
 
+// These routes deliberately remain available to an unverified user token: they are the narrow
+// escape hatch for proving ownership, correcting a mistyped address, or ending the session.
 Route::middleware(['auth:sanctum', 'auth.user', 'session.touch'])->group(function () {
     Route::post('auth/logout', [AuthController::class, 'logout'])->middleware('throttle:auth-logout');
     Route::post('auth/password', [AuthController::class, 'setPassword'])->middleware('throttle:auth-password');
+    Route::get('auth/email-verification', [EmailVerificationController::class, 'show'])->middleware('throttle:reads');
+    Route::post('auth/email-verification/notification', [EmailVerificationController::class, 'store'])->middleware('throttle:email-verification');
 
     Route::delete('account', [AccountController::class, 'destroy'])->middleware('throttle:account-manage');
     Route::post('account/email', [AccountController::class, 'changeEmail'])->middleware('throttle:account-manage');
@@ -73,7 +81,9 @@ Route::middleware(['auth:sanctum', 'auth.user', 'session.touch'])->group(functio
     // password nor 2FA. Tightly throttled: this is a brute-force/spam surface (mailing
     // yourself codes) same in spirit as the 2FA challenge limiter.
     Route::post('account/confirmation-code', [AccountController::class, 'sendConfirmationCode'])->middleware('throttle:account-manage');
+});
 
+Route::middleware(['auth:sanctum', 'auth.user', 'session.touch', 'verified.email'])->group(function () {
     Route::get('connected-accounts', [ConnectedAccountController::class, 'index'])->middleware('throttle:reads');
     Route::delete('connected-accounts/{provider}', [ConnectedAccountController::class, 'destroy'])->middleware('throttle:account-manage');
 

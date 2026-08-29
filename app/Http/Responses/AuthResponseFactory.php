@@ -25,6 +25,7 @@ final class AuthResponseFactory
         }
 
         $onboarding = $this->interests->status($result->user);
+        $emailVerificationRequired = ! $result->user->hasVerifiedEmail();
 
         return response()->json([
             'user' => new UserResource($result->user->loadCount(['posts', 'followers', 'following'])),
@@ -32,8 +33,16 @@ final class AuthResponseFactory
             'session_id' => $result->session->uuid,
             ...($includeIsNewAccount ? ['is_new_account' => $result->isNewAccount] : []),
             'profile_completion' => $result->user->profileCompletionStatus(),
+            'email_verification' => [
+                'required' => $emailVerificationRequired,
+                'email' => $result->user->email,
+            ],
             'onboarding' => ['interests' => $onboarding],
-            'next_action' => $onboarding['needs_selection'] ? 'select_interests' : 'for_you',
+            'next_action' => match (true) {
+                $emailVerificationRequired => 'verify_email',
+                $onboarding['needs_selection'] => 'select_interests',
+                default => 'for_you',
+            },
         ], $successStatus);
     }
 }

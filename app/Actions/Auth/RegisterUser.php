@@ -39,6 +39,8 @@ class RegisterUser
             return $user;
         });
 
+        $user->sendEmailVerificationNotification();
+
         return ($this->startSession)($user, $device, LoginMethod::Registration, $context, isNewAccount: true);
     }
 }

@@ -6,6 +6,7 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
 
 class RateLimiterServiceProvider extends ServiceProvider
 {
@@ -40,6 +41,12 @@ class RateLimiterServiceProvider extends ServiceProvider
         RateLimiter::for('auth-social', fn (Request $request) => Limit::perMinute(10)->by($request->ip()));
 
         RateLimiter::for('auth-password', fn (Request $request) => $this->byUser($request, 10));
+
+        RateLimiter::for('auth-recovery', fn (Request $request) => Limit::perMinute(5)->by(
+            Str::lower((string) $request->input('email')).'|'.$request->ip(),
+        ));
+
+        RateLimiter::for('email-verification', fn (Request $request) => $this->byUser($request, 3));
 
         RateLimiter::for('reads', fn (Request $request) => $this->byUser($request, 60));
 

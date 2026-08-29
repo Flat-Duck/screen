@@ -1,6 +1,7 @@
 <?php
 
 use App\Exceptions\DeviceProofOfPossessionRequired;
+use App\Http\Middleware\EnsureApiEmailIsVerified;
 use App\Http\Middleware\EnsureSanctumPrincipalIsDevice;
 use App\Http\Middleware\EnsureSanctumPrincipalIsUser;
 use App\Http\Middleware\LimitContentAnalyticsPayloadSize;
@@ -24,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'auth.user' => EnsureSanctumPrincipalIsUser::class,
             'auth.device' => EnsureSanctumPrincipalIsDevice::class,
+            'verified.email' => EnsureApiEmailIsVerified::class,
             'telemetry.size' => LimitTelemetryPayloadSize::class,
             'analytics.size' => LimitContentAnalyticsPayloadSize::class,
             'session.touch' => TouchDeviceSession::class,
