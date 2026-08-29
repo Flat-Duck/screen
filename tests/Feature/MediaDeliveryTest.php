@@ -10,6 +10,7 @@ use App\Models\PostMedia;
 use App\Models\PrivateSave;
 use App\Models\User;
 use App\Services\BlockService;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
@@ -151,5 +152,101 @@ class MediaDeliveryTest extends TestCase
 
         GroupMember::query()->where('group_id', $group->id)->where('user_id', $viewer->id)->delete();
         $this->get($url)->assertNotFound();
+    }
+
+    /**
+     * The security property that must survive the switch from streaming to redirecting: the
+     * authorization checks still run on the app request, and only an authorized viewer ever sees
+     * the object-store URL.
+     */
+    public function test_presigning_disk_redirects_instead_of_streaming_bytes_through_php(): void
+    {
+        Storage::fake('public');
+        $this->presignFakeDisk('public');
+        $viewer = User::factory()->create();
+        $post = Post::factory()->create();
+        $media = PostMedia::factory()->for($post)->create(['original_path' => 'posts/offloaded.jpg']);
+        Storage::disk('public')->put($media->original_path, 'post-bytes');
+        Sanctum::actingAs($viewer);
+
+        $url = $this->getJson("/api/v1/posts/{$post->id}")->assertOk()->json('data.media.0.original_url');
+
+        $response = $this->get($url)->assertRedirect();
+        $this->assertStringStartsWith('https://objects.test/posts/offloaded.jpg', (string) $response->headers->get('Location'));
+        // Never "public": the Location header is a bearer capability for the object itself.
+        $this->assertSame('max-age=120, private', $response->headers->get('Cache-Control'));
+    }
+
+    public function test_offloaded_restricted_media_is_never_cacheable(): void
+    {
+        Storage::fake('local');
+        $this->presignFakeDisk('local');
+        $owner = User::factory()->create();
+        $save = PrivateSave::factory()->for($owner)->create(['path' => 'saves/secret.jpg', 'source_disk' => 'local']);
+        Storage::disk('local')->put($save->path, 'private-bytes');
+        Sanctum::actingAs($owner);
+
+        $url = $this->getJson('/api/v1/private-saves')->assertOk()->json('data.0.url');
+
+        $this->get($url)->assertRedirect()->assertHeader('Cache-Control', 'no-store, private');
+    }
+
+    public function test_a_revoked_viewer_cannot_reach_the_object_store_url(): void
+    {
+        Storage::fake('public');
+        $this->presignFakeDisk('public');
+        $viewer = User::factory()->create();
+        $post = Post::factory()->create();
+        $media = PostMedia::factory()->for($post)->create(['original_path' => 'posts/revoked.jpg']);
+        Storage::disk('public')->put($media->original_path, 'post-bytes');
+        Sanctum::actingAs($viewer);
+
+        $url = $this->getJson("/api/v1/posts/{$post->id}")->assertOk()->json('data.media.0.original_url');
+        $this->get($url)->assertRedirect();
+
+        app(BlockService::class)->block($post->user, $viewer);
+
+        // The redirect is minted per request, so losing access stops new ones being issued at all.
+        $this->get($url)->assertNotFound();
+    }
+
+    public function test_offloading_can_be_disabled_without_changing_the_disk(): void
+    {
+        config()->set('social.media_offload_enabled', false);
+        Storage::fake('public');
+        $this->presignFakeDisk('public');
+        $viewer = User::factory()->create();
+        $post = Post::factory()->create();
+        $media = PostMedia::factory()->for($post)->create(['original_path' => 'posts/streamed.jpg']);
+        Storage::disk('public')->put($media->original_path, 'post-bytes');
+        Sanctum::actingAs($viewer);
+
+        $url = $this->getJson("/api/v1/posts/{$post->id}")->assertOk()->json('data.media.0.original_url');
+
+        $this->get($url)->assertOk()->assertHeader('X-Content-Type-Options', 'nosniff');
+    }
+
+    /**
+     * Storage::fake() builds a LocalFilesystemAdapter, which is deliberately excluded from
+     * offloading even though it can sign URLs. Swapping in a non-local adapter over the same faked
+     * storage reproduces what an R2 disk looks like to the delivery code — presigning, remote —
+     * while keeping the files themselves readable by the rest of the test.
+     */
+    private function presignFakeDisk(string $disk): void
+    {
+        $faked = Storage::disk($disk);
+
+        Storage::set($disk, new class($faked->getDriver(), $faked->getAdapter(), $faked->getConfig()) extends FilesystemAdapter
+        {
+            public function providesTemporaryUrls(): bool
+            {
+                return true;
+            }
+
+            public function temporaryUrl($path, $expiration, array $options = []): string
+            {
+                return 'https://objects.test/'.$path.'?expires='.$expiration->getTimestamp();
+            }
+        });
     }
 }

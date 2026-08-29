@@ -36,20 +36,6 @@ This is the core functionality of the application, which we outline with complet
 
 - **No screenshot is uploaded to our servers without an explicit action from you**—whether you choose to post it to the Timeline or save it to your Private Cloud Space. Unuploaded content stays on your device, unviewed and unstored by us.
 
-## 1.4. Contacts (Optional)
-- If you enable the Friend Suggestions feature, we access your contacts to match phone numbers with Akukas users and suggest people you may know.
-
-- Phone numbers are used **strictly for matching purposes**. We do not store your full contact list, use it for marketing, send messages to your contacts, or share it with third parties.
-
-- This feature is **completely optional**: you can decline permission, or disable the feature and revoke permission at any time in Settings, as well as request the deletion of stored matching data.
-
-## 1.5. Approximate Location (Optional)
-- If you grant location access, we use your approximate location to customize content and display posts from your region and local community.
-
-- We do not continuously track your precise location, share your location with other users, or display your location on your posts unless you manually choose to add it.
-
-- You can decline or revoke permission at any time, and the app will continue to function using general content instead of localized content.
-
 ## 2. Background Operations (Important Disclosure)
 The Android operating system does not provide a standardized API for screenshot detection across all device models and manufacturers (some restrict access or utilize different storage paths). Therefore, for the application to function properly:
 
@@ -72,8 +58,6 @@ The Android operating system does not provide a standardized API for screenshot 
 | **Notifications** | Display persistent service notifications and interaction alerts on your posts. | **Recommended** |
 | **Background / Foreground Service** | Automatically detect new screenshots (Section 2). | **Recommended** |
 | **Battery Optimization Exemption** | Prevent the OS from terminating the detection service on certain models. | **Optional** |
-| **Contacts** | Suggest friends you may know (Section 1.4). | **Optional** |
-| **Approximate Location** | Customize content based on your local area and community (Section 1.5). | **Optional** |
 | **Internet Access** | Upload selected content, sync your account, and manage cloud storage. | **Mandatory** |
 
 *We do not request permissions unneeded for actual app operation (e.g., Camera, Microphone). Declining any optional permission will not prevent you from using core app functions.*
@@ -187,15 +171,11 @@ We are working to launch features allowing users to send screenshots to friends 
 
 - Account creation, management, security, and cross-device synchronization.
 
-- Friend suggestions via contact matching (if enabled).
-
-- Content customization based on region (if location access is granted), device language, and culture.
+- Content customization based on device language and culture.
 
 - App development, bug resolution, and performance optimization.
 
 - Platform safety: automated AI filtering of public posts to detect privacy violations or policy breaches, human report reviews, and fraud/bot detection.
-
-- Displaying relevant ads based on public in-app interactions and approximate location (see Section 12)—**never using private cloud content, contacts, or support communications for ad targeting.**
 
 - Communicating important service notices and updates.
 
@@ -212,9 +192,7 @@ We share data only within a strict, limited scope:
 
 - **6.3. Legal Disclosures:** When required by law, or to protect user safety and public welfare (e.g., extortion cases or minor harm prevention).
 
-- **6.4. With Advertisers:** Advertisers receive **only aggregated, anonymous reports** (e.g., ad view and click counts categorized by broad age groups or regions). We do not provide advertisers with your identity, name, phone number, or personally identifiable data; advertisers cannot identify specific individuals who viewed their ads.
-
-- **6.5. Business Transfers:** In the event of a merger, acquisition, or asset transfer, data transfers to the new entity while remaining subject to the commitments of this policy.
+- **6.4. Business Transfers:** In the event of a merger, acquisition, or asset transfer, data transfers to the new entity while remaining subject to the commitments of this policy.
 
 ## 7. Third-Party Privacy in Screenshots
 Screenshots inherently may contain information regarding other individuals. Therefore:
@@ -241,8 +219,6 @@ Screenshots inherently may contain information regarding other individuals. Ther
 
 - **9.4.** You can delete individual posts or individual cloud files at any time without deleting your account.
 
-- **9.5.** Contact matching data is purged upon disabling the feature or revoking permission.
-
 ## 10. Your Rights
 You have the right at any time to:
 
@@ -254,7 +230,7 @@ You have the right at any time to:
 
 - Request complete account and data deletion.
 
-- Revoke permissions (Photos, Background Access, Contacts, Location, Notifications) via your device settings (*Note: revoking mandatory permissions will disable core features*).
+- Revoke permissions (Photos, Background Access, Notifications) via your device settings (*Note: revoking mandatory permissions will disable core features*).
 
 - Object to specific processing activities and contact us regarding them.
 
@@ -265,18 +241,10 @@ To exercise these rights, email us at **privacy@akukas.com**.
 
 - **11.2.** If we become aware of an account belonging to a child under 13, we will terminate the account and purge its data immediately. If you are a parent or guardian and believe your child provided us with data, contact us for prompt removal.
 
-## 12. Advertising & Personalization
-- **12.1.** The application displays sponsored advertisements clearly labeled as "Sponsored" or "Ad".
+## 12. Identifiers & Similar Technologies
+- **12.1.** We utilize session tokens, identifiers, and similar technologies to maintain login states, remember preferences, and measure performance. We do not employ tracking technologies that follow activity across third-party apps or websites outside Akukas.
 
-- **12.2.** Parameters used for ad personalization: interests inferred from public in-app interactions (followed/liked posts), general demographic data, approximate location (if permitted), and device language.
-
-- **12.3.** **Strictly excluded from ad targeting:** private cloud content, contacts lists, support messaging, or sensitive data.
-
-- **12.4.** User Control: You can disable ad personalization in app settings (non-targeted general ads will still display, as advertising forms part of the free service operational model), as well as review and edit inferred interest categories.
-
-- **12.5.** Campaign Analytics: Advertisers receive aggregated, anonymous metrics only, as specified in Section 6.4.
-
-- **12.6.** We utilize session tokens, identifiers, and similar technologies to maintain login states, remember preferences, and measure performance. We do not employ tracking technologies that follow activity across third-party apps or websites outside Akukas.
+- **12.2.** The application does not display advertisements. We do not build advertising profiles or infer interest categories about you, and we share no data with advertising networks.
 
 ## 13. Amendments to This Policy
 We may update this policy periodically. Material changes will be communicated via in-app notifications or email prior to taking effect. Continued usage of the application following updates constitutes acceptance of the revised policy.

@@ -5,15 +5,16 @@ namespace App\Http\Controllers;
 use App\Enums\AccountVisibility;
 use App\Models\User;
 use App\Services\BlockService;
+use App\Support\Media\MediaDelivery;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class UserAvatarDeliveryController extends Controller
 {
     public function __construct(private readonly BlockService $blocks) {}
 
-    public function __invoke(Request $request, int $user): StreamedResponse
+    public function __invoke(Request $request, int $user): Response
     {
         $viewer = User::query()->findOrFail((int) $request->query('viewer'));
         $profile = User::query()->findOrFail($user);
@@ -24,11 +25,12 @@ class UserAvatarDeliveryController extends Controller
         abort_unless($disk->exists($profile->avatar_path), 404);
         $public = $profile->account_visibility === AccountVisibility::Public;
 
-        return $disk->response($profile->avatar_path, null, [
-            'Content-Type' => $this->imageMimeType($profile->avatar_path),
-            'Cache-Control' => $public ? $this->publicCacheControl() : 'no-store, private',
-            'X-Content-Type-Options' => 'nosniff',
-        ]);
+        return MediaDelivery::respond(
+            $disk,
+            $profile->avatar_path,
+            $public ? $this->publicCacheControl() : 'no-store, private',
+            ['Content-Type' => $this->imageMimeType($profile->avatar_path)],
+        );
     }
 
     private function publicCacheControl(): string

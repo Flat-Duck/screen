@@ -153,11 +153,17 @@ Acceptance criteria:
 
 ### 10. Harden image and direct-upload processing
 
-- [ ] Enforce byte, MIME/magic, dimension, and total-pixel limits before full decoding.
-- [ ] Cap remote avatar response sizes and redirects.
-- [ ] Verify committed object hashes and expected content server-side.
-- [ ] Bind upload commits to a nonce, user/device identity, protocol version, and expiry.
-- [ ] Test decompression bombs, malformed images, spoofed MIME types, and stale commits.
+Verified complete 2026-08-29 — the code landed in `b312411` but the boxes were never ticked.
+
+- [x] Enforce byte, MIME/magic, dimension, and total-pixel limits before full decoding
+      (`App\Services\ImageSafetyInspector`: streaming byte cap, `getimagesize` header read,
+      `finfo` magic check, dimension and total-pixel caps — all before any full decode).
+- [x] Cap remote avatar response sizes and redirects (`ImageProcessingService`, via
+      `social.images.remote_avatar_max_bytes` / `remote_avatar_max_redirects`).
+- [x] Verify committed object hashes and expected content server-side.
+- [x] Bind upload commits to a nonce, user/device identity, protocol version, and expiry.
+- [x] Test decompression bombs, malformed images, spoofed MIME types, and stale commits
+      (`ImageSafetyInspectorTest`, `UploadApiTest` — 10 commit-path cases).
 
 ### 11. Reduce capture-service battery impact
 
@@ -165,6 +171,32 @@ Acceptance criteria:
 - [ ] Replace the unbounded wake lock with scoped or timed acquisition where possible.
 - [ ] Confirm recovery after process death, reboot, Doze, and permission revocation.
 - [ ] Document user-visible battery impact and controls.
+
+### 18. Keep media bytes off the application server
+
+- [x] Authorize the request, then redirect to a presigned object-store URL instead of streaming
+      the object through PHP-FPM (`App\Support\Media\MediaDelivery`, used by all four delivery
+      controllers). Streaming held a worker for the full duration of a transfer that is almost
+      entirely network wait, and because capability URLs are viewer-bound no shared CDN cache
+      could deduplicate them between users — so every image was paid for twice in origin
+      bandwidth. This is a capacity fix, not a security change: authorization still runs on every
+      request.
+- [x] Exclude local disks from offloading — they can sign URLs, but the URL points back at this
+      same application, so the redirect would cost a round trip and save nothing.
+- [x] Never allow public caching of the redirect: its `Location` header is a bearer capability for
+      the object. Already-restricted media stays `no-store`.
+- [x] Bound the presigned URL's own lifetime (`SOCIAL_MEDIA_OFFLOAD_TTL_SECONDS`, default 120s)
+      well below the capability lifetime, since the capability is reauthorized on every use and
+      the presigned URL is not.
+- [x] Provide `SOCIAL_MEDIA_OFFLOAD_ENABLED=false` to force streaming without a deploy.
+- [x] Add tests for the redirect path, restricted-media caching, revocation, and the kill switch.
+
+### 19. Stop the `.env.example` media-disk footgun
+
+- [x] `SOCIAL_PRIVATE_MEDIA_DISK=local` was the shipped default with no sibling keys nearby, so
+      copying `.env.example` to a server silently wrote user media to the app server's own disk —
+      which works in testing and then loses every upload the next time the server is rebuilt.
+      All three disk keys are now listed together with an explicit production warning.
 
 ## Phase 3: Build, test, and operations
 
@@ -178,9 +210,16 @@ Acceptance criteria:
 
 ### 13. Resolve dependency audit findings
 
-- [ ] Upgrade or replace vulnerable `nanoid`, `postcss`, and `shell-quote` dependency paths.
-- [ ] Move build-only npm packages to `devDependencies` where appropriate.
-- [ ] Re-run Composer, npm, and Gradle dependency/security checks.
+- [x] Upgrade or replace vulnerable `nanoid`, `postcss`, and `shell-quote` dependency paths
+      (all four high-severity advisories cleared by a non-breaking `npm audit fix`).
+- [x] Move build-only npm packages to `devDependencies` (`vite`, `laravel-vite-plugin`,
+      `@tailwindcss/vite`, `tailwindcss`, `concurrently`). Only `@laravel/passkeys` is a real
+      runtime dependency — it is the one package that ends up in the browser bundle. Deploy is
+      unaffected: the runbook already runs a plain `npm ci`, which installs dev dependencies.
+- [x] Re-run npm dependency/security checks — `npm audit` and `npm audit --omit=dev` both report
+      0 vulnerabilities, verified against a clean `rm -rf node_modules && npm ci` plus a
+      successful `npm run build`.
+- [ ] Re-run Composer and Gradle dependency/security checks.
 - [ ] Document accepted exceptions with owner and expiry date.
 
 ### 14. Perform a clean Android release qualification

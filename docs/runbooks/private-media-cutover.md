@@ -54,10 +54,36 @@ Do not reopen the bucket as a rollback. If application delivery fails after priv
 roll back the application release while keeping the bucket private, then diagnose with an
 authenticated R2 client.
 
+## How the bytes actually move
+
+The delivery endpoints authorize every request, then choose one of two paths:
+
+- **Presigning remote disk (production R2):** the endpoint returns a `302` to a presigned object
+  URL and Cloudflare/R2 transfers the bytes. Nothing large passes through PHP-FPM.
+- **Local disk (development, tests):** the endpoint streams the file itself. Local disks are
+  excluded from offloading even when they can sign URLs, because a redirect would point back at
+  this same application and save nothing.
+
+This matters for capacity, not correctness: streaming holds an FPM worker for the whole transfer,
+which is almost entirely network wait, so one scrolling feed can occupy the worker pool of a small
+app server while doing no real work. Signed capability URLs are viewer-bound, so a shared CDN
+cache cannot deduplicate them between users — without offloading, every image for every viewer
+would be paid for twice in origin bandwidth (R2 to app server, app server to client).
+
+The redirect is never `public`-cacheable: its `Location` header is a bearer capability for the
+object. Media that was already uncacheable stays `no-store` so every view is reauthorized.
+
+Set `SOCIAL_MEDIA_OFFLOAD_ENABLED=false` to force streaming everywhere without a code change.
+
 ## Operational limits
 
 - `SOCIAL_MEDIA_URL_TTL_SECONDS` controls the signed capability lifetime; production defaults to
   1,200 seconds so it safely outlives Android's 15-minute API-response cache.
+- `SOCIAL_MEDIA_OFFLOAD_TTL_SECONDS` (default 120) is the lifetime of the presigned object URL the
+  redirect hands out. It is deliberately much shorter than the capability URL: the capability is
+  reauthorized on every use, the presigned URL is not, so this value is the window in which a
+  viewer who has just lost access can still fetch that one object. Lower it to tighten revocation
+  at the cost of more redirects; do not raise it above the capability lifetime.
 - `SOCIAL_PUBLIC_MEDIA_CACHE_SECONDS` must not exceed the signed URL lifetime.
 - Public responses can be cached only until the capability expires. Restricted media and private
   saves are always `no-store`.

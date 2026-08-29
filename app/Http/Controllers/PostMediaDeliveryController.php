@@ -8,15 +8,16 @@ use App\Models\PostMedia;
 use App\Models\Scopes\NotArchivedScope;
 use App\Models\User;
 use App\Services\BlockService;
+use App\Support\Media\MediaDelivery;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class PostMediaDeliveryController extends Controller
 {
     public function __construct(private readonly BlockService $blocks) {}
 
-    public function __invoke(Request $request, int $media, string $variant): StreamedResponse
+    public function __invoke(Request $request, int $media, string $variant): Response
     {
         $viewer = User::query()->findOrFail((int) $request->query('viewer'));
         $postMedia = PostMedia::query()->findOrFail($media);
@@ -39,10 +40,8 @@ class PostMediaDeliveryController extends Controller
         $disk = Storage::disk($postMedia->sourceDisk());
         abort_unless($disk->exists($path), 404);
 
-        return $disk->response($path, null, [
+        return MediaDelivery::respond($disk, $path, $this->cacheControl($post), [
             'Content-Type' => $mimeType,
-            'Cache-Control' => $this->cacheControl($post),
-            'X-Content-Type-Options' => 'nosniff',
         ]);
     }
 

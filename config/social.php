@@ -26,6 +26,19 @@ return [
 
     'public_media_cache_seconds' => (int) env('SOCIAL_PUBLIC_MEDIA_CACHE_SECONDS', 300),
 
+    // When the media disk can presign its own URLs (S3/R2), the delivery endpoints authorize the
+    // request and then redirect, so the object store transfers the bytes instead of an FPM worker
+    // holding a connection open for a transfer that is almost entirely network wait. Disks without
+    // presigning (local development, tests) always stream. Set to false to force streaming
+    // everywhere without a deploy if object-store egress ever needs to be taken out of the path.
+    'media_offload_enabled' => (bool) env('SOCIAL_MEDIA_OFFLOAD_ENABLED', true),
+
+    // Lifetime of the presigned URL handed out by that redirect. This is the window in which a
+    // viewer who just lost access can still fetch the object, so it is deliberately far shorter
+    // than 'media_url_ttl_seconds' — the capability URL is reauthorized on every use, the
+    // presigned URL it mints is not.
+    'media_offload_ttl_seconds' => (int) env('SOCIAL_MEDIA_OFFLOAD_TTL_SECONDS', 120),
+
     'media_cleanup_grace_minutes' => (int) env('SOCIAL_MEDIA_CLEANUP_GRACE_MINUTES', 60),
 
     'media_job_timeout_seconds' => (int) env('SOCIAL_MEDIA_JOB_TIMEOUT_SECONDS', 60),
