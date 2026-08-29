@@ -20,7 +20,7 @@ class PostFactory extends Factory
     {
         return [
             'user_id' => User::factory(),
-            'caption' => fake()->optional()->sentence(),
+            'caption' => 'Test text for demo purposes #test',
             'status' => Post::STATUS_READY,
         ];
     }
