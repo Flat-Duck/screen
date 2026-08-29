@@ -7,8 +7,6 @@ use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
-use function fake;
-
 class UserSeeder extends Seeder
 {
     /** @var list<string> */
@@ -46,6 +44,16 @@ class UserSeeder extends Seeder
         'yara' => ['wellness', 'mindfulness', 'mentalhealth', 'selfcare', 'quotes'],
     ];
 
+    /** @var list<string> */
+    public const SURNAMES = [
+        'Anderson', 'Bennett', 'Chen', 'Diaz', 'Evans', 'Foster', 'Garcia', 'Harris', 'Ibrahim', 'Johnson',
+        'Khan', 'Lopez', 'Miller', 'Nakamura', 'Okafor', 'Patel', 'Quinn', 'Roberts', 'Silva', 'Turner',
+        'Ueda', 'Vargas', 'Walker', 'Young',
+    ];
+
+    /** @var list<string> */
+    public const COUNTRY_CODES = ['LY', 'US', 'GB', 'DE', 'JP', 'IN', 'BR', 'CA'];
+
     public function run(): void
     {
         $password = Hash::make('password');
@@ -57,11 +65,11 @@ class UserSeeder extends Seeder
         foreach (self::USERNAMES as $index => $username) {
             $specialties = self::SPECIALTIES[$username];
             $user = User::query()->updateOrCreate(['username' => $username], [
-                'name' => ucfirst($username).' '.fake()->lastName(),
+                'name' => ucfirst($username).' '.self::SURNAMES[$index % count(self::SURNAMES)],
                 'email' => $username.'@example.com',
                 'password' => $password,
                 'bio' => 'Screenshots about '.implode(', ', array_slice($specialties, 0, 3)).'.',
-                'country_code' => fake()->randomElement(['LY', 'US', 'GB', 'DE', 'JP', 'IN', 'BR', 'CA']),
+                'country_code' => self::COUNTRY_CODES[$index % count(self::COUNTRY_CODES)],
             ]);
             $user->forceFill([
                 'email_verified_at' => now()->subDays(random_int(30, 500)),

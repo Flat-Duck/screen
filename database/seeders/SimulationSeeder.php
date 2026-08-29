@@ -43,14 +43,16 @@ use App\Models\UserHiddenTerm;
 use App\Models\UserRestriction;
 use App\Models\UserTopicAffinity;
 use App\Services\CrashGroupSynchronizer;
+use Database\Seeders\Concerns\GeneratesSeedText;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
-use function fake;
 class SimulationSeeder extends Seeder
 {
+    use GeneratesSeedText;
+
     public function run(): void
     {
         $users = User::query()->whereIn('username', UserSeeder::USERNAMES)->get()->values();
@@ -81,12 +83,12 @@ class SimulationSeeder extends Seeder
                 DB::table('saved_posts')->insertOrIgnore(['user_id' => $user->id, 'post_id' => $post->id, 'created_at' => now()->subDays(random_int(0, 40)), 'updated_at' => now()]);
             }
             foreach ($available->slice(15, 5) as $post) {
-                DB::table('reposts')->insertOrIgnore(['user_id' => $user->id, 'post_id' => $post->id, 'comment' => fake()->optional()->sentence(), 'created_at' => now()->subDays(random_int(0, 30)), 'updated_at' => now()]);
+                DB::table('reposts')->insertOrIgnore(['user_id' => $user->id, 'post_id' => $post->id, 'comment' => $this->optionalSentence(), 'created_at' => now()->subDays(random_int(0, 30)), 'updated_at' => now()]);
             }
             foreach (range(0, 2) as $position) {
                 $collection = SavedCollection::query()->create(['user_id' => $user->id, 'name' => ['Inspiration', 'Reference', 'Read later'][$position], 'description' => 'Seeded private screenshot collection.', 'position' => $position, 'visibility' => 'private']);
                 foreach ($available->slice($position * 4, 4)->values() as $itemPosition => $post) {
-                    $collection->items()->create(['post_id' => $post->id, 'note' => fake()->optional()->sentence(), 'position' => $itemPosition]);
+                    $collection->items()->create(['post_id' => $post->id, 'note' => $this->optionalSentence(), 'position' => $itemPosition]);
                 }
             }
             $user->followedHashtags()->syncWithoutDetaching(
@@ -143,7 +145,7 @@ class SimulationSeeder extends Seeder
             $conversation = Conversation::query()->create(['last_message_at' => $lastMessageAt, 'state' => $index % 6 === 0 ? 'requested' : 'active', 'requested_by' => $first->id, 'accepted_at' => $index % 6 === 0 ? null : $lastMessageAt->copy()->subDay()]);
             $conversation->participants()->attach([$first->id => ['last_read_at' => now()->subHours(2)], $second->id => ['last_read_at' => $index % 3 ? now()->subHour() : null]]);
             for ($messageIndex = 0; $messageIndex < random_int(4, 14); $messageIndex++) {
-                $conversation->messages()->create(['sender_id' => $messageIndex % 2 ? $first->id : $second->id, 'body' => fake()->sentence(random_int(4, 14)), 'created_at' => $lastMessageAt->copy()->subMinutes($messageIndex * 8), 'updated_at' => $lastMessageAt]);
+                $conversation->messages()->create(['sender_id' => $messageIndex % 2 ? $first->id : $second->id, 'body' => $this->sentence(random_int(4, 14)), 'created_at' => $lastMessageAt->copy()->subMinutes($messageIndex * 8), 'updated_at' => $lastMessageAt]);
             }
         }
     }
@@ -165,7 +167,7 @@ class SimulationSeeder extends Seeder
             ]);
             $case->notes()->create(['author_id' => $admin->id, 'body' => 'Seeded moderation context for dashboard review.']);
             foreach ($users->where('id', '!=', $post->user_id)->shuffle()->take(min(3, $case->report_count)) as $reporter) {
-                $case->reports()->create(['reporter_id' => $reporter->id, 'reportable_type' => Post::class, 'reportable_id' => $post->id, 'reason' => fake()->randomElement(['spam', 'harassment', 'sensitive_information', 'misleading']), 'details' => fake()->sentence(), 'status' => $status === ModerationCaseStatus::Dismissed ? 'dismissed' : ($status === ModerationCaseStatus::Actioned ? 'reviewed' : 'pending')]);
+                $case->reports()->create(['reporter_id' => $reporter->id, 'reportable_type' => Post::class, 'reportable_id' => $post->id, 'reason' => ['spam', 'harassment', 'sensitive_information', 'misleading'][random_int(0, 3)], 'details' => $this->sentence(random_int(3, 8)), 'status' => $status === ModerationCaseStatus::Dismissed ? 'dismissed' : ($status === ModerationCaseStatus::Actioned ? 'reviewed' : 'pending')]);
             }
         }
     }

@@ -8,12 +8,14 @@ use App\Models\PostMedia;
 use App\Models\Scopes\NotArchivedScope;
 use App\Models\ScreenshotCategory;
 use App\Models\User;
+use Database\Seeders\Concerns\GeneratesSeedText;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
 
-use function fake;
 class PostSeeder extends Seeder
 {
+    use GeneratesSeedText;
+
     public const POSTS_PER_USER = 10;
 
     public const SOURCE = 'Screenshut Seeder';
@@ -47,7 +49,7 @@ class PostSeeder extends Seeder
                 $createdAt = now()->subDays(random_int(0, 89))->subMinutes(random_int(0, 1439));
                 $category = $this->categoryFor($specialties, $categories);
                 $post = Post::factory()->for($user)->create([
-                    'caption' => fake()->sentence(random_int(5, 12)).' '.$tagNames->map(fn (string $tag) => '#'.$tag)->implode(' '),
+                    'caption' => $this->sentence(random_int(5, 12)).' '.$tagNames->map(fn (string $tag) => '#'.$tag)->implode(' '),
                     'status' => Post::STATUS_READY,
                     'category_id' => $category->id,
                     'source_application' => self::SOURCE,
