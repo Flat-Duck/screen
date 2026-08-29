@@ -20,14 +20,30 @@ final class EnrollDevice
         try {
             try {
                 return DB::transaction(function () use ($data, $authenticatedDevice): DeviceEnrollment {
-                    $device = Device::query()->where('device_uuid', $data->deviceUuid)->lockForUpdate()->first();
-                    $isNewDevice = $device === null;
+                    $now = now();
 
-                    if ($device && ! $authenticatedDevice?->is($device)) {
+                    $inserted = DB::table('devices')->insertOrIgnore([
+                        'device_uuid' => $data->deviceUuid,
+                        'manufacturer' => $data->manufacturer,
+                        'brand' => $data->brand,
+                        'model' => $data->model,
+                        'os_name' => $data->osName,
+                        'os_version' => $data->osVersion,
+                        'sdk_int' => $data->sdkInt,
+                        'app_version_name' => $data->appVersionName,
+                        'app_version_code' => $data->appVersionCode,
+                        'first_seen_at' => $now,
+                        'last_seen_at' => $now,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ]);
+
+                    $device = Device::query()->where('device_uuid', $data->deviceUuid)->lockForUpdate()->first();
+
+                    if ($inserted === 0 && ! $authenticatedDevice?->is($device)) {
                         throw new DeviceProofOfPossessionRequired;
                     }
 
-                    $device ??= new Device(['device_uuid' => $data->deviceUuid, 'first_seen_at' => now()]);
                     $device->fill([
                         'manufacturer' => $data->manufacturer,
                         'brand' => $data->brand,
@@ -47,10 +63,10 @@ final class EnrollDevice
                         'push-token:write',
                     ])->plainTextToken;
 
-                    return new DeviceEnrollment($device, $token, $isNewDevice);
+                    return new DeviceEnrollment($device, $token, $inserted === 1);
                 });
             } catch (QueryException $exception) {
-                if ($authenticatedDevice === null && in_array((string) $exception->getCode(), ['23000', '23505'], true)) {
+                if ($authenticatedDevice === null && in_array((string) $exception->getCode(), ['23000', '23505', '25P02', '40001'], true)) {
                     throw new DeviceProofOfPossessionRequired;
                 }
 
