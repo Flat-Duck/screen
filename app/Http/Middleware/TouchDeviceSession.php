@@ -13,11 +13,22 @@ class TouchDeviceSession
     {
         $response = $next($request);
         $user = $request->user();
-        $token = $user->currentAccessToken();
+        $tokenId = $user->currentAccessToken()->getKey();
+
+        // The key is not always a usable id. Sanctum::actingAs() installs a Mockery mock of
+        // PersonalAccessToken built with shouldIgnoreMissing(false), so it satisfies every type
+        // check while returning `false` from getKey(). Postgres rejects that outright against a
+        // bigint column ("invalid input syntax for type bigint: false") rather than quietly
+        // matching nothing, so it has to be filtered before the query rather than after — and
+        // this middleware runs on most authenticated routes, so it takes those requests down with
+        // it. MySQL and SQLite coerce instead, which is why this only ever surfaced on Postgres.
+        if (! is_int($tokenId) && ! (is_string($tokenId) && ctype_digit($tokenId))) {
+            return $response;
+        }
 
         $session = DeviceSession::query()
             ->with('device')
-            ->where('personal_access_token_id', $token->id)
+            ->where('personal_access_token_id', $tokenId)
             ->whereNull('ended_at')
             ->first();
 

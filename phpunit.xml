@@ -18,6 +18,10 @@
         </include>
     </source>
     <php>
+        <!-- The full feature suite shares one process and intentionally boots Blade, Pulse,
+             queues, storage fakes, and hundreds of application graphs. Keep this test-only
+             ceiling separate from the production PHP-FPM worker limit. -->
+        <ini name="memory_limit" value="256M"/>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>

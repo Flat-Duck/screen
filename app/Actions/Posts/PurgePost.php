@@ -44,11 +44,12 @@ class PurgePost
             ])->save();
 
             try {
-                $paths = $post->media->flatMap(
-                    static fn ($media): array => array_values(array_filter([$media->original_path, $media->thumbnail_path]))
-                )->values()->all();
-
-                $this->files->deletePaths(array_values($paths));
+                foreach ($post->media->groupBy(static fn ($media): string => $media->sourceDisk()) as $diskName => $mediaOnDisk) {
+                    $paths = $mediaOnDisk->flatMap(
+                        static fn ($media): array => array_values(array_filter([$media->original_path, $media->thumbnail_path]))
+                    )->values()->all();
+                    $this->files->deletePaths(array_values($paths), (string) $diskName);
+                }
                 $post->forceDelete();
             } catch (Throwable $exception) {
                 $this->recordFailure($post, $exception);

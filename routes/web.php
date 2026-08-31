@@ -9,18 +9,53 @@ use App\Http\Controllers\DeviceController;
 use App\Http\Controllers\EmailChangeVerificationController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\ExperimentStatusController;
+use App\Http\Controllers\GroupPhotoDeliveryController;
 use App\Http\Controllers\HealthCheckController;
 use App\Http\Controllers\LegalController;
+use App\Http\Controllers\MobileEmailVerificationController;
+use App\Http\Controllers\MobilePasswordResetController;
 use App\Http\Controllers\ModerationCaseController;
 use App\Http\Controllers\OperationsDashboardController;
+use App\Http\Controllers\PostMediaDeliveryController;
+use App\Http\Controllers\PrivateSaveMediaDeliveryController;
 use App\Http\Controllers\RecommendationAdminController;
 use App\Http\Controllers\RegistrationAdminController;
+use App\Http\Controllers\UserAvatarDeliveryController;
 use App\Http\Middleware\PreventSensitivePageCaching;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'welcome')->name('home');
 
 Route::get('/up/deep', HealthCheckController::class)->name('health.deep');
+
+Route::get('/mobile/email/verify/{user}/{hash}', MobileEmailVerificationController::class)
+    ->whereNumber('user')
+    ->middleware(['signed', 'throttle:6,1'])
+    ->name('mobile.email.verify');
+Route::get('/mobile/password/reset/{token}', MobilePasswordResetController::class)
+    ->middleware('throttle:30,1')
+    ->name('mobile.password.reset');
+
+// Image clients cannot reliably attach a Sanctum bearer token, so API resources issue these
+// short-lived signed capability URLs. The controllers still recheck the encoded viewer's current
+// access on every uncached request; the signature only prevents changing that viewer or media id.
+Route::get('/media/posts/{media}/{variant}', PostMediaDeliveryController::class)
+    ->whereNumber('media')
+    ->whereIn('variant', ['original', 'thumbnail'])
+    ->middleware(['signed', 'throttle:media-delivery'])
+    ->name('media.posts.show');
+Route::get('/media/private-saves/{privateSave}', PrivateSaveMediaDeliveryController::class)
+    ->whereNumber('privateSave')
+    ->middleware(['signed', 'throttle:media-delivery'])
+    ->name('media.private-saves.show');
+Route::get('/media/avatars/{user}', UserAvatarDeliveryController::class)
+    ->whereNumber('user')
+    ->middleware(['signed', 'throttle:media-delivery'])
+    ->name('media.avatars.show');
+Route::get('/media/groups/{group}', GroupPhotoDeliveryController::class)
+    ->whereNumber('group')
+    ->middleware(['signed', 'throttle:media-delivery'])
+    ->name('media.groups.show');
 
 /*
  * Public legal documents. Play Console requires a reachable Privacy Policy URL, and the

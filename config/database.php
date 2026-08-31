@@ -97,6 +97,22 @@ return [
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
+            // Required by Neon's pooled endpoint (hostname contains `-pooler`), which is
+            // PgBouncer in transaction mode. Any server-side prepared statement issued inside an
+            // explicit transaction fails there — measured 12/12 against production, including a
+            // transaction whose only statement was an INSERT, so this is not about row locks or
+            // `FOR UPDATE`. Postgres then aborts the transaction and every later statement returns
+            // SQLSTATE 25P02 ("current transaction is aborted"), which names the *following*
+            // statement and hides the real one. That original error is unrecoverable after the
+            // fact: Neon does not expose Postgres server logs (`neon logs --source pg_endpoint`
+            // returns empty), so this was found by reproducing it, not by reading it.
+            //
+            // Interpolating parameters client-side skips the server-side PREPARE entirely and
+            // passes 8/8 on the same pooled endpoint. Laravel still parameterises every query;
+            // only the wire protocol changes. Do not remove without re-testing against `-pooler`.
+            'options' => [
+                PDO::ATTR_EMULATE_PREPARES => (bool) env('DB_EMULATE_PREPARES', true),
+            ],
         ],
 
         /*
@@ -128,6 +144,12 @@ return [
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
+            // Matched to the pooled connection above. This endpoint does not need it, but letting
+            // the two diverge would mean migrations exercise a different wire protocol than the
+            // queries that later run against the schema they create.
+            'options' => [
+                PDO::ATTR_EMULATE_PREPARES => (bool) env('DB_EMULATE_PREPARES', true),
+            ],
         ],
 
         'sqlsrv' => [

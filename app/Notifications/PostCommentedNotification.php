@@ -36,7 +36,7 @@ class PostCommentedNotification extends Notification implements FcmNotification,
             'comment_id' => $this->comment->id,
             'commenter_id' => $this->commenter->id,
             'commenter_username' => $this->commenter->username,
-            'commenter_avatar_url' => $this->commenter->avatarUrl(),
+            'commenter_avatar_url' => $notifiable instanceof User ? $this->commenter->avatarUrl($notifiable) : null,
             'excerpt' => Str::limit($this->comment->body, 140),
         ];
     }

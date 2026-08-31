@@ -14,6 +14,8 @@ class UploadResource extends JsonResource
     {
         return [
             'upload_id' => $this->upload_id,
+            'protocol_version' => $this->protocol_version,
+            'nonce' => $this->nonce,
             'object_key' => $this->object_key,
             'status' => $this->status,
             'expires_at' => $this->expires_at,

@@ -683,9 +683,10 @@ and today's additions together.
   (nothing currently reads it to filter/boost discovery results); it's stored and returned
   so the client has somewhere real to persist the toggle, same spirit as other fields that
   exist ahead of the UI that will consume them.
-- `GroupResource` gains `is_discoverable` (boolean) and `photo_url` (nullable string, same
-  `Storage::disk(...)->url()` pattern as `User.avatar_url`) — present on every group
-  response (index/show/store), `null` when no photo was ever uploaded.
+- `GroupResource` gains `is_discoverable` (boolean) and `photo_url` (nullable string) — present on
+  every group response (index/show/store), `null` when no photo was ever uploaded. `photo_url`,
+  like user avatars and post media, is now a short-lived signed URL rather than a permanent storage
+  URL; refresh the containing resource after expiry.
 - No dedicated "update group photo later" endpoint yet — `photo` is create-time only, same
   scope as the Android client's own create-group form.
 

@@ -52,7 +52,7 @@ class FcmClient
                         'body' => $body,
                         ...($imageUrl !== null ? ['image' => $imageUrl] : []),
                     ],
-                    'data' => $data,
+                    'data' => [...$data, 'contract_version' => '1'],
                 ],
             ]);
 

@@ -11,7 +11,7 @@ class DeletePrivateSave
 
     public function __invoke(PrivateSave $privateSave): void
     {
-        $this->files->deletePaths([$privateSave->path]);
+        $this->files->deletePaths([$privateSave->path], $privateSave->sourceDisk());
         $privateSave->delete();
     }
 }

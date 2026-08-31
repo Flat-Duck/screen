@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Enums\AccountVisibility;
 use App\Enums\AdminRole;
 use App\Enums\UserModerationState;
 use App\Enums\UserVisibilityState;
+use App\Notifications\ResetPasswordNotification;
+use App\Notifications\VerifyEmailNotification;
 use Database\Factories\UserFactory;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
@@ -20,7 +22,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
@@ -67,7 +69,7 @@ use Laravel\Scout\Searchable;
  */
 #[Fillable(['name', 'email', 'password', 'username', 'bio', 'avatar_path', 'birth_date', 'country_code'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
-class User extends Authenticatable implements PasskeyUser
+class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable, PasskeyAuthenticatable, Searchable, SoftDeletes, TwoFactorAuthenticatable;
@@ -134,6 +136,16 @@ class User extends Authenticatable implements PasskeyUser
             } while (static::query()->where('invite_code', $code)->exists());
             $user->invite_code = $code;
         });
+    }
+
+    public function sendEmailVerificationNotification(): void
+    {
+        $this->notify(new VerifyEmailNotification);
+    }
+
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new ResetPasswordNotification((string) $token));
     }
 
     /** @param Builder<User> $query */
@@ -347,10 +359,14 @@ class User extends Authenticatable implements PasskeyUser
         return $this->hasMany(PointTransaction::class);
     }
 
-    public function avatarUrl(): ?string
+    public function avatarUrl(User $viewer): ?string
     {
         return $this->avatar_path
-            ? Storage::disk(config('social.media_disk'))->url($this->avatar_path)
+            ? URL::temporarySignedRoute(
+                'media.avatars.show',
+                now()->addSeconds((int) config('social.media_url_ttl_seconds', 1200)),
+                ['user' => $this->getKey(), 'viewer' => $viewer->getKey()],
+            )
             : null;
     }
 

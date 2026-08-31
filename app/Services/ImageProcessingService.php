@@ -23,7 +23,7 @@ class ImageProcessingService
 {
     private ImageManager $manager;
 
-    public function __construct()
+    public function __construct(private readonly ImageSafetyInspector $inspector)
     {
         $this->manager = new ImageManager(new Driver);
     }
@@ -38,8 +38,13 @@ class ImageProcessingService
      *
      * @return array{path: string, width: int, height: int, mime: string, size: int}
      */
-    public function storeOriginal(UploadedFile $file, string $directory, ?int $maxDimension = null): array
-    {
+    public function storeOriginal(
+        UploadedFile $file,
+        string $directory,
+        ?int $maxDimension = null,
+        ?string $diskName = null,
+    ): array {
+        $this->inspector->inspectLocalFile($file->getRealPath());
         $image = $this->manager->read($file->getRealPath())->orient();
 
         if ($maxDimension !== null) {
@@ -52,7 +57,7 @@ class ImageProcessingService
 
         $path = sprintf('%s/%s.%s', $directory, (string) Str::uuid(), $extension);
 
-        if (! Storage::disk(config('social.media_disk'))->put($path, (string) $encoded)) {
+        if (! Storage::disk($diskName ?? config('social.media_disk'))->put($path, (string) $encoded)) {
             throw new RuntimeException("Failed to store original image [{$path}].");
         }
 
@@ -73,41 +78,79 @@ class ImageProcessingService
      */
     public function storeFromUrl(string $url, string $directory, ?int $maxDimension = 512): array
     {
-        $response = Http::timeout(10)->get($url);
-
-        if ($response->serverError()) {
-            throw new TransientRemoteImageException("Remote image server returned {$response->status()}.");
+        if (parse_url($url, PHP_URL_SCHEME) !== 'https') {
+            throw new PermanentRemoteImageException('Remote image URL must use HTTPS.');
         }
 
-        if ($response->clientError()) {
-            throw new PermanentRemoteImageException("Remote image request was rejected with {$response->status()}.");
+        $temporaryPath = tempnam(sys_get_temp_dir(), 'remote-avatar-');
+        if ($temporaryPath === false) {
+            throw new TransientRemoteImageException('Could not allocate temporary avatar storage.');
         }
 
+        $maxBytes = (int) config('social.images.remote_avatar_max_bytes');
         try {
-            $image = $this->manager->read($response->body())->orient();
-        } catch (Throwable $exception) {
-            throw new PermanentRemoteImageException('Remote image could not be decoded.', previous: $exception);
+            $response = Http::withOptions([
+                'allow_redirects' => [
+                    'max' => (int) config('social.images.remote_avatar_max_redirects'),
+                    'strict' => true,
+                    'referer' => false,
+                    'protocols' => ['https'],
+                ],
+                'sink' => $temporaryPath,
+                'on_headers' => function ($response) use ($maxBytes): void {
+                    $length = $response->getHeaderLine('Content-Length');
+                    if ($length !== '' && (int) $length > $maxBytes) {
+                        throw new PermanentRemoteImageException('Remote image exceeds the byte limit.');
+                    }
+                },
+                'progress' => function (int $downloadTotal, int $downloaded) use ($maxBytes): void {
+                    if ($downloadTotal > $maxBytes || $downloaded > $maxBytes) {
+                        throw new PermanentRemoteImageException('Remote image exceeds the byte limit.');
+                    }
+                },
+            ])->timeout(10)->get($url);
+
+            if ($response->serverError()) {
+                throw new TransientRemoteImageException("Remote image server returned {$response->status()}.");
+            }
+
+            if ($response->clientError()) {
+                throw new PermanentRemoteImageException("Remote image request was rejected with {$response->status()}.");
+            }
+
+            if (filesize($temporaryPath) > $maxBytes) {
+                throw new PermanentRemoteImageException('Remote image exceeds the byte limit.');
+            }
+
+            try {
+                $this->inspector->inspectLocalFile($temporaryPath);
+                $image = $this->manager->read($temporaryPath)->orient();
+            } catch (Throwable $exception) {
+                throw new PermanentRemoteImageException('Remote image could not be decoded safely.', previous: $exception);
+            }
+
+            if ($maxDimension !== null) {
+                $image->scaleDown($maxDimension, $maxDimension);
+            }
+
+            $encoded = $image->encode();
+            $extension = MediaType::create($encoded->mimetype())->fileExtension()->value;
+            $path = sprintf('%s/%s.%s', $directory, (string) Str::uuid(), $extension);
+
+            if (! Storage::disk(config('social.media_disk'))->put($path, (string) $encoded)) {
+                throw new TransientRemoteImageException("Failed to store remote image [{$path}].");
+            }
+
+            return [
+                'path' => $path,
+                'width' => $image->width(),
+                'height' => $image->height(),
+                'mime' => $encoded->mimetype(),
+                'size' => $encoded->size(),
+            ];
+        } finally {
+            @unlink($temporaryPath);
         }
-
-        if ($maxDimension !== null) {
-            $image->scaleDown($maxDimension, $maxDimension);
-        }
-
-        $encoded = $image->encode();
-        $extension = MediaType::create($encoded->mimetype())->fileExtension()->value;
-        $path = sprintf('%s/%s.%s', $directory, (string) Str::uuid(), $extension);
-
-        if (! Storage::disk(config('social.media_disk'))->put($path, (string) $encoded)) {
-            throw new TransientRemoteImageException("Failed to store remote image [{$path}].");
-        }
-
-        return [
-            'path' => $path,
-            'width' => $image->width(),
-            'height' => $image->height(),
-            'mime' => $encoded->mimetype(),
-            'size' => $encoded->size(),
-        ];
     }
 
     /**
@@ -120,6 +163,8 @@ class ImageProcessingService
     public function generateThumbnail(string $sourcePath, string $destinationPath, ?string $diskName = null, int $maxDimension = 640): void
     {
         $disk = Storage::disk($diskName ?? config('social.media_disk'));
+
+        $this->inspector->inspectObject($disk, $sourcePath);
 
         $encoded = $this->manager->read($disk->get($sourcePath))
             ->scaleDown($maxDimension, $maxDimension)

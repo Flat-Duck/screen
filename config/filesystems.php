@@ -88,13 +88,10 @@ return [
             'bucket' => env('R2_BUCKET'),
             'endpoint' => env('R2_ENDPOINT'),
             'use_path_style_endpoint' => env('R2_USE_PATH_STYLE_ENDPOINT', true),
-            // Without this, ->url() (used by PostMedia::originalUrl()/thumbnailUrl() to serve
-            // published R2-backed images) falls back to the private S3-API endpoint above, which
-            // isn't publicly fetchable. Must be set to a public R2 bucket URL or a Cloudflare
-            // custom domain before any R2-backed post can actually render for a viewer — see
-            // docs/SECURITY.md §12's "not yet configured" note. Left unset (null) is a real
-            // operational blocker, not a default anyone should ship with.
-            'url' => env('R2_PUBLIC_URL'),
+            // Deliberately no public URL/custom domain. API resources expose short-lived signed
+            // application routes, and the delivery controller streams from this private bucket
+            // only after rechecking the viewer's current access.
+            'visibility' => 'private',
             'throw' => false,
             'report' => false,
         ],

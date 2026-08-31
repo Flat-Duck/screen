@@ -6,7 +6,7 @@ use Database\Factories\PrivateSaveFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 
 /**
  * A screenshot saved privately to the user's own account — never published, never visible to
@@ -23,6 +23,7 @@ class PrivateSave extends Model
     protected $fillable = [
         'user_id',
         'path',
+        'source_disk',
         'width',
         'height',
         'mime_type',
@@ -44,8 +45,17 @@ class PrivateSave extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function url(): string
+    public function url(User $viewer): string
     {
-        return Storage::disk(config('social.media_disk'))->url($this->path);
+        return URL::temporarySignedRoute(
+            'media.private-saves.show',
+            now()->addSeconds((int) config('social.media_url_ttl_seconds', 1200)),
+            ['privateSave' => $this->getKey(), 'viewer' => $viewer->getKey()],
+        );
+    }
+
+    public function sourceDisk(): string
+    {
+        return $this->source_disk ?? (string) config('social.media_disk');
     }
 }

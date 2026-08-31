@@ -16,6 +16,29 @@ return [
 
     'media_disk' => env('SOCIAL_MEDIA_DISK', 'public'),
 
+    // Owner-only files must never be written to the web-served public disk. Production can use
+    // the same private R2 disk as post media; local development uses storage/app/private.
+    'private_media_disk' => env('SOCIAL_PRIVATE_MEDIA_DISK', 'local'),
+
+    // API resources return signed application URLs, never raw object-store paths. A short TTL
+    // bounds capability leakage while still allowing image clients to retry and cache briefly.
+    'media_url_ttl_seconds' => (int) env('SOCIAL_MEDIA_URL_TTL_SECONDS', 1200),
+
+    'public_media_cache_seconds' => (int) env('SOCIAL_PUBLIC_MEDIA_CACHE_SECONDS', 300),
+
+    // When the media disk can presign its own URLs (S3/R2), the delivery endpoints authorize the
+    // request and then redirect, so the object store transfers the bytes instead of an FPM worker
+    // holding a connection open for a transfer that is almost entirely network wait. Disks without
+    // presigning (local development, tests) always stream. Set to false to force streaming
+    // everywhere without a deploy if object-store egress ever needs to be taken out of the path.
+    'media_offload_enabled' => (bool) env('SOCIAL_MEDIA_OFFLOAD_ENABLED', true),
+
+    // Lifetime of the presigned URL handed out by that redirect. This is the window in which a
+    // viewer who just lost access can still fetch the object, so it is deliberately far shorter
+    // than 'media_url_ttl_seconds' — the capability URL is reauthorized on every use, the
+    // presigned URL it mints is not.
+    'media_offload_ttl_seconds' => (int) env('SOCIAL_MEDIA_OFFLOAD_TTL_SECONDS', 120),
+
     'media_cleanup_grace_minutes' => (int) env('SOCIAL_MEDIA_CLEANUP_GRACE_MINUTES', 60),
 
     'media_job_timeout_seconds' => (int) env('SOCIAL_MEDIA_JOB_TIMEOUT_SECONDS', 60),
@@ -61,6 +84,13 @@ return [
         'presign_ttl_seconds' => (int) env('SOCIAL_UPLOADS_PRESIGN_TTL_SECONDS', 600),
         'max_size_bytes' => (int) env('SOCIAL_UPLOADS_MAX_SIZE_BYTES', 10 * 1024 * 1024),
         'allowed_mime_types' => ['image/jpeg', 'image/png', 'image/webp'],
+    ],
+
+    'images' => [
+        'max_dimension' => (int) env('SOCIAL_IMAGE_MAX_DIMENSION', 12000),
+        'max_pixels' => (int) env('SOCIAL_IMAGE_MAX_PIXELS', 40000000),
+        'remote_avatar_max_bytes' => (int) env('SOCIAL_REMOTE_AVATAR_MAX_BYTES', 5 * 1024 * 1024),
+        'remote_avatar_max_redirects' => (int) env('SOCIAL_REMOTE_AVATAR_MAX_REDIRECTS', 2),
     ],
 
     /*

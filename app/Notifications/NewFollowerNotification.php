@@ -28,7 +28,7 @@ class NewFollowerNotification extends Notification implements FcmNotification, S
             'follower_id' => $this->follower->id,
             'follower_username' => $this->follower->username,
             'follower_name' => $this->follower->name,
-            'follower_avatar_url' => $this->follower->avatarUrl(),
+            'follower_avatar_url' => $notifiable instanceof User ? $this->follower->avatarUrl($notifiable) : null,
         ];
     }
 

@@ -416,6 +416,54 @@
 					]
 				},
 				{
+					"name": "Email Ownership and Recovery",
+					"item": [
+						{
+							"name": "Forgot Password",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{device_token}}", "type": "string" }] },
+								"method": "POST",
+								"header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+								"body": { "mode": "raw", "raw": "{\n  \"email\": \"alice@example.com\"\n}", "options": { "raw": { "language": "json" } } },
+								"url": { "raw": "{{base_url}}/v1/auth/forgot-password", "host": ["{{base_url}}"], "path": ["v1", "auth", "forgot-password"] },
+								"description": "Always returns the same accepted response. Eligible password accounts receive a queued reset link; missing and social-only accounts are not disclosed."
+							},
+							"response": [{ "name": "202 Accepted", "originalRequest": { "method": "POST", "url": { "raw": "{{base_url}}/v1/auth/forgot-password", "host": ["{{base_url}}"], "path": ["v1", "auth", "forgot-password"] } }, "status": "Accepted", "code": 202, "header": [{ "key": "Content-Type", "value": "application/json" }], "body": "{\n  \"message\": \"If an eligible account exists for that email, a reset link has been sent.\"\n}" }]
+						},
+						{
+							"name": "Reset Password",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{device_token}}", "type": "string" }] },
+								"method": "POST",
+								"header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+								"body": { "mode": "raw", "raw": "{\n  \"email\": \"alice@example.com\",\n  \"token\": \"reset-token-from-email\",\n  \"password\": \"NewPassword1!\",\n  \"password_confirmation\": \"NewPassword1!\"\n}", "options": { "raw": { "language": "json" } } },
+								"url": { "raw": "{{base_url}}/v1/auth/reset-password", "host": ["{{base_url}}"], "path": ["v1", "auth", "reset-password"] }
+							},
+							"response": [{ "name": "200 OK", "originalRequest": { "method": "POST", "url": { "raw": "{{base_url}}/v1/auth/reset-password", "host": ["{{base_url}}"], "path": ["v1", "auth", "reset-password"] } }, "status": "OK", "code": 200, "header": [{ "key": "Content-Type", "value": "application/json" }], "body": "{\n  \"message\": \"Your password has been reset. Sign in with the new password.\"\n}" }]
+						},
+						{
+							"name": "Email Verification Status",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "GET",
+								"header": [{ "key": "Accept", "value": "application/json" }],
+								"url": { "raw": "{{base_url}}/v1/auth/email-verification", "host": ["{{base_url}}"], "path": ["v1", "auth", "email-verification"] }
+							},
+							"response": [{ "name": "200 OK", "originalRequest": { "method": "GET", "url": { "raw": "{{base_url}}/v1/auth/email-verification", "host": ["{{base_url}}"], "path": ["v1", "auth", "email-verification"] } }, "status": "OK", "code": 200, "header": [{ "key": "Content-Type", "value": "application/json" }], "body": "{\n  \"verified\": false,\n  \"email\": \"alice@example.com\",\n  \"next_action\": \"verify_email\"\n}" }]
+						},
+						{
+							"name": "Resend Email Verification",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+								"method": "POST",
+								"header": [{ "key": "Accept", "value": "application/json" }],
+								"url": { "raw": "{{base_url}}/v1/auth/email-verification/notification", "host": ["{{base_url}}"], "path": ["v1", "auth", "email-verification", "notification"] }
+							},
+							"response": [{ "name": "202 Accepted", "originalRequest": { "method": "POST", "url": { "raw": "{{base_url}}/v1/auth/email-verification/notification", "host": ["{{base_url}}"], "path": ["v1", "auth", "email-verification", "notification"] } }, "status": "Accepted", "code": 202, "header": [{ "key": "Content-Type", "value": "application/json" }], "body": "{\n  \"message\": \"If verification is still required, a new email has been sent.\"\n}" }]
+						}
+					]
+				},
+				{
 					"name": "Auth",
 					"item": [
 						{

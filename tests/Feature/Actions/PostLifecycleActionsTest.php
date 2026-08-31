@@ -123,12 +123,12 @@ class PostLifecycleActionsTest extends TestCase
         Storage::disk('public')->put('posts/retry.jpg', 'x');
         $failingStore = new class implements MediaFileStore
         {
-            public function deletePaths(array $paths): void
+            public function deletePaths(array $paths, ?string $diskName = null): void
             {
                 throw new RuntimeException('storage unavailable');
             }
 
-            public function deleteDirectory(string $directory): void
+            public function deleteDirectory(string $directory, ?string $diskName = null): void
             {
                 throw new RuntimeException('storage unavailable');
             }
@@ -161,18 +161,18 @@ class PostLifecycleActionsTest extends TestCase
         {
             public function __construct(private readonly MediaFileStore $realStore) {}
 
-            public function deletePaths(array $paths): void
+            public function deletePaths(array $paths, ?string $diskName = null): void
             {
                 if (in_array('posts/fail.jpg', $paths, true)) {
                     throw new RuntimeException('selected failure');
                 }
 
-                $this->realStore->deletePaths($paths);
+                $this->realStore->deletePaths($paths, $diskName);
             }
 
-            public function deleteDirectory(string $directory): void
+            public function deleteDirectory(string $directory, ?string $diskName = null): void
             {
-                $this->realStore->deleteDirectory($directory);
+                $this->realStore->deleteDirectory($directory, $diskName);
             }
         });
 
@@ -196,12 +196,12 @@ class PostLifecycleActionsTest extends TestCase
         $user->forceFill(['deleted_at' => now()->subDays(31)])->saveQuietly();
         $this->app->instance(MediaFileStore::class, new class implements MediaFileStore
         {
-            public function deletePaths(array $paths): void
+            public function deletePaths(array $paths, ?string $diskName = null): void
             {
                 throw new RuntimeException('storage unavailable');
             }
 
-            public function deleteDirectory(string $directory): void
+            public function deleteDirectory(string $directory, ?string $diskName = null): void
             {
                 throw new RuntimeException('storage unavailable');
             }

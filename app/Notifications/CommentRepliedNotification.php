@@ -39,7 +39,7 @@ class CommentRepliedNotification extends Notification implements FcmNotification
             'parent_comment_id' => $this->parent->id,
             'replier_id' => $this->replier->id,
             'replier_username' => $this->replier->username,
-            'replier_avatar_url' => $this->replier->avatarUrl(),
+            'replier_avatar_url' => $notifiable instanceof User ? $this->replier->avatarUrl($notifiable) : null,
             'excerpt' => Str::limit($this->reply->body, 140),
         ];
     }

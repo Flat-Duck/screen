@@ -37,7 +37,7 @@ class MentionedNotification extends Notification implements FcmNotification, Sho
             'post_id' => $this->mentionable instanceof Post ? $this->mentionable->id : $this->mentionable->post_id,
             'mentioner_id' => $this->mentioner->id,
             'mentioner_username' => $this->mentioner->username,
-            'mentioner_avatar_url' => $this->mentioner->avatarUrl(),
+            'mentioner_avatar_url' => $notifiable instanceof User ? $this->mentioner->avatarUrl($notifiable) : null,
             'excerpt' => Str::limit($this->excerpt(), 140),
         ];
     }
@@ -50,6 +50,9 @@ class MentionedNotification extends Notification implements FcmNotification, Sho
             'body' => "{$this->mentioner->name}: ".Str::limit($this->excerpt(), 80),
             'data' => [
                 'type' => 'mention',
+                'post_id' => (string) ($this->mentionable instanceof Post
+                    ? $this->mentionable->id
+                    : $this->mentionable->post_id),
                 'mentionable_type' => $this->type(),
                 'mentionable_id' => (string) $this->mentionable->id,
             ],

@@ -75,7 +75,8 @@ class FcmPushNotificationTest extends TestCase
         Http::assertSent(function ($request): bool {
             return str_contains((string) $request->url(), 'fcm.googleapis.com')
                 && $request['message']['token'] === 'token-1'
-                && $request['message']['notification']['title'] === 'New follower';
+                && $request['message']['notification']['title'] === 'New follower'
+                && $request['message']['data']['contract_version'] === '1';
         });
     }
 

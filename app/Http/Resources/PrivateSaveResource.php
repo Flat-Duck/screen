@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\PrivateSave;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -16,9 +17,14 @@ class PrivateSaveResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $viewer = $request->user();
+        if (! $viewer instanceof User) {
+            $viewer = $this->user()->firstOrFail();
+        }
+
         return [
             'id' => $this->id,
-            'url' => $this->url(),
+            'url' => $this->url($viewer),
             'width' => $this->width,
             'height' => $this->height,
             'mime_type' => $this->mime_type,

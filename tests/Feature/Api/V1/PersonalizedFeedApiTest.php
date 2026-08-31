@@ -175,4 +175,27 @@ class PersonalizedFeedApiTest extends TestCase
 
         $this->assertDatabaseCount('recommendation_feed_sessions', 1);
     }
+
+    /**
+     * The Android client models `experiment_assignments` as `Map<String, String>`. PHP encodes an
+     * empty associative array as `[]`, which Moshi rejects with "Expected BEGIN_OBJECT but was
+     * BEGIN_ARRAY" — failing the whole page, not just the field, for every user with no active
+     * experiment. Assert the raw JSON shape rather than the decoded value, because assertJsonPath
+     * cannot tell `[]` from `{}` once decoded.
+     */
+    public function test_experiment_assignments_serialise_as_an_object_when_empty(): void
+    {
+        $viewer = User::factory()->create();
+        Sanctum::actingAs($viewer);
+
+        foreach (['/api/v1/feed', '/api/v1/feed/following', '/api/v1/feed/for-you'] as $endpoint) {
+            $raw = $this->getJson($endpoint)->assertOk()->getContent();
+
+            $this->assertStringContainsString(
+                '"experiment_assignments":{}',
+                (string) $raw,
+                "{$endpoint} must emit experiment_assignments as a JSON object, not an array.",
+            );
+        }
+    }
 }

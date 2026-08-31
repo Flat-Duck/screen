@@ -7,9 +7,9 @@ use RuntimeException;
 
 class LaravelMediaFileStore implements MediaFileStore
 {
-    public function deletePaths(array $paths): void
+    public function deletePaths(array $paths, ?string $diskName = null): void
     {
-        $disk = app('filesystem')->disk(config('social.media_disk'));
+        $disk = app('filesystem')->disk($diskName ?? config('social.media_disk'));
 
         foreach (array_values(array_unique(array_filter($paths))) as $path) {
             if (! $disk->exists($path)) {
@@ -22,9 +22,9 @@ class LaravelMediaFileStore implements MediaFileStore
         }
     }
 
-    public function deleteDirectory(string $directory): void
+    public function deleteDirectory(string $directory, ?string $diskName = null): void
     {
-        $disk = app('filesystem')->disk(config('social.media_disk'));
+        $disk = app('filesystem')->disk($diskName ?? config('social.media_disk'));
 
         if (! $disk->directoryExists($directory)) {
             return;

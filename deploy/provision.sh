@@ -159,7 +159,7 @@ cat <<'NEXT'
       3. composer install --no-dev --optimize-autoloader
       4. npm ci && npm run build
       5. php artisan key:generate       (first install only)
-      6. php artisan migrate --force    (against the Neon DIRECT host, not -pooler)
+      6. deploy/database.sh migrate     (preflight + explicit pgsql_direct connection)
       7. php artisan config:cache route:cache view:cache event:cache
       8. sudo cp deploy/supervisor/*.conf /etc/supervisor/conf.d/
          sudo cp deploy/cron/screenshut-scheduler /etc/cron.d/
