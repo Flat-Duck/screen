@@ -40,7 +40,12 @@ class FeedController extends Controller
         $this->savedPosts->annotateIsSaved($posts->getCollection(), $user);
 
         return PostResource::collection($posts)->additional([
-            'experiment_assignments' => $this->features->assignmentsFor($user),
+            // Cast so an empty assignment set serialises as `{}` and not `[]`. PHP encodes an
+            // empty associative array as a JSON array, and the Android client models this field
+            // as Map<String, String>, so `[]` fails the whole response with
+            // "Expected BEGIN_OBJECT but was BEGIN_ARRAY" — taking the entire feed page down, not
+            // just this field. Every user with no active experiment hits that path.
+            'experiment_assignments' => (object) $this->features->assignmentsFor($user),
         ]);
     }
 
@@ -53,7 +58,7 @@ class FeedController extends Controller
         $this->savedPosts->annotateIsSaved($posts->getCollection(), $user);
 
         return PostResource::collection($posts)->additional([
-            'experiment_assignments' => $this->features->assignmentsFor($user),
+            'experiment_assignments' => (object) $this->features->assignmentsFor($user),
         ]);
     }
 
@@ -76,7 +81,7 @@ class FeedController extends Controller
                 'next_cursor' => $page->nextCursor,
                 'has_more' => $page->nextCursor !== null,
             ],
-            'experiment_assignments' => $this->features->assignmentsFor($user),
+            'experiment_assignments' => (object) $this->features->assignmentsFor($user),
         ]);
     }
 }
