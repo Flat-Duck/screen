@@ -234,6 +234,8 @@ Route::middleware(['auth:sanctum', 'auth.user', 'session.touch', 'verified.email
     Route::delete('comments/{comment}', [CommentController::class, 'destroy'])->middleware('throttle:writes-moderate');
 
     Route::get('notifications', [NotificationController::class, 'index'])->middleware('throttle:notifications-read');
+    // Declared before the {notification} routes so 'unread-count' can never be captured as an id.
+    Route::get('notifications/unread-count', [NotificationController::class, 'unreadCount'])->middleware('throttle:notifications-read');
     Route::patch('notifications/read-all', [NotificationController::class, 'markAllRead'])->middleware('throttle:notifications-mark-all');
     Route::patch('notifications/{notification}/read', [NotificationController::class, 'markRead'])->middleware('throttle:notifications-read');
 

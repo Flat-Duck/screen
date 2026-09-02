@@ -18,6 +18,26 @@ class NotificationController extends Controller
         return NotificationResource::collection($user->notifications()->cursorPaginate(20));
     }
 
+    /**
+     * Unread count for the bottom-nav badge.
+     *
+     * Deliberately its own endpoint rather than a `meta.unread_count` on `index`: the badge is
+     * shown on every screen that hosts the bottom nav and refreshes whenever one resumes, so
+     * making it piggyback on the listing would pull 20 notification rows plus their resources
+     * every time. This is a single indexed COUNT and carries its own, looser throttle.
+     *
+     * The count is exact; the client is what renders anything above 99 as "99+".
+     */
+    public function unreadCount(Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        return response()->json([
+            'data' => ['count' => $user->notifications()->whereNull('read_at')->count()],
+        ]);
+    }
+
     public function markRead(Request $request, string $notification): JsonResponse
     {
         /** @var User $user */
