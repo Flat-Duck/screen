@@ -11103,6 +11103,12 @@
 											"key": "image",
 											"type": "file",
 											"src": []
+										},
+										{
+											"key": "folder_id",
+											"value": "{{private_save_folder_id}}",
+											"type": "text",
+											"description": "Optional. Omit to file the save under General."
 										}
 									]
 								}
@@ -11137,6 +11143,12 @@
 													"key": "image",
 													"type": "file",
 													"src": []
+												},
+												{
+													"key": "folder_id",
+													"value": "{{private_save_folder_id}}",
+													"type": "text",
+													"description": "Optional. Omit to file the save under General."
 												}
 											]
 										}
@@ -11150,7 +11162,7 @@
 											"value": "application/json"
 										}
 									],
-									"body": "{\n    \"data\": {\n        \"id\": 1,\n        \"url\": \"https://screen.bulbulstream.ly/storage/private-saves/1/shot.jpg\",\n        \"width\": 1080,\n        \"height\": 1920,\n        \"mime_type\": \"image/jpeg\",\n        \"size_bytes\": 245678,\n        \"created_at\": \"2026-07-29T00:00:00.000000Z\"\n    }\n}"
+									"body": "{\n    \"data\": {\n        \"id\": 1,\n        \"folder_id\": 3,\n        \"folder\": {\n            \"id\": 3,\n            \"slug\": \"memes\",\n            \"name\": \"Memes\",\n            \"is_default\": true,\n            \"position\": 2\n        },\n        \"url\": \"https://screen.bulbulstream.ly/storage/private-saves/1/shot.jpg\",\n        \"width\": 1080,\n        \"height\": 1920,\n        \"mime_type\": \"image/jpeg\",\n        \"size_bytes\": 245678,\n        \"created_at\": \"2026-07-29T00:00:00.000000Z\"\n    }\n}"
 								},
 								{
 									"name": "422 Validation Error",
@@ -11181,6 +11193,12 @@
 													"key": "image",
 													"type": "file",
 													"src": []
+												},
+												{
+													"key": "folder_id",
+													"value": "{{private_save_folder_id}}",
+													"type": "text",
+													"description": "Optional. Omit to file the save under General."
 												}
 											]
 										}
@@ -11195,6 +11213,66 @@
 										}
 									],
 									"body": "{\n    \"message\": \"The given data was invalid.\",\n    \"errors\": {\n        \"image\": [\n            \"The image field is required.\"\n        ]\n    }\n}"
+								}
+							]
+						},
+						{
+							"name": "Private Save Folder  Index",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"url": "{{base_url}}/v1/private-save-folders",
+								"description": "Mobile API operation: privateSaveFolderControllerIndex. Lists the caller's own screenshot folders, seeding the three defaults (general, business, memes) on first call."
+							},
+							"response": [
+								{
+									"name": "200 OK",
+									"originalRequest": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"url": "{{base_url}}/v1/private-save-folders",
+										"description": "Mobile API operation: privateSaveFolderControllerIndex. Lists the caller's own screenshot folders, seeding the three defaults (general, business, memes) on first call."
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"body": "{\n    \"data\": [\n        {\n            \"id\": 1,\n            \"slug\": \"general\",\n            \"name\": \"General\",\n            \"is_default\": true,\n            \"position\": 0,\n            \"saves_count\": 12\n        },\n        {\n            \"id\": 2,\n            \"slug\": \"business\",\n            \"name\": \"Business\",\n            \"is_default\": true,\n            \"position\": 1,\n            \"saves_count\": 3\n        },\n        {\n            \"id\": 3,\n            \"slug\": \"memes\",\n            \"name\": \"Memes\",\n            \"is_default\": true,\n            \"position\": 2,\n            \"saves_count\": 41\n        }\n    ]\n}"
 								}
 							]
 						},
@@ -11254,7 +11332,128 @@
 											"value": "application/json"
 										}
 									],
-									"body": "{\n    \"data\": []\n}"
+									"body": "{\n    \"data\": [\n        {\n            \"id\": 1,\n            \"folder_id\": 3,\n            \"folder\": {\n                \"id\": 3,\n                \"slug\": \"memes\",\n                \"name\": \"Memes\",\n                \"is_default\": true,\n                \"position\": 2\n            },\n            \"url\": \"https://screen.bulbulstream.ly/storage/private-saves/1/shot.jpg\",\n            \"width\": 1080,\n            \"height\": 1920,\n            \"mime_type\": \"image/jpeg\",\n            \"size_bytes\": 245678,\n            \"created_at\": \"2026-07-29T00:00:00.000000Z\"\n        }\n    ]\n}"
+								}
+							]
+						},
+						{
+							"name": "Private Save  Update",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"url": "{{base_url}}/v1/private-saves/{{private_save_id}}",
+								"description": "Mobile API operation: privateSaveControllerUpdate. Moves a save into another of the caller's folders.",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"folder_id\": 3\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								}
+							},
+							"response": [
+								{
+									"name": "200 OK",
+									"originalRequest": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "PATCH",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"url": "{{base_url}}/v1/private-saves/{{private_save_id}}",
+										"description": "Mobile API operation: privateSaveControllerUpdate. Moves a save into another of the caller's folders.",
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"folder_id\": 3\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"body": "{\n    \"data\": {\n        \"id\": 1,\n        \"folder_id\": 3,\n        \"folder\": {\n            \"id\": 3,\n            \"slug\": \"memes\",\n            \"name\": \"Memes\",\n            \"is_default\": true,\n            \"position\": 2\n        },\n        \"url\": \"https://screen.bulbulstream.ly/storage/private-saves/1/shot.jpg\",\n        \"width\": 1080,\n        \"height\": 1920,\n        \"mime_type\": \"image/jpeg\",\n        \"size_bytes\": 245678,\n        \"created_at\": \"2026-07-29T00:00:00.000000Z\"\n    }\n}"
+								},
+								{
+									"name": "422 Validation Error",
+									"originalRequest": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "PATCH",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"url": "{{base_url}}/v1/private-saves/{{private_save_id}}",
+										"description": "Mobile API operation: privateSaveControllerUpdate. Moves a save into another of the caller's folders.",
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"folder_id\": 3\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										}
+									},
+									"status": "Unprocessable Content",
+									"code": 422,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"body": "{\n    \"message\": \"The given data was invalid.\",\n    \"errors\": {\n        \"folder_id\": [\n            \"The selected folder id is invalid.\"\n        ]\n    }\n}"
 								}
 							]
 						},

@@ -22,6 +22,7 @@ class PrivateSave extends Model
 
     protected $fillable = [
         'user_id',
+        'folder_id',
         'path',
         'source_disk',
         'width',
@@ -43,6 +44,12 @@ class PrivateSave extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /** @return BelongsTo<PrivateSaveFolder, $this> */
+    public function folder(): BelongsTo
+    {
+        return $this->belongsTo(PrivateSaveFolder::class, 'folder_id');
     }
 
     public function url(User $viewer): string

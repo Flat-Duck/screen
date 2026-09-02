@@ -5,7 +5,7 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class StorePrivateSaveRequest extends FormRequest
+class IndexPrivateSaveRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -16,12 +16,10 @@ class StorePrivateSaveRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'image' => ['required', 'image', 'mimes:jpeg,png,webp', 'max:10240'],
-            // Optional — omitting it files the save under General. Scoped to the caller's own
-            // folders so a guessed id can never drop a screenshot into someone else's account.
+            // Omit to list every folder. Validated rather than silently scoped, so a client bug
+            // surfaces as a 422 instead of an empty-looking folder.
             'folder_id' => [
                 'sometimes',
-                'nullable',
                 'integer',
                 Rule::exists('private_save_folders', 'id')->where('user_id', $this->user()?->getKey()),
             ],

@@ -5,7 +5,7 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class StorePrivateSaveRequest extends FormRequest
+class UpdatePrivateSaveRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -16,12 +16,8 @@ class StorePrivateSaveRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'image' => ['required', 'image', 'mimes:jpeg,png,webp', 'max:10240'],
-            // Optional — omitting it files the save under General. Scoped to the caller's own
-            // folders so a guessed id can never drop a screenshot into someone else's account.
             'folder_id' => [
-                'sometimes',
-                'nullable',
+                'required',
                 'integer',
                 Rule::exists('private_save_folders', 'id')->where('user_id', $this->user()?->getKey()),
             ],

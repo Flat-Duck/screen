@@ -104,7 +104,7 @@ class ExportOpenApiContract extends Command
             ], $parameters);
         }
         if (in_array($method, ['post', 'put', 'patch', 'delete'], true) && ($schema = $this->requestSchema($method, Str::after($route->uri(), 'api/v1/')))) {
-            $contentType = $schema === 'CreatePostRequest' ? 'multipart/form-data' : 'application/json';
+            $contentType = in_array($schema, ['CreatePostRequest', 'CreatePrivateSaveRequest'], true) ? 'multipart/form-data' : 'application/json';
             $operation['requestBody'] = ['required' => true, 'content' => [$contentType => ['schema' => ['$ref' => "#/components/schemas/{$schema}"]]]];
         }
 
@@ -131,6 +131,8 @@ class ExportOpenApiContract extends Command
             $method === 'post' && $uri === 'telemetry/events' => 'TelemetryBatchRequest',
             $method === 'post' && $uri === 'analytics/content-events' => 'ContentEventBatchRequest',
             $method === 'post' && $uri === 'posts' => 'CreatePostRequest',
+            $method === 'post' && $uri === 'private-saves' => 'CreatePrivateSaveRequest',
+            $method === 'patch' && $uri === 'private-saves/{privateSave}' => 'MovePrivateSaveRequest',
             $method === 'post' && str_ends_with($uri, '/messages') => 'CreateMessageRequest',
             $method === 'post' && $uri === 'uploads/prepare' => 'UploadPrepareRequest',
             $method === 'post' && str_ends_with($uri, '/commit') => 'UploadCommitRequest',
@@ -149,6 +151,9 @@ class ExportOpenApiContract extends Command
             in_array($uri, ['feed', 'feed/following', 'feed/for-you', 'explore', 'search/posts', 'saved-posts', 'archived-posts', 'recently-deleted-posts'], true),
             in_array($uri, ['users/{user}/posts', 'hashtags/{hashtag}/posts'], true) => 'PostPage',
             $uri === 'users/{user}' => 'UserEnvelope',
+            $uri === 'private-save-folders' => 'PrivateSaveFolderPage',
+            $method === 'post' && $uri === 'private-saves' => 'PrivateSaveEnvelope',
+            $uri === 'private-saves' => 'PrivateSavePage',
             default => null,
         };
     }
@@ -205,6 +210,31 @@ class ExportOpenApiContract extends Command
             'PostEnvelope' => ['type' => 'object', 'required' => ['data'], 'properties' => ['data' => ['$ref' => '#/components/schemas/Post']]],
             'UserEnvelope' => ['type' => 'object', 'required' => ['data'], 'properties' => ['data' => ['$ref' => '#/components/schemas/User']]],
             'PostPage' => ['type' => 'object', 'required' => ['data'], 'properties' => ['data' => ['type' => 'array', 'items' => ['$ref' => '#/components/schemas/Post']], 'links' => ['type' => 'object'], 'meta' => ['type' => 'object']]],
+            'CreatePrivateSaveRequest' => ['type' => 'object', 'required' => ['image'], 'properties' => [
+                'image' => ['type' => 'string', 'format' => 'binary'],
+                'folder_id' => ['type' => ['integer', 'null'], 'description' => 'One of the caller\'s own folders. Omit to file the save under General.'],
+            ]],
+            'MovePrivateSaveRequest' => ['type' => 'object', 'required' => ['folder_id'], 'properties' => ['folder_id' => ['type' => 'integer']]],
+            'PrivateSaveFolder' => ['type' => 'object', 'required' => ['id', 'slug', 'name', 'is_default', 'position'], 'properties' => [
+                'id' => ['type' => 'integer'],
+                'slug' => ['type' => 'string', 'description' => 'Stable per-user key; the seeded folders are general, business and memes.'],
+                'name' => ['type' => 'string'],
+                'is_default' => ['type' => 'boolean', 'description' => 'True for the three seeded folders, which cannot be deleted.'],
+                'position' => ['type' => 'integer'],
+                'saves_count' => ['type' => 'integer', 'description' => 'Only present on the folder listing.'],
+            ]],
+            'PrivateSave' => ['type' => 'object', 'required' => ['id', 'folder_id', 'url', 'width', 'height', 'mime_type', 'size_bytes', 'created_at'], 'properties' => [
+                'id' => ['type' => 'integer'],
+                'folder_id' => ['type' => ['integer', 'null']],
+                'folder' => ['$ref' => '#/components/schemas/PrivateSaveFolder'],
+                'url' => ['type' => 'string', 'format' => 'uri', 'description' => 'Short-lived signed URL; re-fetch the save rather than caching it.'],
+                'width' => ['type' => ['integer', 'null']], 'height' => ['type' => ['integer', 'null']],
+                'mime_type' => ['type' => 'string'], 'size_bytes' => ['type' => 'integer'],
+                'created_at' => ['type' => 'string', 'format' => 'date-time'],
+            ]],
+            'PrivateSaveEnvelope' => ['type' => 'object', 'required' => ['data'], 'properties' => ['data' => ['$ref' => '#/components/schemas/PrivateSave']]],
+            'PrivateSavePage' => ['type' => 'object', 'required' => ['data'], 'properties' => ['data' => ['type' => 'array', 'items' => ['$ref' => '#/components/schemas/PrivateSave']], 'links' => ['type' => 'object'], 'meta' => ['type' => 'object']]],
+            'PrivateSaveFolderPage' => ['type' => 'object', 'required' => ['data'], 'properties' => ['data' => ['type' => 'array', 'items' => ['$ref' => '#/components/schemas/PrivateSaveFolder']]]],
         ];
     }
 }

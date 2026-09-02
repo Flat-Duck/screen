@@ -4942,15 +4942,22 @@
                 ]
             }
         },
-        "/api/v1/private-saves": {
-            "post": {
-                "operationId": "privateSaveControllerStore",
+        "/api/v1/private-save-folders": {
+            "get": {
+                "operationId": "privateSaveFolderControllerIndex",
                 "tags": [
-                    "Private Saves"
+                    "Private Save Folders"
                 ],
                 "responses": {
                     "200": {
-                        "$ref": "#/components/responses/JsonSuccess"
+                        "description": "Successful response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PrivateSaveFolderPage"
+                                }
+                            }
+                        }
                     },
                     "204": {
                         "description": "Successful operation with no response body"
@@ -4966,6 +4973,67 @@
                     },
                     "429": {
                         "$ref": "#/components/responses/RateLimited"
+                    },
+                    "201": {
+                        "description": "Successful response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PrivateSaveFolderPage"
+                                }
+                            }
+                        }
+                    }
+                },
+                "x-auth-principal": "user",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/private-saves": {
+            "post": {
+                "operationId": "privateSaveControllerStore",
+                "tags": [
+                    "Private Saves"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PrivateSaveEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "204": {
+                        "description": "Successful operation with no response body"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/RateLimited"
+                    },
+                    "201": {
+                        "description": "Successful response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PrivateSaveEnvelope"
+                                }
+                            }
+                        }
                     }
                 },
                 "x-auth-principal": "user",
@@ -4977,9 +5045,9 @@
                 "requestBody": {
                     "required": true,
                     "content": {
-                        "application/json": {
+                        "multipart/form-data": {
                             "schema": {
-                                "$ref": "#/components/schemas/JsonObject"
+                                "$ref": "#/components/schemas/CreatePrivateSaveRequest"
                             }
                         }
                     }
@@ -4992,6 +5060,57 @@
                 ],
                 "responses": {
                     "200": {
+                        "description": "Successful response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PrivateSavePage"
+                                }
+                            }
+                        }
+                    },
+                    "204": {
+                        "description": "Successful operation with no response body"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/RateLimited"
+                    },
+                    "201": {
+                        "description": "Successful response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PrivateSavePage"
+                                }
+                            }
+                        }
+                    }
+                },
+                "x-auth-principal": "user",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/private-saves/{privateSave}": {
+            "patch": {
+                "operationId": "privateSaveControllerUpdate",
+                "tags": [
+                    "Private Saves"
+                ],
+                "responses": {
+                    "200": {
                         "$ref": "#/components/responses/JsonSuccess"
                     },
                     "204": {
@@ -5015,10 +5134,28 @@
                     {
                         "bearerAuth": []
                     }
-                ]
-            }
-        },
-        "/api/v1/private-saves/{privateSave}": {
+                ],
+                "parameters": [
+                    {
+                        "name": "privateSave",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MovePrivateSaveRequest"
+                            }
+                        }
+                    }
+                }
+            },
             "delete": {
                 "operationId": "privateSaveControllerDestroy",
                 "tags": [
@@ -7343,6 +7480,168 @@
                     },
                     "meta": {
                         "type": "object"
+                    }
+                }
+            },
+            "CreatePrivateSaveRequest": {
+                "type": "object",
+                "required": [
+                    "image"
+                ],
+                "properties": {
+                    "image": {
+                        "type": "string",
+                        "format": "binary"
+                    },
+                    "folder_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "One of the caller's own folders. Omit to file the save under General."
+                    }
+                }
+            },
+            "MovePrivateSaveRequest": {
+                "type": "object",
+                "required": [
+                    "folder_id"
+                ],
+                "properties": {
+                    "folder_id": {
+                        "type": "integer"
+                    }
+                }
+            },
+            "PrivateSaveFolder": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "slug",
+                    "name",
+                    "is_default",
+                    "position"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "slug": {
+                        "type": "string",
+                        "description": "Stable per-user key; the seeded folders are general, business and memes."
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "is_default": {
+                        "type": "boolean",
+                        "description": "True for the three seeded folders, which cannot be deleted."
+                    },
+                    "position": {
+                        "type": "integer"
+                    },
+                    "saves_count": {
+                        "type": "integer",
+                        "description": "Only present on the folder listing."
+                    }
+                }
+            },
+            "PrivateSave": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "folder_id",
+                    "url",
+                    "width",
+                    "height",
+                    "mime_type",
+                    "size_bytes",
+                    "created_at"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "folder_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "folder": {
+                        "$ref": "#/components/schemas/PrivateSaveFolder"
+                    },
+                    "url": {
+                        "type": "string",
+                        "format": "uri",
+                        "description": "Short-lived signed URL; re-fetch the save rather than caching it."
+                    },
+                    "width": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "height": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "mime_type": {
+                        "type": "string"
+                    },
+                    "size_bytes": {
+                        "type": "integer"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                }
+            },
+            "PrivateSaveEnvelope": {
+                "type": "object",
+                "required": [
+                    "data"
+                ],
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/PrivateSave"
+                    }
+                }
+            },
+            "PrivateSavePage": {
+                "type": "object",
+                "required": [
+                    "data"
+                ],
+                "properties": {
+                    "data": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PrivateSave"
+                        }
+                    },
+                    "links": {
+                        "type": "object"
+                    },
+                    "meta": {
+                        "type": "object"
+                    }
+                }
+            },
+            "PrivateSaveFolderPage": {
+                "type": "object",
+                "required": [
+                    "data"
+                ],
+                "properties": {
+                    "data": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PrivateSaveFolder"
+                        }
                     }
                 }
             }

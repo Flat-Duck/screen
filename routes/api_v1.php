@@ -30,6 +30,7 @@ use App\Http\Controllers\Api\V1\PostController;
 use App\Http\Controllers\Api\V1\PostLibraryController;
 use App\Http\Controllers\Api\V1\PostMediaController;
 use App\Http\Controllers\Api\V1\PrivateSaveController;
+use App\Http\Controllers\Api\V1\PrivateSaveFolderController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\PushTokenController;
 use App\Http\Controllers\Api\V1\RecommendationFeedbackController;
@@ -124,8 +125,10 @@ Route::middleware(['auth:sanctum', 'auth.user', 'session.touch', 'verified.email
     Route::post('uploads/prepare', [UploadController::class, 'prepare'])->middleware('throttle:uploads-manage');
     Route::post('uploads/{uploadId}/commit', [UploadController::class, 'commit'])->middleware('throttle:uploads-manage');
 
+    Route::get('private-save-folders', [PrivateSaveFolderController::class, 'index'])->middleware('throttle:reads');
     Route::post('private-saves', [PrivateSaveController::class, 'store'])->middleware('throttle:posts-store');
     Route::get('private-saves', [PrivateSaveController::class, 'index'])->middleware('throttle:reads');
+    Route::patch('private-saves/{privateSave}', [PrivateSaveController::class, 'update'])->middleware('throttle:writes-moderate');
     Route::delete('private-saves/{privateSave}', [PrivateSaveController::class, 'destroy'])->middleware('throttle:writes-moderate');
 
     Route::patch('profile', [ProfileController::class, 'update'])->middleware('throttle:writes-moderate');

@@ -962,3 +962,86 @@ Annotated today on:
 - Other endpoints returning `UserSummaryResource` (search, notification actors, conversation
   participants, follow lists) do **not** annotate it yet, so it stays absent there. Ask before
   building a follow control on those surfaces.
+
+---
+
+## Shipped: 2026-09-02 — folders for private saves
+
+Private saves (`/v1/private-saves`) are now classified into per-user folders. Every account
+gets three seeded folders — **General**, **Business**, **Memes** — and the user picks one at
+upload time.
+
+### 1. List the folders
+
+`GET /v1/private-save-folders` — not paginated, returns every folder the caller owns in
+display order.
+
+```json
+{
+  "data": [
+    { "id": 1, "slug": "general",  "name": "General",  "is_default": true, "position": 0, "saves_count": 12 },
+    { "id": 2, "slug": "business", "name": "Business", "is_default": true, "position": 1, "saves_count": 3 },
+    { "id": 3, "slug": "memes",    "name": "Memes",    "is_default": true, "position": 2, "saves_count": 41 }
+  ]
+}
+```
+
+- `slug` is the stable key — match on it, not on `name`, which is user-editable text.
+- `saves_count` is present **only on this endpoint**; the nested `folder` object elsewhere
+  omits the key rather than sending a meaningless `0`.
+- `is_default` marks the three seeded folders. They cannot be deleted, which is what
+  guarantees a save always has somewhere to live.
+
+### 2. Choose a folder when uploading
+
+`POST /v1/private-saves` takes an optional `folder_id` alongside `image` (still
+`multipart/form-data`).
+
+- Omit it and the save is filed under **General**. Existing clients keep working untouched.
+- The id must be one of the caller's own folders; anything else is a `422` on `folder_id`.
+- Send it as the numeric id, e.g. `3`. This is multipart, so it goes on the wire as the
+  string `"3"` — that's fine, `integer` accepts a numeric string. (Unlike `boolean` fields,
+  which reject `"true"` — see the group-creation note.)
+
+### 3. Read them back
+
+`GET /v1/private-saves` — unchanged, plus an optional `?folder_id=` filter, and every item
+now carries the folder:
+
+```json
+{
+  "id": 1,
+  "folder_id": 3,
+  "folder": { "id": 3, "slug": "memes", "name": "Memes", "is_default": true, "position": 2 },
+  "url": "…", "width": 1080, "height": 1920,
+  "mime_type": "image/jpeg", "size_bytes": 245678,
+  "created_at": "2026-07-29T00:00:00.000000Z"
+}
+```
+
+Omit `folder_id` to list everything (still cursor-paginated, 24 per page). Passing a folder
+that isn't yours is a `422`, not an empty page — so a client bug surfaces instead of looking
+like an empty folder.
+
+### 4. Move a save
+
+`PATCH /v1/private-saves/{id}` with `{"folder_id": 3}` → `200` with the updated
+`PrivateSaveResource`. This is the correction path for a wrong pick at upload time.
+
+**Behavior to know:**
+- **Folders are seeded lazily, on first use** — the first call to
+  `GET /v1/private-save-folders` or `POST /v1/private-saves` creates them. So call the folder
+  list before rendering a picker; don't hard-code the three ids client-side, and don't assume
+  the ids are the same for two different users. `slug` is the only thing stable across
+  accounts.
+- **Existing saves were backfilled into General**, so `folder_id` is non-null on every row
+  this app created. It is typed nullable only because folder deletion (not yet exposed)
+  would null it.
+- A save belonging to someone else `404`s on `PATCH` and `DELETE`, same as before — the API
+  doesn't distinguish "not yours" from "doesn't exist".
+- These are **private** saves. Nothing here is visible to another user, and none of it is
+  related to `ScreenshotCategory` (the global taxonomy on published posts) or to
+  saved *collections* (`/v1/collections`, which organize already-published posts).
+
+**Not built yet:** creating, renaming, reordering or deleting custom folders. The schema is
+per-user rows precisely so those are additive — ask if the client wants them.

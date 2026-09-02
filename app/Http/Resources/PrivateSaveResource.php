@@ -24,6 +24,8 @@ class PrivateSaveResource extends JsonResource
 
         return [
             'id' => $this->id,
+            'folder_id' => $this->folder_id,
+            'folder' => $this->whenLoaded('folder', fn (): PrivateSaveFolderResource => new PrivateSaveFolderResource($this->folder)),
             'url' => $this->url($viewer),
             'width' => $this->width,
             'height' => $this->height,

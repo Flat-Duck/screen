@@ -218,6 +218,18 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
         return $this->hasMany(DeviceSession::class);
     }
 
+    /** @return HasMany<PrivateSave, $this> */
+    public function privateSaves(): HasMany
+    {
+        return $this->hasMany(PrivateSave::class);
+    }
+
+    /** @return HasMany<PrivateSaveFolder, $this> */
+    public function privateSaveFolders(): HasMany
+    {
+        return $this->hasMany(PrivateSaveFolder::class)->orderBy('position')->orderBy('id');
+    }
+
     /**
      * Users this user follows.
      *
