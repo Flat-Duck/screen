@@ -936,3 +936,29 @@ thread. Clients must render a placeholder row, not assume a string.
 `EmailVerificationController@show` (`GET /v1/auth/email-verification`) is the exception that
 proves the rule — it returns a plain `response()->json([...])`, so it has **no** `data`
 wrapper. Anything built from a `JsonResource` does.
+
+---
+
+## Shipped: 2026-09-02 — `is_following` on post authors (`UserSummaryResource`)
+
+`UserSummaryResource` gains an **optional** `is_following` boolean. It appears wherever the
+server annotated it and is **absent otherwise** — it is never sent as a blanket `false`.
+
+Annotated today on:
+
+- `GET /v1/feed` (Following)
+- `GET /v1/feed/for-you`
+- `GET /v1/posts/{post}`
+
+**Behavior to know:**
+- **Absent means "unknown", not "not following".** Treating a missing value as `false` is the
+  bug this fixes: the Following feed is built from `whereIn('user_id', $user->following())`,
+  so every author in it is followed by construction — and the client rendered a Follow button
+  on every post. If the field is absent, hide the follow control rather than guessing.
+- **It is absent on the viewer's own posts**, deliberately. "Am I following myself" is not a
+  meaningful question; use that as the signal to hide the button.
+- Computed in one bulk query per page (`FollowService::annotatePostAuthorsAreFollowed`), the
+  same shape as the existing `is_liked` annotation — no N+1, no per-row cost.
+- Other endpoints returning `UserSummaryResource` (search, notification actors, conversation
+  participants, follow lists) do **not** annotate it yet, so it stays absent there. Ask before
+  building a follow control on those surfaces.

@@ -7044,6 +7044,9 @@
                             "string",
                             "null"
                         ]
+                    },
+                    "is_following": {
+                        "type": "boolean"
                     }
                 }
             },

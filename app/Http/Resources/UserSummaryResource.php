@@ -30,6 +30,11 @@ class UserSummaryResource extends JsonResource
             'name' => $this->name,
             'avatar_url' => $this->avatarUrl($viewer),
             'account_visibility' => $this->account_visibility->value,
+            // Only present when something annotated it (FollowService::annotatePostAuthorsAreFollowed).
+            // Absent means "not known here", which clients must treat as "don't render a follow
+            // control" — never as false, which is what made the Following feed offer Follow on
+            // people the viewer already follows.
+            'is_following' => $this->whenNotNull($this->is_following),
         ];
     }
 }

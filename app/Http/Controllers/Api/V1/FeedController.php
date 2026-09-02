@@ -6,6 +6,7 @@ use App\Http\Resources\PostResource;
 use App\Models\User;
 use App\Services\FeatureEvaluationService;
 use App\Services\FeedService;
+use App\Services\FollowService;
 use App\Services\LikeService;
 use App\Services\Recommendations\RecommendationFeedService;
 use App\Services\SavedPostService;
@@ -20,6 +21,7 @@ class FeedController extends Controller
         private readonly LikeService $likes,
         private readonly SavedPostService $savedPosts,
         private readonly RecommendationFeedService $recommendations,
+        private readonly FollowService $follows,
     ) {}
 
     public function index(Request $request): AnonymousResourceCollection
@@ -38,6 +40,7 @@ class FeedController extends Controller
 
         $this->likes->annotateIsLiked($posts->getCollection(), $user);
         $this->savedPosts->annotateIsSaved($posts->getCollection(), $user);
+        $this->follows->annotatePostAuthorsAreFollowed($posts->getCollection(), $user);
 
         return PostResource::collection($posts)->additional([
             // Cast so an empty assignment set serialises as `{}` and not `[]`. PHP encodes an
@@ -56,6 +59,7 @@ class FeedController extends Controller
         $posts = $this->feed->feedFor($user);
         $this->likes->annotateIsLiked($posts->getCollection(), $user);
         $this->savedPosts->annotateIsSaved($posts->getCollection(), $user);
+        $this->follows->annotatePostAuthorsAreFollowed($posts->getCollection(), $user);
 
         return PostResource::collection($posts)->additional([
             'experiment_assignments' => (object) $this->features->assignmentsFor($user),
@@ -73,6 +77,7 @@ class FeedController extends Controller
         $page = $this->recommendations->page($user, $validated['cursor'] ?? null, (int) ($validated['per_page'] ?? 15));
         $this->likes->annotateIsLiked($page->posts, $user);
         $this->savedPosts->annotateIsSaved($page->posts, $user);
+        $this->follows->annotatePostAuthorsAreFollowed($page->posts, $user);
 
         return PostResource::collection($page->posts)->additional([
             'meta' => [

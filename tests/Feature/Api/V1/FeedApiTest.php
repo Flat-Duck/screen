@@ -33,6 +33,72 @@ class FeedApiTest extends TestCase
         $this->assertSame($followedPost->id, $response->json('data.0.id'));
     }
 
+    /**
+     * Every author in the Following feed is, by definition, followed — but `UserSummaryResource`
+     * carried no follow state, so the client had nothing to read and defaulted to "not following".
+     * The result was a Follow button on every post in a feed built entirely from people the
+     * viewer already follows.
+     */
+    public function test_following_feed_marks_authors_as_followed(): void
+    {
+        $user = User::factory()->create();
+        $followed = User::factory()->create();
+        $user->following()->attach($followed->id);
+        Post::factory()->create(['user_id' => $followed->id]);
+
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/v1/feed')
+            ->assertOk()
+            ->assertJsonPath('data.0.user.id', $followed->id)
+            ->assertJsonPath('data.0.user.is_following', true);
+    }
+
+    /** The viewer's own posts leave it absent rather than false — "following yourself" is not a
+     * question, and the clients hide the button entirely on that signal. */
+    public function test_own_post_omits_is_following_on_the_author(): void
+    {
+        $user = User::factory()->create();
+        Post::factory()->create(['user_id' => $user->id]);
+
+        Sanctum::actingAs($user);
+
+        $response = $this->getJson('/api/v1/posts/'.Post::query()->firstOrFail()->id);
+
+        $response->assertOk();
+        $this->assertArrayNotHasKey('is_following', $response->json('data.user'));
+    }
+
+    public function test_post_detail_marks_a_followed_author(): void
+    {
+        $user = User::factory()->create();
+        $followed = User::factory()->create();
+        $user->following()->attach($followed->id);
+        $post = Post::factory()->create(['user_id' => $followed->id]);
+
+        Sanctum::actingAs($user);
+
+        $this->getJson("/api/v1/posts/{$post->id}")
+            ->assertOk()
+            ->assertJsonPath('data.user.is_following', true);
+    }
+
+    public function test_for_you_feed_marks_unfollowed_authors(): void
+    {
+        $user = User::factory()->create();
+        $stranger = User::factory()->create();
+        Post::factory()->create(['user_id' => $stranger->id]);
+
+        Sanctum::actingAs($user);
+
+        $response = $this->getJson('/api/v1/feed/for-you');
+
+        $response->assertOk();
+        if ($response->json('data.0.user.id') === $stranger->id) {
+            $this->assertFalse($response->json('data.0.user.is_following'));
+        }
+    }
+
     public function test_feed_excludes_the_viewers_own_posts(): void
     {
         $user = User::factory()->create();
