@@ -129,6 +129,38 @@ class NotificationApiTest extends TestCase
         $response->assertNotFound();
     }
 
+    public function test_unread_count_returns_only_unread_notifications(): void
+    {
+        $user = User::factory()->create();
+        $user->notify(new NewFollowerNotification(User::factory()->create()));
+        $user->notify(new NewFollowerNotification(User::factory()->create()));
+        $user->notifications()->firstOrFail()->markAsRead();
+
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/v1/notifications/unread-count')
+            ->assertOk()
+            ->assertExactJson(['data' => ['count' => 1]]);
+    }
+
+    public function test_unread_count_is_scoped_to_the_caller(): void
+    {
+        $other = User::factory()->create();
+        $other->notify(new NewFollowerNotification(User::factory()->create()));
+
+        Sanctum::actingAs(User::factory()->create());
+
+        $this->getJson('/api/v1/notifications/unread-count')
+            ->assertOk()
+            ->assertExactJson(['data' => ['count' => 0]]);
+    }
+
+    /** 'unread-count' must resolve to its own route, never be swallowed as a {notification} id. */
+    public function test_unread_count_requires_authentication(): void
+    {
+        $this->getJson('/api/v1/notifications/unread-count')->assertUnauthorized();
+    }
+
     public function test_mark_all_read_flips_every_unread_notification(): void
     {
         $user = User::factory()->create();

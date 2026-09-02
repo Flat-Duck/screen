@@ -887,3 +887,78 @@ including on rows created before this change (there were none in production).
 `firebase/php-jwt` stays as a composer dependency — nothing to do with social login anymore
 (Google's verifier moved to Socialite earlier the same day), but `App\Services\Fcm\FcmClient`
 still uses it directly to sign its own JWTs for Firebase Cloud Messaging auth, an unrelated use.
+
+---
+
+## Shipped: 2026-09-02 — `GET /v1/notifications/unread-count`
+
+New endpoint for the bottom-nav notification badge.
+
+- `GET /v1/notifications/unread-count` — `200`, `{"data": {"count": 12}}`.
+- Auth: user token (same `auth:sanctum` group as the rest of `/v1/notifications`).
+- Throttle: `notifications-read`, shared with the listing.
+
+Counts only the caller's own unread rows (`read_at IS NULL`); a user never sees anyone
+else's. `PATCH /v1/notifications/read-all` drives it to `0`, and marking a single one read
+decrements it — nothing else to call.
+
+**Behavior to know:**
+- The count is **exact and uncapped**. Rendering anything over 99 as `99+` is a client
+  decision — the API will happily return `4213`.
+- It is deliberately *not* folded into `GET /v1/notifications` as `meta.unread_count`. The
+  badge refreshes on every screen that hosts the bottom nav, and piggybacking would pull 20
+  notification rows and their resources each time; this is a single indexed `COUNT`.
+- Route is declared **before** `notifications/{notification}/read` so `unread-count` can
+  never be captured as a notification id. It is a `GET`; the mark-read routes are `PATCH`.
+
+---
+
+## Corrections: 2026-09-02 — response shapes the Android models had wrong
+
+No backend change here — recording it so the shapes stop being guessed. Laravel wraps
+**every** `JsonResource` in a `data` key (nothing calls `JsonResource::withoutWrapping`),
+and that applies to single resources exactly as it does to collections:
+
+| Endpoint | Actual 201/200 body |
+| --- | --- |
+| `POST /v1/conversations` | `{"data": { …ConversationResource }}` |
+| `POST /v1/conversations/{id}/messages` | `{"data": { …MessageResource }}` |
+| `POST /v1/hidden-terms` | `{"data": { …HiddenTermResource }}` |
+
+The Android client had these declared as bare objects, so Moshi threw on a perfectly
+successful `201` — a sent message reported "failed to send" while the row was already stored
+and the recipient already pushed.
+
+`MessageResource.body` is **nullable**: a message caught by the viewer's hidden-words filter
+comes back as `{"body": null, "is_filtered": true}` rather than being dropped from the
+thread. Clients must render a placeholder row, not assume a string.
+
+`EmailVerificationController@show` (`GET /v1/auth/email-verification`) is the exception that
+proves the rule — it returns a plain `response()->json([...])`, so it has **no** `data`
+wrapper. Anything built from a `JsonResource` does.
+
+---
+
+## Shipped: 2026-09-02 — `is_following` on post authors (`UserSummaryResource`)
+
+`UserSummaryResource` gains an **optional** `is_following` boolean. It appears wherever the
+server annotated it and is **absent otherwise** — it is never sent as a blanket `false`.
+
+Annotated today on:
+
+- `GET /v1/feed` (Following)
+- `GET /v1/feed/for-you`
+- `GET /v1/posts/{post}`
+
+**Behavior to know:**
+- **Absent means "unknown", not "not following".** Treating a missing value as `false` is the
+  bug this fixes: the Following feed is built from `whereIn('user_id', $user->following())`,
+  so every author in it is followed by construction — and the client rendered a Follow button
+  on every post. If the field is absent, hide the follow control rather than guessing.
+- **It is absent on the viewer's own posts**, deliberately. "Am I following myself" is not a
+  meaningful question; use that as the signal to hide the button.
+- Computed in one bulk query per page (`FollowService::annotatePostAuthorsAreFollowed`), the
+  same shape as the existing `is_liked` annotation — no N+1, no per-row cost.
+- Other endpoints returning `UserSummaryResource` (search, notification actors, conversation
+  participants, follow lists) do **not** annotate it yet, so it stays absent there. Ask before
+  building a follow control on those surfaces.

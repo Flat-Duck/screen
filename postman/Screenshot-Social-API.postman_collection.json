@@ -11713,6 +11713,66 @@
 									"body": "{\n    \"message\": \"The given data was invalid.\",\n    \"errors\": {\n        \"field\": [\n            \"The field is required.\"\n        ]\n    }\n}"
 								}
 							]
+						},
+						{
+							"name": "Notification  Unread Count",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"url": "{{base_url}}/v1/notifications/unread-count",
+								"description": "Mobile API operation: notificationControllerUnreadCount. Unread-only count for the bottom-nav badge; exact integer, the client renders anything above 99 as \"99+\"."
+							},
+							"response": [
+								{
+									"name": "200 OK",
+									"originalRequest": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"url": "{{base_url}}/v1/notifications/unread-count",
+										"description": "Mobile API operation: notificationControllerUnreadCount. Unread-only count for the bottom-nav badge; exact integer, the client renders anything above 99 as \"99+\"."
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"body": "{\n    \"data\": {\n        \"count\": 3\n    }\n}"
+								}
+							]
 						}
 					]
 				},

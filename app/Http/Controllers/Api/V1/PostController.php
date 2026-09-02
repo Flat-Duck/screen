@@ -13,6 +13,7 @@ use App\Models\Post;
 use App\Models\Scopes\NotArchivedScope;
 use App\Models\User;
 use App\Services\BlockService;
+use App\Services\FollowService;
 use App\Services\SavedPostService;
 use App\Services\UserRestrictionService;
 use Illuminate\Http\JsonResponse;
@@ -24,6 +25,7 @@ class PostController extends Controller
         private readonly BlockService $blocks,
         private readonly SavedPostService $savedPosts,
         private readonly UserRestrictionService $restrictions,
+        private readonly FollowService $follows,
     ) {}
 
     public function store(StorePostRequest $request, CreatePost $createPost): JsonResponse
@@ -55,6 +57,9 @@ class PostController extends Controller
 
         $post->is_liked = $post->likes()->where('user_id', $viewer->id)->exists();
         $post->is_saved = $this->savedPosts->isSaved($viewer, $post);
+        // Post detail renders the same card as the feed, follow button included, so it needs the
+        // same annotation — a single-item collection here.
+        $this->follows->annotatePostAuthorsAreFollowed(collect([$post]), $viewer);
 
         return new PostResource($post);
     }
