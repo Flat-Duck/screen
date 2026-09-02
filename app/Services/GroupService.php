@@ -137,8 +137,11 @@ class GroupService
             )
             ->whereIn('posts.id', $visiblePostIds)
             ->with(['user', 'media', 'category'])
-            ->withCount(['likes', 'comments', 'reposts'])
+            // select() before withCount(), never after: withCount() appends its subqueries with
+            // addSelect, and a later select() replaces the whole column list — silently dropping
+            // them, so every post came back with a null likes_count/comments_count/reposts_count.
             ->select('posts.*', 'group_post_pivot.group_post_id')
+            ->withCount(['likes', 'comments', 'reposts'])
             ->orderByDesc('group_post_pivot.group_post_id')
             ->cursorPaginate($perPage);
 

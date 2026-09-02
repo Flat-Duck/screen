@@ -117,6 +117,34 @@ class GroupApiTest extends TestCase
         $this->getJson("/api/v1/groups/{$group->id}/posts")->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $post->id);
     }
 
+    /**
+     * The group feed must carry real engagement counts, not nulls.
+     *
+     * `withCount()` adds its subqueries via addSelect, so an explicit `select()` placed *after* it
+     * silently throws them away — the endpoint kept returning `"likes_count": null`, which the
+     * Android client (non-null `Int`) rejects at parse time. The visible symptom was a group whose
+     * feed was simply empty after sharing a post into it, with no error anywhere.
+     */
+    public function test_group_feed_includes_engagement_counts(): void
+    {
+        $author = User::factory()->create();
+        $post = Post::factory()->for($author)->create();
+        $viewer = User::factory()->create();
+        Sanctum::actingAs($viewer);
+        $group = $this->createGroup($viewer, 'hello');
+        $this->postJson("/api/v1/groups/{$group->id}/posts/{$post->id}")->assertNoContent();
+
+        $post->likes()->create(['user_id' => $viewer->id]);
+
+        $this->getJson("/api/v1/groups/{$group->id}/posts")
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $post->id)
+            ->assertJsonPath('data.0.likes_count', 1)
+            ->assertJsonPath('data.0.comments_count', 0)
+            ->assertJsonPath('data.0.reposts_count', 0);
+    }
+
     public function test_group_feed_hides_posts_the_viewer_cannot_see(): void
     {
         $creator = User::factory()->create();
