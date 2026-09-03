@@ -100,6 +100,13 @@ grant/revoke it via `php artisan users:make-admin {email} [--revoke]`.
   `ModerationCase::open_key`: re-detecting an open condition refreshes that alert instead of
   duplicating it, and resolving frees the key so the condition can legitimately alert again.
   Severity ratchets up only, so a late-arriving moderator still sees the peak.
+- Stale **Info** alerts expire on their own (`stale_info` in `config/moderation.php`): the
+  tripwire raises one per ranked item and a post that leaves the top-K is simply never
+  re-detected, so nothing would ever close them. `ModerationAlertState::Expired` is
+  deliberately distinct from `Resolved` — the queue must never imply a human reviewed
+  something nobody reviewed. Expiry infers "condition cleared" from the *absence* of a
+  re-detection, so it is skipped whenever a detector failed or a single detector was run
+  with `--detector`; either would look identical to a condition clearing.
 - `TrendingTripwireDetector` is the only *proactive* rule — it fires on reach (top-K), before
   anyone has reported anything, which is why a clean ranked item is only `Info`.
   `config('moderation.alerts.trending_tripwire.only_when_reported')` turns that half off if

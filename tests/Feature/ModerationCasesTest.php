@@ -34,6 +34,69 @@ class ModerationCasesTest extends TestCase
         $this->assertSame(ModerationCaseStatus::Open, $case->status);
     }
 
+    /**
+     * Every action on a case routes through requireReason(), so an empty reason made the
+     * entire panel do nothing — and the blade rendered no errors, so it did nothing
+     * silently. The regression that matters is the missing feedback, not the refusal.
+     */
+    public function test_an_action_without_a_reason_reports_the_error_instead_of_failing_silently(): void
+    {
+        $post = Post::factory()->create();
+        $report = app(ModerationService::class)->report(User::factory()->create(), 'post', $post->id, 'spam', null);
+        $case = ModerationCase::findOrFail($report->moderation_case_id);
+        $admin = User::factory()->create(['is_admin' => true, 'admin_role' => AdminRole::Moderator]);
+
+        Livewire::actingAs($admin)
+            ->test(ModerationCaseDetail::class, ['case' => $case])
+            ->call('assignToSelf')
+            ->assertHasErrors('reason')
+            ->assertSee('A moderation reason is required');
+
+        $this->assertNull($case->fresh()->assigned_to);
+    }
+
+    public function test_every_case_action_surfaces_the_missing_reason(): void
+    {
+        $post = Post::factory()->create();
+        $report = app(ModerationService::class)->report(User::factory()->create(), 'post', $post->id, 'spam', null);
+        $case = ModerationCase::findOrFail($report->moderation_case_id);
+        $admin = User::factory()->create(['is_admin' => true, 'admin_role' => AdminRole::Moderator]);
+
+        foreach ([
+            ['assignToSelf', []],
+            ['setPriority', []],
+            ['removeContent', []],
+            ['warnAuthor', []],
+            ['suspendAuthor', [false]],
+            ['setRecommendation', [false]],
+            ['changeStatus', ['investigating']],
+        ] as [$action, $args]) {
+            Livewire::actingAs($admin)
+                ->test(ModerationCaseDetail::class, ['case' => $case])
+                ->call($action, ...$args)
+                ->assertHasErrors('reason');
+        }
+
+        $this->assertSame(ModerationCaseStatus::Open, $case->fresh()->status);
+    }
+
+    public function test_a_short_note_errors_on_the_note_field_not_the_reason_field(): void
+    {
+        $post = Post::factory()->create();
+        $report = app(ModerationService::class)->report(User::factory()->create(), 'post', $post->id, 'spam', null);
+        $case = ModerationCase::findOrFail($report->moderation_case_id);
+
+        // Otherwise the message lands under the reason input, pointing at the wrong box.
+        Livewire::actingAs(User::factory()->create(['is_admin' => true, 'admin_role' => AdminRole::Moderator]))
+            ->test(ModerationCaseDetail::class, ['case' => $case])
+            ->set('note', 'ok')
+            ->call('addNote')
+            ->assertHasErrors('note')
+            ->assertHasNoErrors('reason');
+
+        $this->assertDatabaseCount('moderation_case_notes', 0);
+    }
+
     public function test_moderation_pages_require_named_permission_and_disable_caching(): void
     {
         $this->actingAs(User::factory()->create());

@@ -7,6 +7,7 @@ use App\Enums\ModerationAlertState;
 use App\Models\ModerationAlert;
 use App\Models\User;
 use App\Services\AdminAuditLogger;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -87,6 +88,34 @@ class ModerationAlertService
             'open_key' => null,
         ]);
         $this->audit->record($actor, 'moderation_alert.resolved', $alert, $reason, $before, $alert->only(array_keys($before)));
+    }
+
+    /**
+     * Closes Info alerts whose condition has not been re-detected since `$cutoff`.
+     *
+     * Scoped hard on purpose. Only Info, because that is the tripwire's "here is something
+     * with reach" signal and the only severity raised for a condition that routinely stops
+     * being true on its own; a Warning or Critical always waits for a person. Only while
+     * still Open, because an acknowledged alert belongs to the moderator who took it.
+     *
+     * Expiring is not resolving — the state is distinct so the queue never claims someone
+     * reviewed something nobody reviewed. Clearing `open_key` means a post that climbs back
+     * into the ranking raises a fresh alert rather than silently reusing the closed one.
+     *
+     * @return int Number of alerts expired.
+     */
+    public function expireStaleInfo(CarbonInterface $cutoff): int
+    {
+        return ModerationAlert::query()
+            ->where('state', ModerationAlertState::Open->value)
+            ->where('severity', ModerationAlertSeverity::Info->value)
+            ->where(fn ($query) => $query->where('last_detected_at', '<', $cutoff)->orWhereNull('last_detected_at'))
+            ->update([
+                'state' => ModerationAlertState::Expired->value,
+                'resolved_at' => now(),
+                'open_key' => null,
+                'updated_at' => now(),
+            ]);
     }
 
     /**

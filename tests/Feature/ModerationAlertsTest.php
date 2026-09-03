@@ -488,6 +488,95 @@ class ModerationAlertsTest extends TestCase
         $this->assertStringContainsString('is spiking (5x prior window)', $alert->title);
     }
 
+    public function test_stale_info_alerts_expire_once_their_condition_stops_being_detected(): void
+    {
+        config(['moderation.alerts.stale_info.grace_minutes' => 30]);
+        $post = Post::factory()->create();
+        // Ranked on the first pass, gone on the second — consecutive returns, because a
+        // second shouldReceive() would never be reached while the first still matches.
+        Redis::shouldReceive('zrevrange')->andReturn([(string) $post->id], []);
+        $this->artisan('moderation:detect-alerts')->assertSuccessful();
+
+        $alert = ModerationAlert::query()->where('target_type', Post::class)->sole();
+        $this->assertSame(ModerationAlertState::Open, $alert->state);
+
+        // The post drops out of the ranking and is never re-detected.
+        $alert->forceFill(['last_detected_at' => now()->subHours(2)])->save();
+        $this->artisan('moderation:detect-alerts')->assertSuccessful();
+
+        $alert->refresh();
+        $this->assertSame(ModerationAlertState::Expired, $alert->state);
+        // Freed, so the same post climbing back raises a fresh alert rather than reusing this one.
+        $this->assertNull($alert->open_key);
+        $this->assertSame(0, ModerationAlert::query()->active()->count());
+    }
+
+    public function test_expiry_never_touches_warnings_acknowledged_alerts_or_live_conditions(): void
+    {
+        $alerts = app(ModerationAlertService::class);
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $stale = $alerts->raise(new AlertDraft(ModerationAlertType::TrendingTripwire, ModerationAlertSeverity::Info, 'Dropped out of the ranking', 'i:0'));
+        $warning = $alerts->raise(new AlertDraft(ModerationAlertType::ReportSpike, ModerationAlertSeverity::Warning, 'Stale warning', 'w:1'));
+        $acknowledged = $alerts->raise(new AlertDraft(ModerationAlertType::TrendingTripwire, ModerationAlertSeverity::Info, 'Taken by a moderator', 'i:1'));
+        $fresh = $alerts->raise(new AlertDraft(ModerationAlertType::TrendingTripwire, ModerationAlertSeverity::Info, 'Still ranking', 'i:2'));
+        $alerts->acknowledge($acknowledged, $admin);
+
+        // All three of these are equally stale; only the plain Info one may be expired.
+        foreach ([$stale, $warning, $acknowledged] as $old) {
+            $old->forceFill(['last_detected_at' => now()->subHours(5)])->save();
+        }
+
+        $this->assertSame(1, $alerts->expireStaleInfo(now()->subMinutes(30)));
+
+        // A Warning always waits for a person; an acknowledged alert belongs to whoever took
+        // it; and a condition still being detected is not stale.
+        $this->assertSame(ModerationAlertState::Open, $warning->fresh()?->state);
+        $this->assertSame(ModerationAlertState::Acknowledged, $acknowledged->fresh()?->state);
+        $this->assertSame(ModerationAlertState::Open, $fresh->fresh()?->state);
+        $this->assertSame(ModerationAlertState::Expired, $stale->fresh()?->state);
+    }
+
+    public function test_expiry_is_skipped_when_a_detector_failed(): void
+    {
+        config(['moderation.alerts.detectors' => [ExplodingDetector::class]]);
+        $alert = app(ModerationAlertService::class)->raise(
+            new AlertDraft(ModerationAlertType::TrendingTripwire, ModerationAlertSeverity::Info, 'Ranked post', 'i:9'),
+        );
+        $alert->forceFill(['last_detected_at' => now()->subHours(5)])->save();
+
+        // A detector that did not run looks exactly like a condition that cleared, so a
+        // broken pass must not close live alerts.
+        $this->artisan('moderation:detect-alerts')->assertSuccessful();
+
+        $this->assertSame(ModerationAlertState::Open, $alert->fresh()?->state);
+    }
+
+    public function test_expiry_is_skipped_for_a_single_detector_run(): void
+    {
+        $alert = app(ModerationAlertService::class)->raise(
+            new AlertDraft(ModerationAlertType::TrendingTripwire, ModerationAlertSeverity::Info, 'Ranked post', 'i:8'),
+        );
+        $alert->forceFill(['last_detected_at' => now()->subHours(5)])->save();
+
+        $this->artisan('moderation:detect-alerts', ['--detector' => 'report_spike'])->assertSuccessful();
+
+        $this->assertSame(ModerationAlertState::Open, $alert->fresh()?->state);
+    }
+
+    public function test_expiry_can_be_turned_off(): void
+    {
+        config(['moderation.alerts.stale_info.expire' => false]);
+        $alert = app(ModerationAlertService::class)->raise(
+            new AlertDraft(ModerationAlertType::TrendingTripwire, ModerationAlertSeverity::Info, 'Ranked post', 'i:7'),
+        );
+        $alert->forceFill(['last_detected_at' => now()->subHours(5)])->save();
+
+        $this->artisan('moderation:detect-alerts')->assertSuccessful();
+
+        $this->assertSame(ModerationAlertState::Open, $alert->fresh()?->state);
+    }
+
     private function caseAged(ModerationCasePriority $priority, int $ageHours): ModerationCase
     {
         $post = Post::factory()->create();

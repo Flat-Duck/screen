@@ -38,7 +38,7 @@ class ModerationCaseService
 
     public function addNote(ModerationCase $case, User $actor, string $body): void
     {
-        $this->requireReason($body);
+        $this->requireReason($body, 'note');
         $note = $case->notes()->create(['author_id' => $actor->id, 'body' => $body]);
         $this->audit->record($actor, 'moderation_case.note_added', $case, 'Internal note #'.$note->id);
     }
@@ -121,10 +121,19 @@ class ModerationCaseService
         };
     }
 
-    private function requireReason(string $reason): void
+    /**
+     * Every action on a case demands a written reason — it is what makes the audit trail
+     * worth having. `$field` exists because the note form has its own input: reporting a
+     * short note as a `reason` error puts the message under the wrong box.
+     */
+    private function requireReason(string $reason, string $field = 'reason'): void
     {
         if (mb_strlen(trim($reason)) < 3) {
-            throw ValidationException::withMessages(['reason' => 'A moderation reason is required.']);
+            throw ValidationException::withMessages([
+                $field => $field === 'note'
+                    ? 'A note needs at least 3 characters.'
+                    : 'A moderation reason is required — every action on a case is recorded with one.',
+            ]);
         }
     }
 }

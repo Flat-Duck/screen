@@ -65,10 +65,35 @@ class DetectModerationAlerts extends Command
             }
         }
 
-        $this->info(sprintf('Raised or refreshed %d alert(s); %d detector(s) failed.', $raised, $failed));
+        $expired = $this->expireStaleInfo($alerts, $failed, is_string($only) && $only !== '');
+
+        $this->info(sprintf('Raised or refreshed %d alert(s); expired %d stale; %d detector(s) failed.', $raised, $expired, $failed));
 
         // A failed detector is reported but does not fail the scheduled run — the scheduler
         // retrying the whole sweep would re-raise everything that already succeeded.
         return self::SUCCESS;
+    }
+
+    /**
+     * Expiry infers "the condition stopped being true" from the absence of a re-detection,
+     * so it is only safe when every detector actually got to run. A broken detector, or a
+     * filtered single-detector run, would look exactly like a condition that cleared — and
+     * would quietly close alerts that are still live. Skipped in both cases.
+     */
+    private function expireStaleInfo(ModerationAlertService $alerts, int $failed, bool $filtered): int
+    {
+        if (! (bool) config('moderation.alerts.stale_info.expire', true)) {
+            return 0;
+        }
+
+        if ($failed > 0 || $filtered) {
+            $this->line('  Skipped stale-alert expiry — not every detector ran this pass.');
+
+            return 0;
+        }
+
+        return $alerts->expireStaleInfo(
+            now()->subMinutes((int) config('moderation.alerts.stale_info.grace_minutes', 30)),
+        );
     }
 }

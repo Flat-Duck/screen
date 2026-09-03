@@ -9,6 +9,7 @@
             <option value="open">Open</option>
             <option value="acknowledged">Acknowledged</option>
             <option value="resolved">Resolved</option>
+            <option value="expired">Expired (condition cleared on its own)</option>
             <option value="">All</option>
         </select>
         <select wire:model.live="type" class="rounded-lg border px-3 py-2 text-sm dark:bg-zinc-900">
@@ -62,6 +63,7 @@
                         <td class="p-3">
                             {{ ucfirst($alert->state->value) }}
                             @if($alert->acknowledger)<div class="text-xs text-zinc-500">by {{ $alert->acknowledger->username }}</div>@endif
+                            @if($alert->state->value === 'expired')<div class="text-xs text-zinc-500">no longer ranking</div>@endif
                         </td>
                         <td class="p-3">
                             @can('manageModeration')

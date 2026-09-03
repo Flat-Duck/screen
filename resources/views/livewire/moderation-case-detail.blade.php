@@ -1,5 +1,5 @@
 <div class="flex flex-col gap-4">
-    @if($flashMessage)<div class="rounded-lg bg-zinc-100 p-3 text-sm dark:bg-zinc-800">{{ $flashMessage }}</div>@endif
+    @if($flashMessage)<div class="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200">{{ $flashMessage }}</div>@endif
     <div class="flex items-center justify-between"><h1 class="text-lg font-semibold">Case #{{ $case->id }}</h1><span>{{ $case->status->value }} · {{ $case->priority->value }} · {{ $case->report_count }} reports</span></div>
     <div class="rounded-xl border p-4 dark:border-zinc-700">
         <div class="font-medium">{{ class_basename($case->target_type) }} #{{ $case->target_id }}</div>
@@ -11,8 +11,26 @@
         @else<p class="mt-2 text-sm text-zinc-500">Target was permanently deleted.</p>@endif
     </div>
     @can('manageModeration')
+        <div class="rounded-xl border p-4 dark:border-zinc-700">
+            {{-- Every button below refuses to run without this. Without the error output
+                 underneath it, the whole panel silently did nothing on an empty reason. --}}
+            <label for="case-reason" class="block text-sm font-medium text-zinc-800 dark:text-zinc-100">
+                Action reason <span class="text-red-600">*</span>
+            </label>
+            <p class="mt-0.5 text-xs text-zinc-500">Required for every action on this case, and recorded in the audit log alongside it.</p>
+            <input
+                id="case-reason"
+                wire:model="reason"
+                placeholder="e.g. Confirmed spam, author warned previously"
+                @class([
+                    'mt-2 w-full rounded-lg border px-3 py-2 text-sm dark:bg-zinc-900',
+                    'border-red-500 ring-1 ring-red-500' => $errors->has('reason'),
+                ])
+            />
+            @error('reason')<p class="mt-1 text-sm font-medium text-red-600 dark:text-red-400">{{ $message }}</p>@enderror
+            @error('status')<p class="mt-1 text-sm font-medium text-red-600 dark:text-red-400">{{ $message }}</p>@enderror
+        </div>
         <div class="grid gap-3 rounded-xl border p-4 dark:border-zinc-700 md:grid-cols-3">
-            <input wire:model="reason" placeholder="Required action reason" class="rounded-lg border px-3 py-2 text-sm dark:bg-zinc-900" />
             <select wire:model="priority" class="rounded-lg border px-3 py-2 text-sm dark:bg-zinc-900"><option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option></select>
             <button wire:click="setPriority" class="rounded-lg bg-zinc-800 px-3 py-2 text-sm text-white">Set priority</button>
             <button wire:click="assignToSelf" class="rounded-lg bg-blue-600 px-3 py-2 text-sm text-white">Assign to me</button>
@@ -27,7 +45,11 @@
             <button wire:click="suspendAuthor(false)" class="rounded-lg bg-red-700 px-3 py-2 text-sm text-white">Suspend author</button>
             <button wire:click="suspendAuthor(true)" class="rounded-lg bg-red-900 px-3 py-2 text-sm text-white">Ban author</button>
         </div>
-        <div class="rounded-xl border p-4 dark:border-zinc-700"><textarea wire:model="note" placeholder="Internal note" class="w-full rounded-lg border p-3 dark:bg-zinc-900"></textarea><button wire:click="addNote" class="mt-2 rounded-lg bg-zinc-800 px-3 py-2 text-sm text-white">Add note</button></div>
+        <div class="rounded-xl border p-4 dark:border-zinc-700">
+            <textarea wire:model="note" placeholder="Internal note" @class(['w-full rounded-lg border p-3 dark:bg-zinc-900', 'border-red-500 ring-1 ring-red-500' => $errors->has('note')])></textarea>
+            @error('note')<p class="mt-1 text-sm font-medium text-red-600 dark:text-red-400">{{ $message }}</p>@enderror
+            <button wire:click="addNote" class="mt-2 rounded-lg bg-zinc-800 px-3 py-2 text-sm text-white">Add note</button>
+        </div>
     @endcan
     <div class="rounded-xl border p-4 dark:border-zinc-700"><h2 class="font-medium">Reports</h2>@foreach($case->reports as $report)<div class="mt-2 text-sm">{{ $report->reason }} by {{ $report->reporter?->username }} — {{ $report->details }}</div>@endforeach</div>
     <div class="rounded-xl border p-4 dark:border-zinc-700"><h2 class="font-medium">Internal notes</h2>@foreach($case->notes as $note)<div class="mt-2 text-sm">{{ $note->body }} — {{ $note->author?->username }}</div>@endforeach</div>

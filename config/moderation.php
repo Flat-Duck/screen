@@ -36,6 +36,20 @@ return [
             TrendingTripwireDetector::class,
         ],
 
+        /*
+         * The trending tripwire raises an Info alert per ranked item, and a post that drops
+         * out of the top-K simply stops being re-detected — nothing would ever close those,
+         * so the open queue grew without bound. Stale Info alerts therefore expire on their
+         * own. Only Info, and only while still Open: once a moderator acknowledges one it is
+         * theirs, and Warning/Critical always wait for a person.
+         */
+        'stale_info' => [
+            'expire' => (bool) env('MODERATION_EXPIRE_STALE_INFO', true),
+            // Generous relative to the 5-minute cadence, so an item flickering around the
+            // edge of the top-K is not expired and re-raised every other run.
+            'grace_minutes' => (int) env('MODERATION_STALE_INFO_GRACE_MINUTES', 30),
+        ],
+
         'report_spike' => [
             // Reports on one target inside the window before it counts as a spike.
             'threshold' => (int) env('MODERATION_REPORT_SPIKE_THRESHOLD', 5),
