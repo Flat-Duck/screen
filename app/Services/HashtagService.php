@@ -85,6 +85,7 @@ class HashtagService
 
         $rankedIds = DB::table('hashtag_post')
             ->whereIn('post_id', $eligiblePostIds)
+            ->whereIn('hashtag_id', Hashtag::query()->discoverable()->select('id'))
             ->where('created_at', '>=', now()->subDays($withinDays))
             ->select('hashtag_id', DB::raw('count(*) as recent_count'))
             ->groupBy('hashtag_id')

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\HashtagModerationState;
 use App\Enums\UserModerationState;
 use App\Enums\UserVisibilityState;
 use App\Models\Hashtag;
@@ -60,7 +61,9 @@ class SearchService
     public function hashtags(string $query, int $perPage = 20): LengthAwarePaginator
     {
         return Hashtag::search(Hashtag::normalize($query), function (Builder $searchQuery): void {
-            $searchQuery->withCount('posts');
+            // Moderated tags are undiscoverable, not merely unranked — a blocked tag that
+            // still surfaced under its exact name would defeat the point of blocking it.
+            $searchQuery->where('moderation_state', HashtagModerationState::Clear->value)->withCount('posts');
         })->paginate($perPage);
     }
 }

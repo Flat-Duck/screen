@@ -84,6 +84,37 @@ could browse every device's crash/event history simply by logging into the web d
 `is_admin` is deliberately absent from `User`'s `#[Fillable]` attribute (never mass-assignable);
 grant/revoke it via `php artisan users:make-admin {email} [--revoke]`.
 
+### Moderation alerting and tag control
+
+- **Detection never applies a consequence.** `moderation:detect-alerts` (scheduled every five
+  minutes) runs the detectors in `config('moderation.alerts.detectors')` and raises
+  `ModerationAlert` rows; every consequence still goes through `ModerationCaseService` /
+  `HashtagModerationService`, which demand a written reason and write an `AdminAuditLog`.
+  This is a deliberate product decision, not an unfinished feature — don't "improve" a
+  detector by having it hide, de-rank, or suspend anything.
+- Detectors are isolated from one another: one throwing is logged and skipped, and the
+  command still exits 0, because the failure that matters is "nobody was told", not "one
+  rule was missing". The trending tripwire's post half additionally fails open when Redis is
+  unreachable, same as `FeedService`.
+- `ModerationAlert::open_key` is the same nulled-on-resolve unique key as
+  `ModerationCase::open_key`: re-detecting an open condition refreshes that alert instead of
+  duplicating it, and resolving frees the key so the condition can legitimately alert again.
+  Severity ratchets up only, so a late-arriving moderator still sees the peak.
+- `TrendingTripwireDetector` is the only *proactive* rule — it fires on reach (top-K), before
+  anyone has reported anything, which is why a clean ranked item is only `Info`.
+  `config('moderation.alerts.trending_tripwire.only_when_reported')` turns that half off if
+  it proves noisy, leaving the reactive behaviour.
+- `Hashtag::$moderation_state` is the tag-level equivalent of `posts.recommendation_eligible`.
+  `NotRecommended` removes discovery only (trending, explore, search); `Blocked` additionally
+  404s the tag's own API routes — except `DELETE /hashtags/{name}/follow`, kept reachable so
+  a user who followed a tag before it was blocked isn't stuck with it. Neither state touches
+  the posts carrying the tag. The state is not mass-assignable; it changes only through
+  `HashtagModerationService`.
+- Suppression is enforced in three places for two different reasons: `HashtagService::trending()`
+  and `SearchService::hashtags()` filter in the query (required for the `database`/`collection`
+  Scout drivers, which have no index), while `Hashtag::shouldBeSearchable()` keeps moderated
+  tags out of a real index if the driver is ever switched. Both are needed.
+
 ### Views
 
 - `resources/views/pages/**` — starter-kit-provided auth/settings pages, referenced via the

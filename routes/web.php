@@ -110,6 +110,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware(['can:viewModeration', PreventSensitivePageCaching::class])->prefix('moderation')->name('moderation.')->group(function () {
         Route::get('cases', [ModerationCaseController::class, 'index'])->name('cases.index');
         Route::get('cases/{case}', [ModerationCaseController::class, 'show'])->name('cases.show');
+        Route::view('alerts', 'moderation.alerts')->name('alerts.index');
+        Route::view('tags', 'moderation.tags')->name('tags.index');
         Route::get('content', [ContentController::class, 'index'])->name('content.index');
         Route::get('content/{post}', [ContentController::class, 'show'])->whereNumber('post')->name('content.show');
         Route::get('media/{media}', AdminPostMediaController::class)->name('media.show');

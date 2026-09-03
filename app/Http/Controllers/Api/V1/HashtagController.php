@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\HashtagModerationState;
 use App\Http\Resources\HashtagResource;
 use App\Http\Resources\PostResource;
 use App\Models\Hashtag;
@@ -39,6 +40,8 @@ class HashtagController extends Controller
 
     public function show(Request $request, Hashtag $hashtag): HashtagResource
     {
+        $this->abortIfBlocked($hashtag);
+
         /** @var User $viewer */
         $viewer = $request->user();
 
@@ -50,6 +53,8 @@ class HashtagController extends Controller
 
     public function posts(Request $request, Hashtag $hashtag): AnonymousResourceCollection
     {
+        $this->abortIfBlocked($hashtag);
+
         /** @var User $viewer */
         $viewer = $request->user();
 
@@ -62,6 +67,8 @@ class HashtagController extends Controller
 
     public function follow(Request $request, Hashtag $hashtag): JsonResponse
     {
+        $this->abortIfBlocked($hashtag);
+
         /** @var User $user */
         $user = $request->user();
 
@@ -93,5 +100,18 @@ class HashtagController extends Controller
         });
 
         return HashtagResource::collection($hashtags);
+    }
+
+    /**
+     * A blocked tag stops existing as far as the API is concerned. NotRecommended is
+     * deliberately *not* covered here — that state only removes discovery, so the tag page
+     * still resolves for anyone who reaches it directly.
+     *
+     * Unfollow stays reachable in every state so a user who followed a tag before it was
+     * blocked is never stuck with an entry they cannot remove.
+     */
+    private function abortIfBlocked(Hashtag $hashtag): void
+    {
+        abort_if($hashtag->moderation_state === HashtagModerationState::Blocked, 404);
     }
 }

@@ -50,8 +50,22 @@
                         {{ __('Reports') }}
                     </flux:sidebar.item>
                     @can('viewModeration')
+                        @php($openAlerts = app(\App\Services\Moderation\ModerationAlertService::class)->openCount())
+                        <flux:sidebar.item
+                            icon="bell-alert"
+                            :href="route('moderation.alerts.index')"
+                            :current="request()->routeIs('moderation.alerts.*')"
+                            :badge="$openAlerts > 0 ? $openAlerts : null"
+                            badge-color="red"
+                            wire:navigate
+                        >
+                            {{ __('Alerts') }}
+                        </flux:sidebar.item>
                         <flux:sidebar.item icon="shield-check" :href="route('moderation.cases.index')" :current="request()->routeIs('moderation.cases.*')" wire:navigate>
                             {{ __('Moderation cases') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="hashtag" :href="route('moderation.tags.index')" :current="request()->routeIs('moderation.tags.*')" wire:navigate>
+                            {{ __('Tag moderation') }}
                         </flux:sidebar.item>
                         <flux:sidebar.item icon="photo" :href="route('moderation.content.index')" :current="request()->routeIs('moderation.content.*')" wire:navigate>
                             {{ __('Content') }}

@@ -32,6 +32,11 @@ Schedule::command('sessions:expire')->everyFifteenMinutes()->onOneServer()->with
 Schedule::command('invites:award-points')->daily()->onOneServer()->withoutOverlapping();
 
 Schedule::command('operations:capture-health')->everyMinute()->onOneServer()->withoutOverlapping();
+
+// Raises ModerationAlerts for report spikes, SLA breaches, brigading and anything entering the
+// top of the ranking. Detection only — every alert waits on a moderator, so a missed run delays
+// notice rather than causing an unreviewed action. Individual detectors fail independently.
+Schedule::command('moderation:detect-alerts')->everyFiveMinutes()->onOneServer()->withoutOverlapping();
 Schedule::command('model:prune', ['--model' => [ApiRequestMetric::class]])->daily()->onOneServer()->withoutOverlapping();
 
 // Recomputes the trending/discovery pool FeedService blends into first-page feed loads.

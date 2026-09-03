@@ -252,6 +252,25 @@ cursor because relevance is a computed order rather than a stable ID order.
   `GET /v1/hashtags/followed` — that path always resolves to "my followed hashtags," never a
   tag called `#followed`. Extremely unlikely to matter in practice.
 
+**Moderated tags (new).** A tag can now be put in one of two moderated states from the admin
+dashboard, and the client sees each differently:
+
+- **De-ranked** (`not_recommended`) — the tag stops appearing in `GET /v1/hashtags/trending`,
+  `GET /v1/search/hashtags`, and explore, but `GET /v1/hashtags/{name}` and `.../posts` still
+  return `200`. Nothing to handle: the tag simply stops showing up in discovery.
+- **Blocked** — `GET /v1/hashtags/{name}`, `GET /v1/hashtags/{name}/posts` and
+  `POST /v1/hashtags/{name}/follow` all return **404**, exactly as if the tag never existed.
+  `DELETE /v1/hashtags/{name}/follow` deliberately still returns 204 so a user who followed
+  the tag before it was blocked can still remove it from their list.
+
+Two client implications worth handling:
+
+1. A tag in a user's **followed list** can become blocked after they followed it. Tapping it
+   will 404. Treat that like any other deleted content — show the standard "not available"
+   state rather than an error, and leave unfollow reachable.
+2. Posts carrying a blocked tag are **not** removed or hidden — only the tag's own surfaces
+   are. Do not infer anything about a post from its tags.
+
 ### 10. Explore (standalone discovery feed)
 
 - `GET /v1/explore?page=` — this finally unblocks `docs/mobile-app-plan.md`'s

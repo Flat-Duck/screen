@@ -206,8 +206,12 @@ class PrivateSaveFolderApiTest extends TestCase
         $save = PrivateSave::factory()->for($user)->create();
         PrivateSaveFolder::query()->delete();
 
-        $this->artisan('migrate:rollback', ['--step' => 1])->assertSuccessful();
-        $this->artisan('migrate')->assertSuccessful();
+        // Targeted by path, not `--step => 1`: stepping back one migration silently means
+        // "whichever migration landed most recently", so this test would start rolling back
+        // an unrelated table the moment another migration is added.
+        $path = 'database/migrations/2026_09_02_000001_create_private_save_folders_table.php';
+        $this->artisan('migrate:rollback', ['--path' => $path])->assertSuccessful();
+        $this->artisan('migrate', ['--path' => $path])->assertSuccessful();
 
         foreach ([$user, $other] as $account) {
             $this->assertSame(
