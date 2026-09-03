@@ -126,6 +126,9 @@ Route::middleware(['auth:sanctum', 'auth.user', 'session.touch', 'verified.email
     Route::post('uploads/{uploadId}/commit', [UploadController::class, 'commit'])->middleware('throttle:uploads-manage');
 
     Route::get('private-save-folders', [PrivateSaveFolderController::class, 'index'])->middleware('throttle:reads');
+    Route::post('private-save-folders', [PrivateSaveFolderController::class, 'store'])->middleware('throttle:writes-moderate');
+    Route::patch('private-save-folders/{privateSaveFolder}', [PrivateSaveFolderController::class, 'update'])->middleware('throttle:writes-moderate');
+    Route::delete('private-save-folders/{privateSaveFolder}', [PrivateSaveFolderController::class, 'destroy'])->middleware('throttle:writes-moderate');
     Route::post('private-saves', [PrivateSaveController::class, 'store'])->middleware('throttle:posts-store');
     Route::get('private-saves', [PrivateSaveController::class, 'index'])->middleware('throttle:reads');
     Route::patch('private-saves/{privateSave}', [PrivateSaveController::class, 'update'])->middleware('throttle:writes-moderate');

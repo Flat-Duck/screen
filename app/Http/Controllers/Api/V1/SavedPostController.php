@@ -50,7 +50,7 @@ class SavedPostController extends Controller
         $user = $request->user();
 
         $posts = $this->savedPosts->savedPostsFor($user);
-        $this->likes->annotateIsLiked($posts->getCollection(), $user);
+        $this->likes->annotateLikes($posts->getCollection(), $user);
         // Every post in this exact result set is, by definition, saved by $user — skip
         // the extra query annotateIsSaved() would otherwise run.
         $posts->getCollection()->each(function (Post $post): void {

@@ -40,7 +40,7 @@ class FollowService
 
     /**
      * Sets `is_following` on each post's author for the given viewer in one query — the same
-     * bulk-annotate shape as `LikeService::annotateIsLiked`, and for the same reason: without it,
+     * bulk-annotate shape as `LikeService::annotateLikes`, and for the same reason: without it,
      * rendering a follow button per row is an N+1.
      *
      * Needed because `UserSummaryResource` (post authors, search results, notification actors) has

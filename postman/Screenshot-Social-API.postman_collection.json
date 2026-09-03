@@ -5014,7 +5014,7 @@
 											"value": "application/json"
 										}
 									],
-									"body": "{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"caption\": \"Found a weird bug\",\n      \"status\": \"ready\",\n      \"user\": { \"id\": 2, \"username\": \"bob\", \"name\": \"Bob Jones\", \"avatar_url\": null },\n      \"media\": [\n        {\n          \"id\": 1,\n          \"position\": 0,\n          \"url\": \"http://telm.test/storage/posts/1/c3ce41ef-....-thumb.webp\",\n          \"original_url\": \"http://telm.test/storage/posts/1/c3ce41ef-....jpg\",\n          \"width\": 1080,\n          \"height\": 1920,\n          \"status\": \"ready\"\n        }\n      ],\n      \"likes_count\": 0,\n      \"comments_count\": 0,\n      \"reposts_count\": 0,\n      \"is_liked\": false,\n      \"created_at\": \"2026-07-05T20:15:05.000000Z\"\n    }\n  ],\n  \"links\": {\n    \"first\": null,\n    \"last\": null,\n    \"prev\": null,\n    \"next\": \"http://telm.test/api/v1/feed?cursor=eyJpZCI6MSwiX3BvaW50c1RvTmV4dEl0ZW1zIjpmYWxzZX0\"\n  },\n  \"meta\": {\n    \"path\": \"http://telm.test/api/v1/feed\",\n    \"per_page\": 15,\n    \"next_cursor\": \"eyJpZCI6MSwiX3BvaW50c1RvTmV4dEl0ZW1zIjpmYWxzZX0\",\n    \"prev_cursor\": null\n  }\n}"
+									"body": "{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"caption\": \"Found a weird bug\",\n      \"status\": \"ready\",\n      \"user\": { \"id\": 2, \"username\": \"bob\", \"name\": \"Bob Jones\", \"avatar_url\": null },\n      \"media\": [\n        {\n          \"id\": 1,\n          \"position\": 0,\n          \"url\": \"http://telm.test/storage/posts/1/c3ce41ef-....-thumb.webp\",\n          \"original_url\": \"http://telm.test/storage/posts/1/c3ce41ef-....jpg\",\n          \"width\": 1080,\n          \"height\": 1920,\n          \"status\": \"ready\"\n        }\n      ],\n      \"likes_count\": 0,\n      \"comments_count\": 0,\n      \"reposts_count\": 0,\n      \"is_liked\": false,\n        \"liked_by\": [\n            {\n                \"id\": 6,\n                \"username\": \"bob\",\n                \"name\": \"Bob Bennett\",\n                \"avatar_url\": \"https://screen.bulbulstream.ly/storage/avatars/6.jpg\"\n            }\n        ],\n      \"created_at\": \"2026-07-05T20:15:05.000000Z\"\n    }\n  ],\n  \"links\": {\n    \"first\": null,\n    \"last\": null,\n    \"prev\": null,\n    \"next\": \"http://telm.test/api/v1/feed?cursor=eyJpZCI6MSwiX3BvaW50c1RvTmV4dEl0ZW1zIjpmYWxzZX0\"\n  },\n  \"meta\": {\n    \"path\": \"http://telm.test/api/v1/feed\",\n    \"per_page\": 15,\n    \"next_cursor\": \"eyJpZCI6MSwiX3BvaW50c1RvTmV4dEl0ZW1zIjpmYWxzZX0\",\n    \"prev_cursor\": null\n  }\n}"
 								}
 							]
 						},
@@ -5353,7 +5353,7 @@
 											"value": "application/json"
 										}
 									],
-									"body": "{\n  \"data\": {\n    \"id\": 1,\n    \"caption\": \"Found a weird bug\",\n    \"status\": \"processing\",\n    \"user\": { \"id\": 2, \"username\": \"bob\", \"name\": \"Bob Jones\", \"avatar_url\": null },\n    \"media\": [\n      {\n        \"id\": 1,\n        \"position\": 0,\n        \"url\": \"http://telm.test/storage/posts/1/c3ce41ef-....jpg\",\n        \"original_url\": \"http://telm.test/storage/posts/1/c3ce41ef-....jpg\",\n        \"width\": 1080,\n        \"height\": 1920,\n        \"status\": \"pending\"\n      },\n      {\n        \"id\": 2,\n        \"position\": 1,\n        \"url\": \"http://telm.test/storage/posts/1/d78e23d2-....jpg\",\n        \"original_url\": \"http://telm.test/storage/posts/1/d78e23d2-....jpg\",\n        \"width\": 1080,\n        \"height\": 1920,\n        \"status\": \"pending\"\n      }\n    ],\n    \"likes_count\": 0,\n    \"comments_count\": 0,\n    \"reposts_count\": 0,\n    \"is_liked\": false,\n    \"created_at\": \"2026-07-05T20:15:05.000000Z\"\n  }\n}"
+									"body": "{\n  \"data\": {\n    \"id\": 1,\n    \"caption\": \"Found a weird bug\",\n    \"status\": \"processing\",\n    \"user\": { \"id\": 2, \"username\": \"bob\", \"name\": \"Bob Jones\", \"avatar_url\": null },\n    \"media\": [\n      {\n        \"id\": 1,\n        \"position\": 0,\n        \"url\": \"http://telm.test/storage/posts/1/c3ce41ef-....jpg\",\n        \"original_url\": \"http://telm.test/storage/posts/1/c3ce41ef-....jpg\",\n        \"width\": 1080,\n        \"height\": 1920,\n        \"status\": \"pending\"\n      },\n      {\n        \"id\": 2,\n        \"position\": 1,\n        \"url\": \"http://telm.test/storage/posts/1/d78e23d2-....jpg\",\n        \"original_url\": \"http://telm.test/storage/posts/1/d78e23d2-....jpg\",\n        \"width\": 1080,\n        \"height\": 1920,\n        \"status\": \"pending\"\n      }\n    ],\n    \"likes_count\": 0,\n    \"comments_count\": 0,\n    \"reposts_count\": 0,\n    \"is_liked\": false,\n        \"liked_by\": [\n            {\n                \"id\": 6,\n                \"username\": \"bob\",\n                \"name\": \"Bob Bennett\",\n                \"avatar_url\": \"https://screen.bulbulstream.ly/storage/avatars/6.jpg\"\n            }\n        ],\n    \"created_at\": \"2026-07-05T20:15:05.000000Z\"\n  }\n}"
 								},
 								{
 									"name": "422 Unprocessable Entity (too many images)",
@@ -11277,6 +11277,299 @@
 							]
 						},
 						{
+							"name": "Private Save Folder  Store",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"url": "{{base_url}}/v1/private-save-folders",
+								"description": "Mobile API operation: privateSaveFolderControllerStore. Creates a custom folder, appended after the three seeded ones. The slug is derived from the name server-side.",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Receipts\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								}
+							},
+							"response": [
+								{
+									"name": "201 Created",
+									"originalRequest": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "POST",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"url": "{{base_url}}/v1/private-save-folders",
+										"description": "Mobile API operation: privateSaveFolderControllerStore. Creates a custom folder, appended after the three seeded ones. The slug is derived from the name server-side.",
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"name\": \"Receipts\"\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										}
+									},
+									"status": "Created",
+									"code": 201,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"body": "{\n    \"data\": {\n        \"id\": 4,\n        \"slug\": \"receipts\",\n        \"name\": \"Receipts\",\n        \"is_default\": false,\n        \"position\": 3,\n        \"saves_count\": 0\n    }\n}"
+								},
+								{
+									"name": "422 Validation Error",
+									"originalRequest": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "POST",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"url": "{{base_url}}/v1/private-save-folders",
+										"description": "Mobile API operation: privateSaveFolderControllerStore. Creates a custom folder, appended after the three seeded ones. The slug is derived from the name server-side.",
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"name\": \"Receipts\"\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										}
+									},
+									"status": "Unprocessable Content",
+									"code": 422,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"body": "{\n    \"message\": \"The given data was invalid.\",\n    \"errors\": {\n        \"name\": [\n            \"The name field is required.\"\n        ]\n    }\n}"
+								}
+							]
+						},
+						{
+							"name": "Private Save Folder  Update",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"url": "{{base_url}}/v1/private-save-folders/{{private_save_folder_id}}",
+								"description": "Mobile API operation: privateSaveFolderControllerUpdate. Renames a folder. The slug is deliberately left unchanged so clients matching the seeded folders on slug keep working.",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Receipts 2024\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								}
+							},
+							"response": [
+								{
+									"name": "200 OK",
+									"originalRequest": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "PATCH",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"url": "{{base_url}}/v1/private-save-folders/{{private_save_folder_id}}",
+										"description": "Mobile API operation: privateSaveFolderControllerUpdate. Renames a folder. The slug is deliberately left unchanged so clients matching the seeded folders on slug keep working.",
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"name\": \"Receipts 2024\"\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"body": "{\n    \"data\": {\n        \"id\": 4,\n        \"slug\": \"receipts\",\n        \"name\": \"Receipts 2024\",\n        \"is_default\": false,\n        \"position\": 3,\n        \"saves_count\": 0\n    }\n}"
+								}
+							]
+						},
+						{
+							"name": "Private Save Folder  Destroy",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"url": "{{base_url}}/v1/private-save-folders/{{private_save_folder_id}}",
+								"description": "Mobile API operation: privateSaveFolderControllerDestroy. Deletes a custom folder and re-files its screenshots under General. The three seeded folders are refused with 422."
+							},
+							"response": [
+								{
+									"name": "204 No Content",
+									"originalRequest": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"url": "{{base_url}}/v1/private-save-folders/{{private_save_folder_id}}",
+										"description": "Mobile API operation: privateSaveFolderControllerDestroy. Deletes a custom folder and re-files its screenshots under General. The three seeded folders are refused with 422."
+									},
+									"status": "No Content",
+									"code": 204,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"body": ""
+								},
+								{
+									"name": "422 Default Folder",
+									"originalRequest": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"url": "{{base_url}}/v1/private-save-folders/{{private_save_folder_id}}",
+										"description": "Mobile API operation: privateSaveFolderControllerDestroy. Deletes a custom folder and re-files its screenshots under General. The three seeded folders are refused with 422."
+									},
+									"status": "Unprocessable Content",
+									"code": 422,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"body": "{\n    \"message\": \"The default folders cannot be deleted.\",\n    \"errors\": {\n        \"folder\": [\n            \"The default folders cannot be deleted.\"\n        ]\n    }\n}"
+								}
+							]
+						},
+						{
 							"name": "Private Save  Index",
 							"request": {
 								"auth": {
@@ -13062,7 +13355,7 @@
 											"value": "application/json"
 										}
 									],
-									"body": "{\n    \"data\": [\n        {\n            \"id\": 1,\n            \"caption\": \"Capturing the silence between structures.\",\n            \"status\": \"ready\",\n            \"user\": {\n                \"id\": 1,\n                \"username\": \"elena\",\n                \"name\": \"Elena Voss\",\n                \"avatar_url\": null\n            },\n            \"media\": [],\n            \"likes_count\": 12,\n            \"comments_count\": 3,\n            \"reposts_count\": 2,\n            \"comments_enabled\": true,\n            \"reposts_enabled\": true,\n            \"is_liked\": false,\n            \"is_saved\": false,\n            \"created_at\": \"2026-07-26T12:00:00.000000Z\"\n        }\n    ],\n    \"links\": {\n        \"next\": null,\n        \"prev\": null\n    },\n    \"meta\": {\n        \"path\": \"{{base_url}}/v1/groups/{{group_id}}/posts\",\n        \"per_page\": 20,\n        \"next_cursor\": null,\n        \"prev_cursor\": null\n    }\n}"
+									"body": "{\n    \"data\": [\n        {\n            \"id\": 1,\n            \"caption\": \"Capturing the silence between structures.\",\n            \"status\": \"ready\",\n            \"user\": {\n                \"id\": 1,\n                \"username\": \"elena\",\n                \"name\": \"Elena Voss\",\n                \"avatar_url\": null\n            },\n            \"media\": [],\n            \"likes_count\": 12,\n            \"comments_count\": 3,\n            \"reposts_count\": 2,\n            \"comments_enabled\": true,\n            \"reposts_enabled\": true,\n            \"is_liked\": false,\n        \"liked_by\": [\n            {\n                \"id\": 6,\n                \"username\": \"bob\",\n                \"name\": \"Bob Bennett\",\n                \"avatar_url\": \"https://screen.bulbulstream.ly/storage/avatars/6.jpg\"\n            }\n        ],\n            \"is_saved\": false,\n            \"created_at\": \"2026-07-26T12:00:00.000000Z\"\n        }\n    ],\n    \"links\": {\n        \"next\": null,\n        \"prev\": null\n    },\n    \"meta\": {\n        \"path\": \"{{base_url}}/v1/groups/{{group_id}}/posts\",\n        \"per_page\": 20,\n        \"next_cursor\": null,\n        \"prev_cursor\": null\n    }\n}"
 								}
 							]
 						},

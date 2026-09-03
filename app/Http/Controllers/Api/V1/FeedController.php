@@ -38,7 +38,7 @@ class FeedController extends Controller
             $this->feed->injectDiscovery($posts, $user);
         }
 
-        $this->likes->annotateIsLiked($posts->getCollection(), $user);
+        $this->likes->annotateLikes($posts->getCollection(), $user);
         $this->savedPosts->annotateIsSaved($posts->getCollection(), $user);
         $this->follows->annotatePostAuthorsAreFollowed($posts->getCollection(), $user);
 
@@ -57,7 +57,7 @@ class FeedController extends Controller
         /** @var User $user */
         $user = $request->user();
         $posts = $this->feed->feedFor($user);
-        $this->likes->annotateIsLiked($posts->getCollection(), $user);
+        $this->likes->annotateLikes($posts->getCollection(), $user);
         $this->savedPosts->annotateIsSaved($posts->getCollection(), $user);
         $this->follows->annotatePostAuthorsAreFollowed($posts->getCollection(), $user);
 
@@ -75,7 +75,7 @@ class FeedController extends Controller
         /** @var User $user */
         $user = $request->user();
         $page = $this->recommendations->page($user, $validated['cursor'] ?? null, (int) ($validated['per_page'] ?? 15));
-        $this->likes->annotateIsLiked($page->posts, $user);
+        $this->likes->annotateLikes($page->posts, $user);
         $this->savedPosts->annotateIsSaved($page->posts, $user);
         $this->follows->annotatePostAuthorsAreFollowed($page->posts, $user);
 

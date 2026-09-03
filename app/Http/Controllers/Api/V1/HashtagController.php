@@ -54,7 +54,7 @@ class HashtagController extends Controller
         $viewer = $request->user();
 
         $posts = $this->hashtags->postsFor($hashtag, $viewer);
-        $this->likes->annotateIsLiked($posts->getCollection(), $viewer);
+        $this->likes->annotateLikes($posts->getCollection(), $viewer);
         $this->savedPosts->annotateIsSaved($posts->getCollection(), $viewer);
 
         return PostResource::collection($posts);

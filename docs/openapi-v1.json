@@ -4991,6 +4991,161 @@
                         "bearerAuth": []
                     }
                 ]
+            },
+            "post": {
+                "operationId": "privateSaveFolderControllerStore",
+                "tags": [
+                    "Private Save Folders"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PrivateSaveFolderEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "204": {
+                        "description": "Successful operation with no response body"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/RateLimited"
+                    },
+                    "201": {
+                        "description": "Successful response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PrivateSaveFolderEnvelope"
+                                }
+                            }
+                        }
+                    }
+                },
+                "x-auth-principal": "user",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PrivateSaveFolderRequest"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/private-save-folders/{privateSaveFolder}": {
+            "patch": {
+                "operationId": "privateSaveFolderControllerUpdate",
+                "tags": [
+                    "Private Save Folders"
+                ],
+                "responses": {
+                    "200": {
+                        "$ref": "#/components/responses/JsonSuccess"
+                    },
+                    "204": {
+                        "description": "Successful operation with no response body"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/RateLimited"
+                    }
+                },
+                "x-auth-principal": "user",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "privateSaveFolder",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PrivateSaveFolderRequest"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "privateSaveFolderControllerDestroy",
+                "tags": [
+                    "Private Save Folders"
+                ],
+                "responses": {
+                    "200": {
+                        "$ref": "#/components/responses/JsonSuccess"
+                    },
+                    "204": {
+                        "description": "Successful operation with no response body"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/RateLimited"
+                    }
+                },
+                "x-auth-principal": "user",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "privateSaveFolder",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ]
             }
         },
         "/api/v1/private-saves": {
@@ -7401,6 +7556,13 @@
                     "is_liked": {
                         "type": "boolean"
                     },
+                    "liked_by": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/UserSummary"
+                        },
+                        "description": "Up to 3 recent, viewer-visible likers, for drawing a liked-by row without a second request. Absent where the endpoint does not annotate it."
+                    },
                     "is_saved": {
                         "type": "boolean"
                     },
@@ -7628,6 +7790,31 @@
                     },
                     "meta": {
                         "type": "object"
+                    }
+                }
+            },
+            "PrivateSaveFolderRequest": {
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 60,
+                        "description": "The folder's display name. The slug is derived server-side on create and never changes on rename."
+                    }
+                }
+            },
+            "PrivateSaveFolderEnvelope": {
+                "type": "object",
+                "required": [
+                    "data"
+                ],
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/PrivateSaveFolder"
                     }
                 }
             },

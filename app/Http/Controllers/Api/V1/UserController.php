@@ -70,7 +70,7 @@ class UserController extends Controller
             || $viewer->following()->where('followee_id', $user->id)->exists(), 404);
 
         $posts = $this->posts->postsForUser($user, $viewer);
-        $this->likes->annotateIsLiked($posts->getCollection(), $viewer);
+        $this->likes->annotateLikes($posts->getCollection(), $viewer);
         $this->savedPosts->annotateIsSaved($posts->getCollection(), $viewer);
 
         return PostResource::collection($posts);

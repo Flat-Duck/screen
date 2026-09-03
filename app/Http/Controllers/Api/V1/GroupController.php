@@ -72,7 +72,7 @@ class GroupController extends Controller
     {
         $user = $this->user($request);
         $posts = $this->groups->posts($user, $group);
-        $this->likes->annotateIsLiked($posts->getCollection(), $user);
+        $this->likes->annotateLikes($posts->getCollection(), $user);
         $this->savedPosts->annotateIsSaved($posts->getCollection(), $user);
 
         return PostResource::collection($posts);

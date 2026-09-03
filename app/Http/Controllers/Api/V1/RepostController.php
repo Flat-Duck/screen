@@ -71,7 +71,7 @@ class RepostController extends Controller
         $reposts = $this->reposts->repostsFor($user, $viewer);
 
         $posts = $reposts->getCollection()->map(fn (Repost $repost) => $repost->post);
-        $this->likes->annotateIsLiked($posts, $viewer);
+        $this->likes->annotateLikes($posts, $viewer);
         $this->savedPosts->annotateIsSaved($posts, $viewer);
 
         return RepostResource::collection($reposts);

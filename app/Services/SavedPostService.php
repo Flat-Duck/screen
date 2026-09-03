@@ -74,7 +74,7 @@ class SavedPostService
     /**
      * Sets `is_saved` on each post for the given viewer in a single query — avoids an
      * N+1 when annotating a feed/list before resourcing, same pattern as
-     * LikeService::annotateIsLiked.
+     * LikeService::annotateLikes.
      *
      * @param  Collection<int, Post>  $posts
      */

@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Laravel\Scout\Attributes\SearchUsingFullText;
 use Laravel\Scout\Searchable;
 
@@ -29,6 +30,8 @@ use Laravel\Scout\Searchable;
  *                                           user deleted this specific post on its own — see RestoreDeletedUser.
  * @property bool|null $is_liked Set per-request by LikeService for the current viewer — not a DB column.
  * @property bool|null $is_saved Set per-request by SavedPostService for the current viewer — not a DB column.
+ * @property Collection<int, User>|null $like_preview Up to LikeService::LIKE_PREVIEW_LIMIT
+ *                                                    recent, viewer-visible likers, set per-request by LikeService — not a DB column.
  * @property array{request_id: string, source: string, reason: string}|null $recommendation Set only on For You feed results.
  * @property bool $comments_enabled
  * @property bool $reposts_enabled

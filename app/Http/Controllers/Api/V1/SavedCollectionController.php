@@ -64,7 +64,7 @@ class SavedCollectionController extends Controller
     {
         $items = $this->collections->items($this->user($request), $collection);
         $posts = $items->getCollection()->pluck('post')->filter();
-        $this->likes->annotateIsLiked($posts, $this->user($request));
+        $this->likes->annotateLikes($posts, $this->user($request));
         $posts->each(fn (Post $post) => $post->is_saved = true);
 
         return CollectionItemResource::collection($items)->additional([
@@ -118,7 +118,7 @@ class SavedCollectionController extends Controller
     {
         $post = $item->post()->with(['user', 'media', 'category'])->withCount(['likes', 'comments', 'reposts'])->firstOrFail();
         $post->is_saved = true;
-        $this->likes->annotateIsLiked(collect([$post]), $user);
+        $this->likes->annotateLikes(collect([$post]), $user);
         $item->setRelation('post', $post);
     }
 

@@ -14,6 +14,7 @@ use App\Models\Scopes\NotArchivedScope;
 use App\Models\User;
 use App\Services\BlockService;
 use App\Services\FollowService;
+use App\Services\LikeService;
 use App\Services\SavedPostService;
 use App\Services\UserRestrictionService;
 use Illuminate\Http\JsonResponse;
@@ -26,6 +27,7 @@ class PostController extends Controller
         private readonly SavedPostService $savedPosts,
         private readonly UserRestrictionService $restrictions,
         private readonly FollowService $follows,
+        private readonly LikeService $likes,
     ) {}
 
     public function store(StorePostRequest $request, CreatePost $createPost): JsonResponse
@@ -55,10 +57,10 @@ class PostController extends Controller
 
         abort_unless($post->isVisibleTo($viewer), 404);
 
-        $post->is_liked = $post->likes()->where('user_id', $viewer->id)->exists();
+        // Post detail renders the same card as the feed — follow button and liked-by row included
+        // — so it needs the same annotations, as single-item collections here.
+        $this->likes->annotateLikes(collect([$post]), $viewer);
         $post->is_saved = $this->savedPosts->isSaved($viewer, $post);
-        // Post detail renders the same card as the feed, follow button included, so it needs the
-        // same annotation — a single-item collection here.
         $this->follows->annotatePostAuthorsAreFollowed(collect([$post]), $viewer);
 
         return new PostResource($post);
@@ -73,7 +75,7 @@ class PostController extends Controller
 
         $post = $updatePost($post, $request->validated());
         $post->load(['user', 'media', 'category'])->loadCount(['likes', 'comments', 'reposts']);
-        $post->is_liked = $post->likes()->where('user_id', $viewer->id)->exists();
+        $this->likes->annotateLikes(collect([$post]), $viewer);
         $post->is_saved = $this->savedPosts->isSaved($viewer, $post);
 
         return new PostResource($post);

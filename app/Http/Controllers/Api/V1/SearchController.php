@@ -39,7 +39,7 @@ class SearchController extends Controller
 
         $posts = $this->search->posts($request->validated()['q'], $viewer);
         $postItems = collect($posts->items());
-        $this->likes->annotateIsLiked($postItems, $viewer);
+        $this->likes->annotateLikes($postItems, $viewer);
         $this->savedPosts->annotateIsSaved($postItems, $viewer);
 
         return PostResource::collection($posts);

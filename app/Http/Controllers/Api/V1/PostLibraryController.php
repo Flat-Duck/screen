@@ -74,7 +74,7 @@ class PostLibraryController extends Controller
     /** @param Collection<int, Post> $posts */
     private function annotate(Collection $posts, User $user): void
     {
-        $this->likes->annotateIsLiked($posts, $user);
+        $this->likes->annotateLikes($posts, $user);
         $this->savedPosts->annotateIsSaved($posts, $user);
     }
 

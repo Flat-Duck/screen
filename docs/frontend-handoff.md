@@ -358,6 +358,16 @@ The following claims in that doc are now outdated as of this hand-off:
 All milestones in the current backend roadmap have shipped. The next phase is mobile integration
 against the OpenAPI contract, a staging load test, and production-readiness drills before launch.
 
+### Deferred
+
+Known gaps, deliberately not built. Each was considered and set aside — they are here so they are
+planned rather than rediscovered.
+
+- **"Who liked this" list screen.** Tapping a post's liked-by row currently does nothing. Showing
+  the full list needs a real paginated endpoint (`GET /v1/posts/{post}/likes`); the
+  `liked_by` field added 2026-09-03 is a **capped 3-face preview** carried on the post and is not
+  a substitute for one. See that entry for why the preview deliberately avoids a per-card request.
+
 ---
 
 ## Shipped: 2026-07-21 — private saved collections (Milestone 6.1)
@@ -1043,5 +1053,76 @@ like an empty folder.
   related to `ScreenshotCategory` (the global taxonomy on published posts) or to
   saved *collections* (`/v1/collections`, which organize already-published posts).
 
-**Not built yet:** creating, renaming, reordering or deleting custom folders. The schema is
-per-user rows precisely so those are additive — ask if the client wants them.
+**Update 2026-09-03:** custom folders are now fully manageable — see the folder-CRUD entry at the
+bottom of this doc. Reordering is still not exposed (`position` is assigned on create).
+
+---
+
+## Shipped: 2026-09-03 — `liked_by` on every post (real faces for the liked-by row)
+
+`PostResource` gains **`liked_by`**: up to **3** recent likers, each a full `UserSummaryResource`
+(so `avatar_url` is right there). It rides on the post itself — there is deliberately **no**
+`GET /posts/{post}/likes`, because a page of 20 cards would then cost 21 requests.
+
+```json
+"likes_count": 42,
+"liked_by": [
+  { "id": 6, "username": "bob",  "name": "Bob Bennett", "avatar_url": "https://…" },
+  { "id": 9, "username": "kai",  "name": "Kai Ortiz",   "avatar_url": null },
+  { "id": 3, "username": "priya","name": "Priya N",     "avatar_url": "https://…" }
+]
+```
+
+**Behavior to know:**
+- **Newest first.** Render them left-to-right in that order.
+- **It is a preview, not the whole list.** `liked_by.size` is capped at 3 and is *not* the like
+  count — keep using `likes_count` for "Liked by 42 people". A post with 42 likes still sends 3.
+- **`avatar_url` is nullable** on any of them; fall back to the initial, same as a post author.
+- **Absent, not empty, where an endpoint doesn't annotate it** (same `whenNotNull` convention as
+  `is_following`). Absent means "this endpoint didn't say"; `[]` means "nobody visible liked this".
+  Treat both as "draw no faces", but don't treat absent as "zero likes".
+- **It is filtered per viewer**: deactivated, hidden, moderated and blocked-either-way users are
+  excluded *inside* the ranking, so you can get 3 faces on a post whose 3 newest likers are all
+  blocked. This means `liked_by` can be shorter than 3 while `likes_count` is much larger — that's
+  correct, not a bug.
+- Annotated wherever `is_liked` already is (feed, For You, group, search, hashtag, explore, saved,
+  collections, reposts, profile posts, post detail), so every screen drawing a post card has it.
+  Computed in one windowed query per page, not per post.
+
+**Not built:** a full "who liked this" list screen. That would need a real paginated endpoint; say
+so if you want one.
+
+---
+
+## Shipped: 2026-09-03 — private-save folder CRUD
+
+Custom folders can now be created, renamed and deleted. `GET /v1/private-save-folders` is
+unchanged.
+
+| Endpoint | Body | Returns |
+| --- | --- | --- |
+| `POST /v1/private-save-folders` | `{"name": "Receipts"}` | `201` + the new folder |
+| `PATCH /v1/private-save-folders/{id}` | `{"name": "Receipts 2024"}` | `200` + the folder |
+| `DELETE /v1/private-save-folders/{id}` | — | `204` |
+
+**Behavior to know:**
+
+- **You never send a slug.** It is derived from the name on create, and a duplicate name gets a
+  suffix (`work`, `work-2`, `work-3`) rather than an error — two folders may legitimately be
+  called "Work". A name that slugs to nothing (emoji-only, non-Latin script) becomes `folder`,
+  `folder-2`, …
+- **Renaming does not change the slug.** `slug` stays the stable per-user key, so renaming
+  "General" to "Everything else" won't break a client matching the seeded folders on `general`.
+  Renaming a seeded folder is allowed; its `name` is user-facing text.
+- **Deleting re-files, never deletes screenshots.** Everything in the folder moves to General.
+- **The three seeded folders cannot be deleted** — `422`, not `403`. It is a rule about which
+  folders exist, not a permission the user could gain, so surface it as "this one can't be
+  deleted". `is_default` on the folder tells you this up front: hide or disable the delete action
+  rather than letting the request fail.
+- **Cap of 50 folders per account**, surfaced as a `422` on `name`.
+- `name` is required, trimmed, 1–60 characters.
+- Creating on a brand-new account seeds the three defaults first, so a first custom folder is
+  always `position: 3`, never shuffled underneath the defaults afterwards.
+
+**Still not built:** reordering. `position` is assigned on create (defaults 0–2, customs appended)
+and there is no endpoint to change it — say so if you want drag-to-reorder.

@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Post;
+use App\Models\User;
 use App\Rules\SafeSourceUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -42,6 +43,13 @@ class PostResource extends JsonResource
             'source_url' => SafeSourceUrl::isSafe($this->source_url) ? $this->source_url : null,
             'content_warning' => $this->content_warning,
             'is_liked' => (bool) ($this->is_liked ?? false),
+            // Up to LikeService::LIKE_PREVIEW_LIMIT faces for the client's "liked by" row, carried
+            // on the post so drawing it costs no extra request. Absent — not empty — where the
+            // annotation didn't run, so a client can tell "nobody visible liked this" from "this
+            // endpoint doesn't say"; see the whenNotNull convention on UserSummaryResource.
+            'liked_by' => $this->whenNotNull(
+                $this->like_preview?->map(fn (User $liker): UserSummaryResource => new UserSummaryResource($liker))->values()
+            ),
             'is_saved' => (bool) ($this->is_saved ?? false),
             'created_at' => $this->created_at,
             'edited_at' => $this->edited_at,

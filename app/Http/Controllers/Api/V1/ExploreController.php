@@ -33,7 +33,7 @@ class ExploreController extends Controller
         $page = max(1, (int) $request->integer('page', 1));
 
         $posts = $this->feed->explore($viewer, $page, category: $validated['category'] ?? null, country: $validated['country'] ?? null);
-        $this->likes->annotateIsLiked($posts->getCollection(), $viewer);
+        $this->likes->annotateLikes($posts->getCollection(), $viewer);
         $this->savedPosts->annotateIsSaved($posts->getCollection(), $viewer);
 
         return PostResource::collection($posts);

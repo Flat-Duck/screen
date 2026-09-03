@@ -106,7 +106,7 @@ class HashtagService
 
     /**
      * Sets `is_followed` on each hashtag for the given viewer in a single query — same
-     * pattern as LikeService::annotateIsLiked.
+     * pattern as LikeService::annotateLikes.
      *
      * @param  Collection<int, Hashtag>  $hashtags
      */
