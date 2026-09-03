@@ -2,6 +2,7 @@
 
 namespace App\Services\Moderation;
 
+use App\Enums\ModerationAlertSeverity;
 use App\Enums\ModerationAlertState;
 use App\Models\ModerationAlert;
 use App\Models\User;
@@ -88,9 +89,19 @@ class ModerationAlertService
         $this->audit->record($actor, 'moderation_alert.resolved', $alert, $reason, $before, $alert->only(array_keys($before)));
     }
 
-    /** Sidebar badge — unacknowledged only, so a queue being actively worked reads as quiet. */
+    /**
+     * Sidebar badge — unacknowledged, and Warning or worse.
+     *
+     * Info deliberately does not badge. The trending tripwire raises an Info alert for every
+     * item entering the top-K, which in steady state is a permanent double-digit number: a
+     * badge that always reads 27 on a healthy app tells a moderator nothing, and trains them
+     * to ignore the one time it means something. Info alerts are still in the queue to browse.
+     */
     public function openCount(): int
     {
-        return ModerationAlert::query()->where('state', ModerationAlertState::Open->value)->count();
+        return ModerationAlert::query()
+            ->where('state', ModerationAlertState::Open->value)
+            ->whereIn('severity', [ModerationAlertSeverity::Warning->value, ModerationAlertSeverity::Critical->value])
+            ->count();
     }
 }

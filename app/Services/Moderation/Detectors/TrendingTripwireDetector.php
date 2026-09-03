@@ -189,8 +189,22 @@ class TrendingTripwireDetector implements AlertDetector
 
             $reports = $reportCounts[(int) $hashtagId] ?? 0;
             $prior = $priorCounts[(int) $hashtagId] ?? 0;
-            $velocity = $prior > 0 ? round($recentCount / $prior, 2) : (float) $recentCount;
-            $spiking = $recentCount >= $velocityMinPosts && $velocity >= $velocityMultiplier;
+
+            /*
+             * A tag with no prior window has no baseline to accelerate against, so there is
+             * no multiple to report — it is simply new. Treating "new" as infinite velocity
+             * made every tag on a young dataset look like it was spiking Nx, which is both
+             * false and pure noise (every tag is new exactly once).
+             *
+             * Volume is the only usable signal without a baseline, so a new tag must clear
+             * the bar an established tag would have to clear to spike — min_posts scaled by
+             * the same multiplier — before it warns.
+             */
+            $isNew = $prior === 0;
+            $velocity = $isNew ? null : round($recentCount / $prior, 2);
+            $spiking = $isNew
+                ? $recentCount >= (int) ceil($velocityMinPosts * $velocityMultiplier)
+                : $recentCount >= $velocityMinPosts && $velocity >= $velocityMultiplier;
 
             if ($onlyWhenReported && $reports < $reportThreshold) {
                 continue;
@@ -207,7 +221,8 @@ class TrendingTripwireDetector implements AlertDetector
                 severity: $severity,
                 title: match (true) {
                     $reports > 0 => sprintf('Trending tag #%s has %d report(s) on its posts', $hashtag->name, $reports),
-                    $spiking => sprintf('Tag #%s is spiking (%dx prior window)', $hashtag->name, (int) $velocity),
+                    $spiking && $isNew => sprintf('New tag #%s reached %d posts', $hashtag->name, $recentCount),
+                    $spiking => sprintf('Tag #%s is spiking (%sx prior window)', $hashtag->name, $velocity),
                     default => sprintf('Tag #%s entered the trending top %d', $hashtag->name, $topK),
                 },
                 dedupeKey: 'tag:'.$hashtag->id,
@@ -219,7 +234,9 @@ class TrendingTripwireDetector implements AlertDetector
                     'rank' => $rank,
                     'recent_posts' => $recentCount,
                     'prior_window_posts' => $prior,
+                    // Null rather than a fabricated multiple when there is no prior baseline.
                     'velocity' => $velocity,
+                    'is_new_tag' => $isNew,
                     'reports' => $reports,
                     'window_days' => $windowDays,
                 ],

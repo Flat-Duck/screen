@@ -402,6 +402,92 @@ class ModerationAlertsTest extends TestCase
         $this->assertSame(0, $alerts->openCount());
     }
 
+    public function test_info_alerts_do_not_badge(): void
+    {
+        $alerts = app(ModerationAlertService::class);
+
+        // The tripwire raises one of these for every item entering the top-K, so a badge
+        // that counted them would sit permanently in double digits on a healthy app.
+        $alerts->raise(new AlertDraft(
+            type: ModerationAlertType::TrendingTripwire,
+            severity: ModerationAlertSeverity::Info,
+            title: 'Post entered the trending top 25',
+            dedupeKey: 'post:1',
+        ));
+
+        $this->assertSame(0, $alerts->openCount());
+        $this->assertSame(1, ModerationAlert::query()->active()->count());
+    }
+
+    public function test_a_tag_with_no_prior_window_is_reported_as_new_not_as_a_velocity_multiple(): void
+    {
+        config([
+            'moderation.alerts.trending_tripwire.tag_velocity_min_posts' => 10,
+            'moderation.alerts.trending_tripwire.tag_velocity_multiplier' => 3.0,
+        ]);
+        $hashtag = Hashtag::factory()->create(['name' => 'brandnew']);
+
+        // 12 posts, no prior window: enough to rank, not enough to clear the 30-post bar a
+        // baseline-less tag must clear. Previously this claimed "12x prior window".
+        foreach (Post::factory()->count(12)->create() as $post) {
+            $post->hashtags()->attach($hashtag);
+        }
+
+        $this->artisan('moderation:detect-alerts')->assertSuccessful();
+
+        $alert = ModerationAlert::query()->where('type', ModerationAlertType::TrendingTripwire->value)->sole();
+        $this->assertTrue($alert->context['is_new_tag']);
+        $this->assertNull($alert->context['velocity']);
+        $this->assertSame(ModerationAlertSeverity::Info, $alert->severity);
+        $this->assertStringContainsString('entered the trending top', $alert->title);
+    }
+
+    public function test_a_new_tag_clearing_the_volume_bar_still_warns(): void
+    {
+        config([
+            'moderation.alerts.trending_tripwire.tag_velocity_min_posts' => 10,
+            'moderation.alerts.trending_tripwire.tag_velocity_multiplier' => 3.0,
+        ]);
+        $hashtag = Hashtag::factory()->create(['name' => 'raidtag']);
+
+        // 30 posts out of nowhere is the brigaded-hashtag signature the rule exists to catch.
+        foreach (Post::factory()->count(30)->create() as $post) {
+            $post->hashtags()->attach($hashtag);
+        }
+
+        $this->artisan('moderation:detect-alerts')->assertSuccessful();
+
+        $alert = ModerationAlert::query()->where('type', ModerationAlertType::TrendingTripwire->value)->sole();
+        $this->assertSame(ModerationAlertSeverity::Warning, $alert->severity);
+        $this->assertStringContainsString('New tag #raidtag reached 30 posts', $alert->title);
+    }
+
+    public function test_an_established_tag_reports_a_real_velocity_multiple(): void
+    {
+        config([
+            'moderation.alerts.trending_tripwire.tag_velocity_min_posts' => 10,
+            'moderation.alerts.trending_tripwire.tag_velocity_multiplier' => 3.0,
+            'moderation.alerts.trending_tripwire.tag_window_days' => 7,
+        ]);
+        $hashtag = Hashtag::factory()->create(['name' => 'established']);
+
+        foreach (Post::factory()->count(4)->create() as $post) {
+            $post->hashtags()->attach($hashtag);
+            $post->hashtags()->updateExistingPivot($hashtag->id, ['created_at' => now()->subDays(10)]);
+        }
+        foreach (Post::factory()->count(20)->create() as $post) {
+            $post->hashtags()->attach($hashtag);
+        }
+
+        $this->artisan('moderation:detect-alerts')->assertSuccessful();
+
+        $alert = ModerationAlert::query()->where('type', ModerationAlertType::TrendingTripwire->value)->sole();
+        $this->assertSame(4, $alert->context['prior_window_posts']);
+        $this->assertSame(5.0, (float) $alert->context['velocity']);
+        $this->assertFalse($alert->context['is_new_tag']);
+        $this->assertStringContainsString('is spiking (5x prior window)', $alert->title);
+    }
+
     private function caseAged(ModerationCasePriority $priority, int $ageHours): ModerationCase
     {
         $post = Post::factory()->create();
