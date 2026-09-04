@@ -67,8 +67,14 @@ class TrendingTripwireDetector implements AlertDetector
         $reportCounts = Report::query()
             ->where('reportable_type', Post::class)
             ->whereIn('reportable_id', $postIds)
+            ->select('reportable_id')
+            // Postgres names a bare count(*) column `count`, so plucking it by the literal
+            // `count(*)` returns nulls there — the report counts on every ranked post were
+            // silently zero in production while the tests passed on SQLite.
+            ->selectRaw('count(*) as aggregate')
             ->groupBy('reportable_id')
-            ->pluck(DB::raw('count(*)'), 'reportable_id')
+            ->get()
+            ->pluck('aggregate', 'reportable_id')
             ->map(fn ($count): int => (int) $count)
             ->all();
 
@@ -158,9 +164,11 @@ class TrendingTripwireDetector implements AlertDetector
         $priorCounts = DB::table('hashtag_post')
             ->whereIn('hashtag_id', $tagIds)
             ->whereBetween('created_at', [$priorStart, $windowStart])
+            ->select('hashtag_id')
+            ->selectRaw('count(*) as aggregate')
             ->groupBy('hashtag_id')
-            ->pluck(DB::raw('count(*)'), 'hashtag_id')
-            ->map(fn ($count): int => (int) $count)
+            ->get()
+            ->mapWithKeys(fn (object $row): array => [(int) $row->hashtag_id => (int) $row->aggregate])
             ->all();
 
         /** @var array<int, int> $reportCounts */
@@ -171,9 +179,11 @@ class TrendingTripwireDetector implements AlertDetector
             })
             ->whereIn('hashtag_post.hashtag_id', $tagIds)
             ->where('reports.created_at', '>=', $windowStart)
+            ->select('hashtag_post.hashtag_id')
+            ->selectRaw('count(*) as aggregate')
             ->groupBy('hashtag_post.hashtag_id')
-            ->pluck(DB::raw('count(*)'), 'hashtag_post.hashtag_id')
-            ->map(fn ($count): int => (int) $count)
+            ->get()
+            ->mapWithKeys(fn (object $row): array => [(int) $row->hashtag_id => (int) $row->aggregate])
             ->all();
 
         $hashtags = Hashtag::query()->whereIn('id', $tagIds)->get()->keyBy('id');

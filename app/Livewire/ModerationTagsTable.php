@@ -138,9 +138,16 @@ class ModerationTagsTable extends Component
             })
             ->whereIn('hashtag_post.hashtag_id', $hashtagIds)
             ->where('reports.created_at', '>=', $since)
+            ->select('hashtag_post.hashtag_id')
+            // Aliased, not `pluck(DB::raw('count(*)'))`: Postgres names that column `count`,
+            // so plucking it by the literal `count(*)` silently yields nulls there while
+            // working fine on SQLite.
+            ->selectRaw('count(*) as aggregate')
             ->groupBy('hashtag_post.hashtag_id')
-            ->pluck(DB::raw('count(*)'), 'hashtag_post.hashtag_id')
-            ->map(fn ($count): int => (int) $count)
+            ->get()
+            // mapWithKeys rather than a query-level pluck: pluck rebuilds the select list and
+            // would drop the `aggregate` alias this depends on.
+            ->mapWithKeys(fn (object $row): array => [(int) $row->hashtag_id => (int) $row->aggregate])
             ->all();
 
         return $counts;

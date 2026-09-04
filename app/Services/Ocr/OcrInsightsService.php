@@ -24,8 +24,11 @@ class OcrInsightsService
         /** @var array<string, int> $statuses */
         $statuses = PostMedia::query()
             ->where('created_at', '>=', $since)
+            ->select('ocr_status')
+            ->selectRaw('count(*) as aggregate')
             ->groupBy('ocr_status')
-            ->pluck(DB::raw('count(*)'), 'ocr_status')
+            ->get()
+            ->pluck('aggregate', 'ocr_status')
             ->map(fn ($count): int => (int) $count)
             ->all();
 
@@ -92,8 +95,11 @@ class OcrInsightsService
                 ? null
                 : round(($unverified / ($total + $unverified)) * 100, 2),
             'trust_tiers' => UserOcrTrust::query()
+                ->select('trust_tier')
+                ->selectRaw('count(*) as aggregate')
                 ->groupBy('trust_tier')
-                ->pluck(DB::raw('count(*)'), 'trust_tier')
+                ->get()
+                ->pluck('aggregate', 'trust_tier')
                 ->map(fn ($count): int => (int) $count)
                 ->all(),
         ];
@@ -153,8 +159,11 @@ class OcrInsightsService
         /** @var array<string, int> $counts */
         $counts = PostMedia::query()
             ->where('created_at', '>=', $since)
+            ->select($column)
+            ->selectRaw('count(*) as aggregate')
             ->groupBy($column)
-            ->pluck(DB::raw('count(*)'), $column)
+            ->get()
+            ->pluck('aggregate', $column)
             ->mapWithKeys(fn ($count, $key): array => [((string) $key) === '' ? 'unknown' : (string) $key => (int) $count])
             ->all();
 
