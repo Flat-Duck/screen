@@ -13,7 +13,7 @@ class LegalPagesTest extends TestCase
 {
     public static function documentProvider(): array
     {
-        return [['privacy'], ['terms'], ['account-deletion']];
+        return [['privacy'], ['terms'], ['account-deletion'], ['csae']];
     }
 
     #[DataProvider('documentProvider')]

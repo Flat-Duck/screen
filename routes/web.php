@@ -68,7 +68,7 @@ Route::get('/media/groups/{group}', GroupPhotoDeliveryController::class)
  * unauthenticated and cacheable — Cloudflare should serve these from the edge.
  */
 Route::get('/{document}/{locale?}', LegalController::class)
-    ->whereIn('document', ['privacy', 'terms', 'account-deletion'])
+    ->whereIn('document', ['privacy', 'terms', 'account-deletion', 'csae'])
     ->whereIn('locale', ['en', 'ar'])
     ->name('legal.show');
 
