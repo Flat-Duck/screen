@@ -13,6 +13,7 @@ class OcrDashboardController extends Controller
             'pipeline' => $insights->pipeline(),
             'accuracy' => $insights->accuracy(),
             'curve' => $insights->curve(),
+            'labelled' => $insights->labelled(),
         ]);
     }
 }

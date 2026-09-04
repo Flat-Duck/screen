@@ -114,6 +114,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::view('alerts', 'moderation.alerts')->name('alerts.index');
         Route::view('tags', 'moderation.tags')->name('tags.index');
         Route::get('ocr', [OcrDashboardController::class, 'index'])->name('ocr.index');
+        // Shows OCR text unredacted by necessity — you cannot judge an extraction without
+        // reading it — so it needs the manage gate, not just the view gate.
+        Route::view('ocr/review', 'ocr.labels')->middleware('can:manageModeration')->name('ocr.labels');
         Route::get('content', [ContentController::class, 'index'])->name('content.index');
         Route::get('content/{post}', [ContentController::class, 'show'])->whereNumber('post')->name('content.show');
         Route::get('media/{media}', AdminPostMediaController::class)->name('media.show');

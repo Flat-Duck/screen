@@ -153,6 +153,22 @@ grant/revoke it via `php artisan users:make-admin {email} [--revoke]`.
   would turn the admin panel into a searchable index of users' private screenshots — the same
   reasoning behind `MediaAnalysisItem::suggestedAltText()` returning null on a safety warning.
   The table's search deliberately never touches `ocr_text`.
+- `ocr_labels` is human ground truth, and the only thing that says whether OCR output is
+  *right*. Every other metric compares two machines, which agree happily when both are wrong
+  the same way — or when neither can read the script and both return nothing. A label is
+  bound to one **extraction**, not to the media: `engine_version` and `ocr_text_hash` are
+  snapshotted, and `OcrLabel::scopeCurrent()` drops labels whose engine no longer matches the
+  media's, so a re-run under a new language never inherits ground truth about output it never
+  produced. `labelled()` reports coverage next to accuracy on purpose — an accuracy figure
+  over a handful of labels invites acting on noise.
+- `OcrLabelVerdict::NoTextInImage` is deliberately separate from `Correct` even though both
+  count as success: collapsing them lets a language the engine cannot read score as perfect,
+  because "found nothing" and "there was nothing" become the same answer.
+- `/moderation/ocr/review` shows OCR text **unredacted** — an extraction cannot be judged
+  without reading it — so it is gated on `manageModeration`, not the `viewModeration` that
+  covers the rest of the section, and every verdict writes an `ocr.labelled` audit record.
+  Only the labeller's own labels remove an item from their queue, so two reviewers can
+  independently label the same extraction and disagreement stays visible.
 - `SOCIAL_OCR_LANGUAGE` is passed to `tesseract -l` and **every language named needs its
   traineddata installed on the host** (`tesseract --list-langs`). A missing pack does not
   error — extraction returns empty and the row records a successful run that found no text.

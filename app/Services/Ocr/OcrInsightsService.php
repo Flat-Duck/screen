@@ -2,6 +2,8 @@
 
 namespace App\Services\Ocr;
 
+use App\Enums\OcrLabelVerdict;
+use App\Models\OcrLabel;
 use App\Models\OcrVerification;
 use App\Models\PostMedia;
 use App\Models\UserOcrTrust;
@@ -103,6 +105,89 @@ class OcrInsightsService
                 ->map(fn ($count): int => (int) $count)
                 ->all(),
         ];
+    }
+
+    /**
+     * Human ground truth. The only numbers here that say whether OCR is any *good* — every
+     * other metric measures agreement between machines, which two engines can achieve by
+     * being wrong in the same way, or by both reading nothing from a script neither supports.
+     *
+     * Reports coverage alongside accuracy on purpose: an accuracy figure over four labels is
+     * noise, and presenting it without its sample size invites acting on it.
+     *
+     * @return array<string, mixed>
+     */
+    public function labelled(): array
+    {
+        $total = OcrLabel::query()->count();
+        $current = OcrLabel::query()->current();
+        $currentTotal = (clone $current)->count();
+
+        /** @var array<string, int> $verdicts */
+        $verdicts = (clone $current)
+            ->select('verdict')
+            ->selectRaw('count(*) as aggregate')
+            ->groupBy('verdict')
+            ->get()
+            ->mapWithKeys(fn (OcrLabel $row): array => [$row->verdict->value => (int) $row->getAttribute('aggregate')])
+            ->all();
+
+        $successes = ($verdicts[OcrLabelVerdict::Correct->value] ?? 0)
+            + ($verdicts[OcrLabelVerdict::NoTextInImage->value] ?? 0);
+
+        $reviewable = PostMedia::query()
+            ->where('ocr_status', PostMedia::PROCESSING_READY)
+            ->whereNotNull('ocr_version')
+            ->count();
+
+        return [
+            'total' => $total,
+            // A label collected about output a later re-run replaced is evidence about text
+            // that no longer exists; counting it would launder stale ground truth.
+            'stale' => $total - $currentTotal,
+            'current' => $currentTotal,
+            'reviewable' => $reviewable,
+            'coverage' => $reviewable === 0 ? null : round((OcrLabel::query()->current()->distinct()->count('post_media_id') / $reviewable) * 100, 1),
+            'verdicts' => $verdicts,
+            'accuracy' => $currentTotal === 0 ? null : round(($successes / $currentTotal) * 100, 1),
+            'by_source' => $this->labelledAccuracyBy('ocr_source'),
+            'by_language' => $this->labelledAccuracyBy('ocr_language'),
+            'by_engine' => $this->labelledAccuracyBy('engine_version'),
+        ];
+    }
+
+    /**
+     * Labelled accuracy split by one snapshotted dimension. This is the tuning surface: it is
+     * what answers "does the device beat the server", "is eng+ara actually better", and
+     * therefore whether the 8% sample rate and the 20-match trust threshold are set sensibly.
+     *
+     * @return array<string, array{labels: int, accuracy: float}>
+     */
+    private function labelledAccuracyBy(string $column): array
+    {
+        $rows = OcrLabel::query()
+            ->current()
+            ->select($column)
+            ->selectRaw('count(*) as aggregate')
+            ->selectRaw('sum(case when verdict in (?, ?) then 1 else 0 end) as successes', [
+                OcrLabelVerdict::Correct->value,
+                OcrLabelVerdict::NoTextInImage->value,
+            ])
+            ->groupBy($column)
+            ->get();
+
+        $out = [];
+
+        foreach ($rows as $row) {
+            $key = (string) ($row->getAttribute($column) ?? '');
+            $labels = (int) $row->getAttribute('aggregate');
+            $out[$key === '' ? 'unknown' : $key] = [
+                'labels' => $labels,
+                'accuracy' => $labels === 0 ? 0.0 : round(((int) $row->getAttribute('successes') / $labels) * 100, 1),
+            ];
+        }
+
+        return $out;
     }
 
     /**

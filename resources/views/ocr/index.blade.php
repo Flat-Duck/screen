@@ -68,6 +68,46 @@
             @endif
         </section>
 
+        {{-- Ground truth --}}
+        <section class="flex flex-col gap-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <h2 class="text-sm font-semibold uppercase tracking-wide text-zinc-500">Ground truth</h2>
+                @can('manageModeration')
+                    <a href="{{ route('moderation.ocr.labels') }}" class="rounded-lg bg-zinc-800 px-3 py-2 text-sm text-white">Review extractions</a>
+                @endcan
+            </div>
+            <p class="text-sm text-zinc-500">
+                Everything above measures agreement between machines, which two engines can reach by being wrong the same way — or by both reading nothing from a script neither supports.
+                These are the only numbers that say whether the output is actually right.
+            </p>
+            @if($labelled['current'] === 0)
+                <p class="rounded-lg border border-zinc-200 p-4 text-sm text-zinc-500 dark:border-zinc-700">
+                    Nothing labelled yet. {{ $labelled['reviewable'] }} extraction(s) are available to review.
+                </p>
+            @else
+                <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <x-ocr-stat label="Labelled accuracy" :value="$labelled['accuracy'] === null ? '—' : $labelled['accuracy'].'%'" hint="over {{ $labelled['current'] }} label(s)" />
+                    <x-ocr-stat label="Coverage" :value="$labelled['coverage'] === null ? '—' : $labelled['coverage'].'%'" hint="of {{ $labelled['reviewable'] }} reviewable" />
+                    <x-ocr-stat label="Wrong" :value="$labelled['verdicts']['wrong'] ?? 0" hint="{{ $labelled['verdicts']['partial'] ?? 0 }} partial" />
+                    <x-ocr-stat label="Stale" :value="$labelled['stale']" hint="re-run since labelling" />
+                </div>
+                @if($labelled['current'] < 30)
+                    <div class="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
+                        Accuracy over {{ $labelled['current'] }} label(s) is not yet a number worth acting on. Treat it as a sample, not a measurement, until coverage is meaningfully higher.
+                    </div>
+                @endif
+                <div class="grid gap-4 md:grid-cols-3">
+                    <x-ocr-labelled-split title="By source" :rows="$labelled['by_source']" />
+                    <x-ocr-labelled-split title="By language" :rows="$labelled['by_language']" />
+                    <x-ocr-labelled-split title="By engine" :rows="$labelled['by_engine']" />
+                </div>
+                <p class="text-xs text-zinc-500">
+                    This split is the tuning surface: it is what answers whether the device beats the server, whether adding a language pack helped,
+                    and therefore whether the sample rate and trust threshold are set sensibly.
+                </p>
+            @endif
+        </section>
+
         <section class="flex flex-col gap-3">
             <h2 class="text-sm font-semibold uppercase tracking-wide text-zinc-500">Per-image results</h2>
             <livewire:ocr-media-table />
