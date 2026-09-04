@@ -8,12 +8,15 @@ use App\Jobs\ComputePostMediaPerceptualHash;
 use App\Jobs\GeneratePostMediaThumbnail;
 use App\Models\Group;
 use App\Models\MediaAnalysis;
+use App\Models\MediaAnalysisItem;
+use App\Models\OcrVerification;
 use App\Models\Post;
 use App\Models\PostMedia;
 use App\Models\Upload;
 use App\Models\User;
 use App\Services\GroupService;
 use App\Services\Screenshots\CategoryMatcher;
+use App\Services\Screenshots\OcrTextSimilarity;
 use App\Services\Screenshots\OcrTrustSampler;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -34,6 +37,7 @@ class PublishMediaAnalysis
         private readonly CategoryMatcher $categoryMatcher,
         private readonly GroupService $groups,
         private readonly OcrTrustSampler $sampler,
+        private readonly OcrTextSimilarity $similarity,
     ) {}
 
     /** @param array<string, mixed> $data */
@@ -70,12 +74,28 @@ class PublishMediaAnalysis
             // The server's own ocr_text (already canonical since AnalyzeStagedScreenshot ran) is
             // never touched by this — a mismatch corrects the trust tier, never the post itself.
             // See docs/SECURITY.md §4/§12.
+            /** @var array<int, array<string, mixed>> $comparisons Keyed by item id, consumed below. */
+            $comparisons = [];
+
             foreach ($locked->items->where('verification_status', 'pending') as $item) {
                 $deviceCategory = $this->categoryMatcher->match($caption, $item->device_ocr_text);
                 $serverCategory = $this->categoryMatcher->match($caption, $item->ocr_text);
                 $matched = $deviceCategory?->id === $serverCategory?->id;
+                $tierBefore = $this->sampler->tierFor($user);
                 $item->update(['verification_status' => $matched ? 'verified_match' : 'verified_mismatch']);
                 $matched ? $this->sampler->recordMatch($user) : $this->sampler->recordMismatch($user);
+
+                // Captured now, written against the PostMedia row below: these items are
+                // deleted a few lines later, taking the whole comparison with them.
+                $comparisons[$item->id] = [
+                    'verdict' => $matched ? OcrVerification::VERDICT_MATCH : OcrVerification::VERDICT_MISMATCH,
+                    'category_matched' => $matched,
+                    'device_category_id' => $deviceCategory?->id,
+                    'server_category_id' => $serverCategory?->id,
+                    'similarity' => $this->similarity->score($item->device_ocr_text, $item->ocr_text),
+                    'trust_tier_before' => $tierBefore,
+                    'trust_tier_after' => $this->sampler->tierFor($user),
+                ];
             }
 
             $versions = $locked->items->pluck('analysis_version')->filter()->unique()->sort()->implode(',');
@@ -114,10 +134,13 @@ class PublishMediaAnalysis
                     'ocr_language' => $item->ocr_language,
                     'ocr_status' => $item->ocr_status,
                     'ocr_version' => $item->analysis_version,
+                    'ocr_source' => $item->ocr_source,
+                    'ocr_duration_ms' => $item->ocr_duration_ms,
                     'safety_status' => $item->safety_status,
                     'safety_version' => $item->analysis_version,
                 ]);
                 GeneratePostMediaThumbnail::dispatch($media->id)->afterCommit();
+                $this->recordVerification($user, $media, $item, $comparisons[$item->id] ?? null);
 
                 if ($item->upload_id !== null) {
                     Upload::whereKey($item->upload_id)->update(['status' => Upload::STATUS_PUBLISHED]);
@@ -143,5 +166,56 @@ class PublishMediaAnalysis
         }
 
         return $post;
+    }
+
+    /**
+     * Writes the permanent record of what the trust loop decided about this image.
+     *
+     * Only device-sourced items get a row. The server path has no device claim to compare
+     * against, so an entry for it would say nothing and would dilute every agreement rate
+     * computed over the table.
+     *
+     * An unsampled item still gets a row, with `unverified`: knowing how much device OCR is
+     * being accepted without any check at all is exactly as important as the accuracy of the
+     * part that is checked, and it is the number that tells you whether the 8% sample rate is
+     * set sensibly.
+     *
+     * @param  array<string, mixed>|null  $comparison
+     */
+    private function recordVerification(User $user, PostMedia $media, MediaAnalysisItem $item, ?array $comparison): void
+    {
+        if ($item->ocr_source !== PostMedia::OCR_SOURCE_DEVICE) {
+            return;
+        }
+
+        OcrVerification::create([
+            'post_media_id' => $media->id,
+            'user_id' => $user->id,
+            'ocr_source' => $item->ocr_source,
+            'verdict' => $comparison['verdict'] ?? OcrVerification::VERDICT_UNVERIFIED,
+            // Hashes, never the text — this row outlives the post it describes.
+            'device_text_hash' => $this->hash($item->device_ocr_text ?? $item->ocr_text),
+            'server_text_hash' => $comparison === null ? null : $this->hash($item->ocr_text),
+            'device_char_count' => $this->length($item->device_ocr_text ?? $item->ocr_text),
+            'server_char_count' => $comparison === null ? null : $this->length($item->ocr_text),
+            'similarity' => $comparison['similarity'] ?? null,
+            'category_matched' => $comparison['category_matched'] ?? null,
+            'device_category_id' => $comparison['device_category_id'] ?? null,
+            'server_category_id' => $comparison['server_category_id'] ?? null,
+            'engine_version' => $item->analysis_version,
+            'ocr_language' => $item->ocr_language,
+            'trust_tier_before' => $comparison['trust_tier_before'] ?? null,
+            'trust_tier_after' => $comparison['trust_tier_after'] ?? null,
+        ]);
+    }
+
+    private function hash(?string $text): ?string
+    {
+        return $text === null ? null : hash('sha256', $text);
+    }
+
+    private function length(?string $text): ?int
+    {
+        return $text === null ? null : mb_strlen($text);
     }
 }

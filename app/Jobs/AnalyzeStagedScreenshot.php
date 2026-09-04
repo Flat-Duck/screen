@@ -41,6 +41,7 @@ class AnalyzeStagedScreenshot implements ShouldQueue
         }
 
         $item->update(['ocr_status' => PostMedia::PROCESSING_PROCESSING]);
+        $startedAt = hrtime(true);
         try {
             $ocr = $extractor->extract($item->source_disk ?? config('social.media_disk'), $item->original_path);
             $text = mb_substr(str_replace("\0", '', $ocr->text), 0, (int) config('social.processing.ocr.max_characters', 50_000));
@@ -58,6 +59,7 @@ class AnalyzeStagedScreenshot implements ShouldQueue
             'ocr_text' => $text === '' ? null : $text,
             'ocr_language' => $ocr->language,
             'ocr_status' => PostMedia::PROCESSING_READY,
+            'ocr_duration_ms' => (int) ((hrtime(true) - $startedAt) / 1_000_000),
             'safety_status' => $safety->hasWarnings() ? PostMedia::SAFETY_WARNING : PostMedia::SAFETY_CLEAR,
             'analysis_version' => $this->version($extractor, $analyzer),
             'findings' => $safety->findings,

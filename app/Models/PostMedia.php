@@ -32,6 +32,17 @@ class PostMedia extends Model
 
     public const PROCESSING_FAILED = 'failed';
 
+    /**
+     * OCR never ran for this row — seeded, imported, or taken from a trusted device claim.
+     * Distinct from READY, which previously covered both "ran and found nothing" and "never
+     * ran", making every success/empty rate computed over it meaningless.
+     */
+    public const PROCESSING_SKIPPED = 'skipped';
+
+    public const OCR_SOURCE_SERVER = 'server';
+
+    public const OCR_SOURCE_DEVICE = 'device';
+
     public const SAFETY_CLEAR = 'clear';
 
     public const SAFETY_WARNING = 'warning';
@@ -52,6 +63,8 @@ class PostMedia extends Model
         'ocr_language',
         'ocr_status',
         'ocr_version',
+        'ocr_source',
+        'ocr_duration_ms',
         'perceptual_hash',
         'safety_status',
         'hash_status',
@@ -66,6 +79,7 @@ class PostMedia extends Model
             'width' => 'integer',
             'height' => 'integer',
             'size_bytes' => 'integer',
+            'ocr_duration_ms' => 'integer',
             'ocr_text' => 'encrypted',
         ];
     }

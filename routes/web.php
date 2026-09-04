@@ -15,6 +15,7 @@ use App\Http\Controllers\LegalController;
 use App\Http\Controllers\MobileEmailVerificationController;
 use App\Http\Controllers\MobilePasswordResetController;
 use App\Http\Controllers\ModerationCaseController;
+use App\Http\Controllers\OcrDashboardController;
 use App\Http\Controllers\OperationsDashboardController;
 use App\Http\Controllers\PostMediaDeliveryController;
 use App\Http\Controllers\PrivateSaveMediaDeliveryController;
@@ -112,6 +113,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('cases/{case}', [ModerationCaseController::class, 'show'])->name('cases.show');
         Route::view('alerts', 'moderation.alerts')->name('alerts.index');
         Route::view('tags', 'moderation.tags')->name('tags.index');
+        Route::get('ocr', [OcrDashboardController::class, 'index'])->name('ocr.index');
         Route::get('content', [ContentController::class, 'index'])->name('content.index');
         Route::get('content/{post}', [ContentController::class, 'show'])->whereNumber('post')->name('content.show');
         Route::get('media/{media}', AdminPostMediaController::class)->name('media.show');

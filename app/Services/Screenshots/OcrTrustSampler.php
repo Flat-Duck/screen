@@ -36,6 +36,12 @@ class OcrTrustSampler
         return random_int(1, 100) <= self::TRUSTED_SAMPLE_RATE_PERCENT;
     }
 
+    /** Current tier, so a caller can record what a comparison changed it from and to. */
+    public function tierFor(User $user): string
+    {
+        return (string) $this->trustFor($user)->trust_tier;
+    }
+
     public function recordMatch(User $user): void
     {
         $trust = $this->trustFor($user);

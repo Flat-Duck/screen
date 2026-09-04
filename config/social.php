@@ -49,7 +49,20 @@ return [
         'analysis_ttl_minutes' => (int) env('SOCIAL_MEDIA_ANALYSIS_TTL_MINUTES', 30),
         'ocr' => [
             'binary' => env('SOCIAL_OCR_BINARY', 'tesseract'),
-            'language' => env('SOCIAL_OCR_LANGUAGE', 'eng'),
+
+            /*
+             * Passed straight to `tesseract -l`. A '+' separated list reads several scripts
+             * in one pass, and every language named here needs its traineddata installed on
+             * the host — `tesseract --list-langs` is the check. A language the host lacks
+             * does not error usefully: the extraction just comes back empty and the row is
+             * recorded as a successful run that found no text.
+             *
+             * This app ships an Arabic UI and Arabic legal pages, so 'eng' alone silently
+             * drops Arabic screenshots. Use 'eng+ara' with `tesseract-ocr-ara` installed.
+             * Changing this changes the extractor's version string, so existing media are
+             * treated as stale and re-OCR'd rather than keeping their old result.
+             */
+            'language' => env('SOCIAL_OCR_LANGUAGE', 'eng+ara'),
             'timeout_seconds' => (int) env('SOCIAL_OCR_TIMEOUT_SECONDS', 45),
             'max_characters' => (int) env('SOCIAL_OCR_MAX_CHARACTERS', 50_000),
         ],

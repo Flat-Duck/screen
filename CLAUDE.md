@@ -122,6 +122,44 @@ grant/revoke it via `php artisan users:make-admin {email} [--revoke]`.
   Scout drivers, which have no index), while `Hashtag::shouldBeSearchable()` keeps moderated
   tags out of a real index if the driver is ever switched. Both are needed.
 
+### OCR: provenance, evaluation, and why the dashboard redacts
+
+- Two paths produce `post_media.ocr_text`. The **server** path (`ExtractPostMediaText` →
+  Tesseract) and the **device** path (the app uploads to R2 with its own OCR claim;
+  `OcrTrustSampler` decides whether the server re-reads the image at all). `ocr_source` says
+  which — it exists on `post_media` because `media_analysis_items`, where it used to live
+  alone, are deleted at publish.
+- **`ocr_status = ready` does not mean OCR ran.** Seeded rows and trusted device claims are
+  `ready` with no engine behind them, which silently corrupts any rate computed over them.
+  `PROCESSING_SKIPPED` marks "never ran" on `post_media`; `OcrInsightsService` divides
+  outcome rates by *runs*, not rows. The staged-path item status was deliberately **not**
+  changed to match — `MediaAnalysis::syncStatusIfReady()` requires every item `ready` before
+  a publish is allowed, and `MediaAnalysisResource` exposes the value to the Android client,
+  so "correcting" it there breaks publishing.
+- `ocr_verifications` is the durable half of the trust loop. The comparison
+  `PublishMediaAnalysis` performs used to die with the `MediaAnalysis` a few lines later, so
+  no trend was measurable. It stores **hashes, counts and scores — never text**: the rows are
+  permanent and OCR text is user content full of credentials.
+- Two different numbers, deliberately. **Agreement** is whether both readings produced the
+  same `CategoryMatcher` category — the right test for "is this device lying", which is what
+  the trust loop acts on, but two unrelated texts that both map to "Social" score as a match.
+  **Similarity** (`OcrTextSimilarity`, token Jaccard) is how much the text actually overlapped.
+  High agreement over low similarity means the trust test is too coarse; that is the signal
+  the dashboard exists to surface.
+- Only device-sourced media gets a verification row. The server path has no claim to compare
+  against, so a row would say nothing and would dilute every agreement rate.
+- The dashboard **redacts OCR text by default**; revealing one row needs `manageModeration`
+  plus a written reason and writes an `ocr.text_revealed` audit record. Rendering it in bulk
+  would turn the admin panel into a searchable index of users' private screenshots — the same
+  reasoning behind `MediaAnalysisItem::suggestedAltText()` returning null on a safety warning.
+  The table's search deliberately never touches `ocr_text`.
+- `SOCIAL_OCR_LANGUAGE` is passed to `tesseract -l` and **every language named needs its
+  traineddata installed on the host** (`tesseract --list-langs`). A missing pack does not
+  error — extraction returns empty and the row records a successful run that found no text.
+  The app ships an Arabic UI, so the default is `eng+ara` and the host needs
+  `tesseract-ocr-ara`. Changing this changes the extractor's version string, so existing
+  media are treated as stale rather than keeping their old result.
+
 ### Views
 
 - `resources/views/pages/**` — starter-kit-provided auth/settings pages, referenced via the

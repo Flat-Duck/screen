@@ -67,6 +67,9 @@
                         <flux:sidebar.item icon="hashtag" :href="route('moderation.tags.index')" :current="request()->routeIs('moderation.tags.*')" wire:navigate>
                             {{ __('Tag moderation') }}
                         </flux:sidebar.item>
+                        <flux:sidebar.item icon="document-magnifying-glass" :href="route('moderation.ocr.index')" :current="request()->routeIs('moderation.ocr.*')" wire:navigate>
+                            {{ __('OCR') }}
+                        </flux:sidebar.item>
                         <flux:sidebar.item icon="photo" :href="route('moderation.content.index')" :current="request()->routeIs('moderation.content.*')" wire:navigate>
                             {{ __('Content') }}
                         </flux:sidebar.item>

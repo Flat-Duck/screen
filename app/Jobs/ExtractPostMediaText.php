@@ -37,6 +37,7 @@ class ExtractPostMediaText implements ShouldQueue
         }
 
         $media->update(['ocr_status' => PostMedia::PROCESSING_PROCESSING]);
+        $startedAt = hrtime(true);
         try {
             $result = $extractor->extract($media->source_disk ?? config('social.media_disk'), $media->original_path);
         } catch (Throwable) {
@@ -51,6 +52,8 @@ class ExtractPostMediaText implements ShouldQueue
             'ocr_language' => $result->language,
             'ocr_status' => PostMedia::PROCESSING_READY,
             'ocr_version' => $extractor->version(),
+            'ocr_source' => PostMedia::OCR_SOURCE_SERVER,
+            'ocr_duration_ms' => (int) ((hrtime(true) - $startedAt) / 1_000_000),
         ]);
 
         EvaluateScreenshotSafety::dispatch($media->id);
