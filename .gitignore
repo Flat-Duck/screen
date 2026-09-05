@@ -23,3 +23,10 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+/.agents
+/.claude
+/.cursor
+/.opencode
+/.codex
+/.antigravity
+.agents/*
