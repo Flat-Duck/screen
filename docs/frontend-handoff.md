@@ -1180,7 +1180,13 @@ the `EnsureApiEmailIsVerified` middleware on the rest of the API — the sign-in
 and the next call 403'd. Newly created social accounts are now verified at creation when the
 provider says the email is verified.
 
-**Existing accounts are not backfilled.** Anyone who signed up socially before this is still
-unverified in the database and will keep hitting the same wall until they verify by email. On
-the Neon database today that is **14 of the 16 accounts that have a social identity**. Say the
-word and I will write the one-off backfill.
+**Existing accounts have been backfilled.** `php artisan users:backfill-social-verification`
+marked the 14 affected accounts verified on 2026-09-06; no social account is left unverified. The
+command is idempotent and safe to re-run after any future deploy.
+
+It only verifies accounts where the provider demonstrably vouched for the address — Facebook (the
+verifier hardcodes `emailVerified: true`, because Meta only returns confirmed addresses) and Google
+on a gmail.com / googlemail.com mailbox. **A Google account on a custom domain is deliberately
+skipped:** `GoogleTokenVerifier` reads `email_verified` off the token and it can be false for an
+unverified Workspace domain, nothing recorded what it said at signup, and guessing in favour of
+verification is the wrong way to guess. Those users verify by email like anyone else.
