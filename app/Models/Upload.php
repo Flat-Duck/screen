@@ -19,7 +19,12 @@ class Upload extends Model
 
     public const STATUS_REJECTED = 'rejected';
 
-    protected $guarded = [];
+    /** @var list<string> */
+    protected $fillable = [
+        'upload_id', 'user_id', 'device_id', 'object_key', 'nonce', 'image_sha256', 'width',
+        'height', 'size_bytes', 'mime_type', 'status', 'ocr_text', 'expires_at',
+        'protocol_version',
+    ];
 
     protected function casts(): array
     {

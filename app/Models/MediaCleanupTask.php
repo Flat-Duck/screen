@@ -7,7 +7,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class MediaCleanupTask extends Model
 {
-    protected $guarded = [];
+    /** @var list<string> */
+    protected $fillable = [
+        'directory', 'status', 'attempts', 'available_at', 'last_error',
+    ];
 
     /** @return array<string, string> */
     protected function casts(): array

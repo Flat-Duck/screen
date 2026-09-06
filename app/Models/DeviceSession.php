@@ -28,7 +28,13 @@ class DeviceSession extends Model
     /** @use HasFactory<DeviceSessionFactory> */
     use HasFactory;
 
-    protected $guarded = [];
+    /** @var list<string> */
+    protected $fillable = [
+        'uuid', 'device_id', 'user_id', 'personal_access_token_id', 'login_method',
+        'started_at', 'last_seen_at', 'ended_at', 'end_reason', 'two_factor_verified_at',
+        'revoked_at', 'app_version_name', 'app_version_code', 'os_version', 'ip_address',
+        'user_agent',
+    ];
 
     /** @return array<string, string> */
     protected function casts(): array

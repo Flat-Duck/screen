@@ -6,7 +6,11 @@ use Illuminate\Database\Eloquent\Model;
 
 class UserTopicAffinity extends Model
 {
-    protected $guarded = [];
+    /** @var list<string> */
+    protected $fillable = [
+        'affinity_date', 'user_id', 'category_id', 'score', 'positive_events',
+        'negative_events', 'impressions', 'last_event_at',
+    ];
 
     protected function casts(): array
     {

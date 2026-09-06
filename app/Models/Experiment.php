@@ -13,7 +13,11 @@ use Illuminate\Support\Carbon;
  */
 class Experiment extends Model
 {
-    protected $guarded = [];
+    /** @var list<string> */
+    protected $fillable = [
+        'key', 'name', 'description', 'scope', 'is_enabled', 'kill_switch',
+        'allocation_basis_points', 'variants', 'salt', 'version', 'starts_at', 'ends_at',
+    ];
 
     protected function casts(): array
     {

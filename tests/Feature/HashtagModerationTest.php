@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\HashtagModerationService;
 use App\Services\HashtagService;
 use App\Services\SearchService;
+use Illuminate\Database\Eloquent\MassAssignmentException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\Sanctum;
@@ -140,12 +141,22 @@ class HashtagModerationTest extends TestCase
 
     public function test_moderation_state_is_never_mass_assignable(): void
     {
-        $hashtag = Hashtag::query()->create([
-            'name' => 'sneaky',
+        // Two regimes, one guarantee. Model::shouldBeStrict() is on everywhere but production,
+        // where the write is refused outright; in production the attribute is silently dropped
+        // and the tag is created Clear. Asserting on the row rather than on the exception is what
+        // makes this test true of both — what must never happen is a Blocked tag arriving this way.
+        try {
+            Hashtag::query()->create([
+                'name' => 'sneaky',
+                'moderation_state' => HashtagModerationState::Blocked->value,
+            ]);
+        } catch (MassAssignmentException) {
+            // Expected while strict.
+        }
+
+        $this->assertDatabaseMissing('hashtags', [
             'moderation_state' => HashtagModerationState::Blocked->value,
         ]);
-
-        $this->assertSame(HashtagModerationState::Clear, $hashtag->fresh()?->moderation_state);
     }
 
     public function test_the_tag_page_requires_view_moderation(): void

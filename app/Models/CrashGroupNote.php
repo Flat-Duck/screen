@@ -7,7 +7,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CrashGroupNote extends Model
 {
-    protected $guarded = [];
+    /** @var list<string> */
+    protected $fillable = [
+        'crash_group_id', 'author_id', 'body',
+    ];
 
     /** @return BelongsTo<CrashGroup, $this> */
     public function crashGroup(): BelongsTo

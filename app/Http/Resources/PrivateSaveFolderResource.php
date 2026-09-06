@@ -24,7 +24,7 @@ class PrivateSaveFolderResource extends JsonResource
             'position' => $this->position,
             // Only present where the caller asked for counts (the folder listing); nested inside
             // a save the number would be meaningless, so the key is omitted rather than zeroed.
-            'saves_count' => $this->whenNotNull($this->private_saves_count),
+            'saves_count' => $this->whenCounted('privateSaves'),
         ];
     }
 }

@@ -34,7 +34,11 @@ class UserSummaryResource extends JsonResource
             // Absent means "not known here", which clients must treat as "don't render a follow
             // control" — never as false, which is what made the Following feed offer Follow on
             // people the viewer already follows.
-            'is_following' => $this->whenNotNull($this->is_following),
+            // Read out of the raw attribute bag rather than via $this->is_following: under
+            // Model::shouldBeStrict() the accessor throws when nothing annotated it, and plain
+            // whenHas() would keep the key for the viewer's own row, where it is deliberately
+            // null. Absent-or-null must both omit it.
+            'is_following' => $this->whenNotNull($this->resource->getAttributes()['is_following'] ?? null),
         ];
     }
 }

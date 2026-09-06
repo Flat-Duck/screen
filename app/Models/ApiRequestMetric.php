@@ -10,7 +10,10 @@ class ApiRequestMetric extends Model
 {
     use MassPrunable;
 
-    protected $guarded = [];
+    /** @var list<string> */
+    protected $fillable = [
+        'minute', 'requests', 'errors', 'rate_limited', 'total_duration_ms', 'max_duration_ms',
+    ];
 
     protected function casts(): array
     {

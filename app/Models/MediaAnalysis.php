@@ -16,7 +16,10 @@ class MediaAnalysis extends Model
 
     public const STATUS_FAILED = 'failed';
 
-    protected $guarded = [];
+    /** @var list<string> */
+    protected $fillable = [
+        'token', 'user_id', 'cleanup_task_id', 'directory', 'status', 'expires_at',
+    ];
 
     protected function casts(): array
     {

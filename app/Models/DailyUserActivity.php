@@ -8,7 +8,12 @@ class DailyUserActivity extends Model
 {
     protected $table = 'daily_user_activity';
 
-    protected $guarded = [];
+    /** @var list<string> */
+    protected $fillable = [
+        'activity_date', 'user_id', 'events_count', 'unique_posts', 'impressions', 'opens',
+        'dwell_ms', 'likes', 'comments', 'saves', 'reposts', 'shares', 'follows',
+        'negative_feedback',
+    ];
 
     protected function casts(): array
     {

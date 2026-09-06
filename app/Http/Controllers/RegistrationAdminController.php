@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\UpdateRegistrationSettingsRequest;
 use App\Models\FeatureFlag;
 use App\Models\PointTransaction;
 use App\Models\User;
@@ -32,14 +33,9 @@ class RegistrationAdminController extends Controller
         ]);
     }
 
-    public function update(Request $request, RegistrationAdministrationService $admin): RedirectResponse
+    public function update(UpdateRegistrationSettingsRequest $request, RegistrationAdministrationService $admin): RedirectResponse
     {
-        $data = $request->validate([
-            'enabled' => ['required', 'boolean'],
-            'points_per_invite' => ['required', 'integer', 'min:0', 'max:100000'],
-            'maturity_days' => ['required', 'integer', 'min:0', 'max:365'],
-            'reason' => ['required', 'string', 'min:3', 'max:1000'],
-        ]);
+        $data = $request->validated();
 
         $admin->setInviteOnly(
             $this->user($request),

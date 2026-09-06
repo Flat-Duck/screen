@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Http\Requests\ResetRecommendationProfileRequest;
 use App\Models\Hashtag;
 use App\Models\Post;
 use App\Models\User;
@@ -48,9 +49,9 @@ class RecommendationFeedbackController extends Controller
         return response()->noContent();
     }
 
-    public function reset(Request $request): Response
+    public function reset(ResetRecommendationProfileRequest $request): Response
     {
-        $data = $request->validate(['clear_interests' => ['sometimes', 'boolean']]);
+        $data = $request->validated();
         $this->feedback->resetProfile($this->user($request), (bool) ($data['clear_interests'] ?? false));
 
         return response()->noContent();

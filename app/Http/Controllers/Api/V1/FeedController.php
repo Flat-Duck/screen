@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Http\Requests\ShowForYouFeedRequest;
 use App\Http\Resources\PostResource;
 use App\Models\User;
 use App\Services\FeatureEvaluationService;
@@ -66,12 +67,9 @@ class FeedController extends Controller
         ]);
     }
 
-    public function forYou(Request $request): AnonymousResourceCollection
+    public function forYou(ShowForYouFeedRequest $request): AnonymousResourceCollection
     {
-        $validated = $request->validate([
-            'cursor' => ['nullable', 'string', 'max:2048'],
-            'per_page' => ['nullable', 'integer', 'min:1', 'max:30'],
-        ]);
+        $validated = $request->validated();
         /** @var User $user */
         $user = $request->user();
         $page = $this->recommendations->page($user, $validated['cursor'] ?? null, (int) ($validated['per_page'] ?? 15));

@@ -40,7 +40,13 @@ class FcmClient
      */
     public function send(string $fcmToken, string $title, string $body, array $data = [], ?string $imageUrl = null): string
     {
+        // No ->retry() here on purpose: a transient failure already returns 'error', which the
+        // caller treats as "safe to retry on the next notification", and the sending job carries
+        // its own $tries/backoff. Retrying inside the call as well would stack against the job
+        // timeout without adding a delivery guarantee.
         $response = Http::withToken($this->accessToken())
+            ->connectTimeout(3)
+            ->timeout(10)
             ->post(sprintf(
                 'https://fcm.googleapis.com/v1/projects/%s/messages:send',
                 config('services.fcm.project_id'),
@@ -92,10 +98,17 @@ class FcmClient
                 'exp' => $now + 3600,
             ], $credentials['private_key'], 'RS256');
 
-            $response = Http::asForm()->post(self::TOKEN_URL, [
-                'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-                'assertion' => $assertion,
-            ])->throw();
+            // Unlike send(), this one does retry: it is Google's OAuth endpoint, a failure here
+            // fails every notification in the batch rather than one token, and there is no
+            // 'error' return path — it throws.
+            $response = Http::asForm()
+                ->connectTimeout(3)
+                ->timeout(10)
+                ->retry(3, 200)
+                ->post(self::TOKEN_URL, [
+                    'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+                    'assertion' => $assertion,
+                ])->throw();
 
             return (string) $response->json('access_token');
         });

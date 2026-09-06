@@ -15,7 +15,11 @@ use Illuminate\Database\Eloquent\Model;
  */
 class SecurityOutboxMessage extends Model
 {
-    protected $guarded = [];
+    /** @var list<string> */
+    protected $fillable = [
+        'type', 'recipient', 'payload', 'status', 'attempts', 'available_at',
+        'processing_started_at', 'last_error', 'sent_at',
+    ];
 
     /** @return array<string, string> */
     protected function casts(): array

@@ -12,7 +12,11 @@ use Illuminate\Support\Carbon;
  */
 class FeatureFlag extends Model
 {
-    protected $guarded = [];
+    /** @var list<string> */
+    protected $fillable = [
+        'key', 'name', 'description', 'scope', 'is_enabled', 'kill_switch',
+        'rollout_basis_points', 'payload', 'version', 'starts_at', 'ends_at',
+    ];
 
     protected function casts(): array
     {

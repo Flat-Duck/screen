@@ -27,7 +27,13 @@ class OcrVerification extends Model
     /** A trusted account's claim, taken as canonical without the server re-reading the image. */
     public const VERDICT_UNVERIFIED = 'unverified';
 
-    protected $guarded = [];
+    /** @var list<string> */
+    protected $fillable = [
+        'post_media_id', 'user_id', 'ocr_source', 'verdict', 'device_text_hash',
+        'server_text_hash', 'device_char_count', 'server_char_count', 'similarity',
+        'category_matched', 'device_category_id', 'server_category_id', 'engine_version',
+        'ocr_language', 'trust_tier_before', 'trust_tier_after',
+    ];
 
     /** @return array<string, string> */
     protected function casts(): array

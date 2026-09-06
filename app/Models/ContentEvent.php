@@ -10,7 +10,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ContentEvent extends Model
 {
-    protected $guarded = [];
+    /** @var list<string> */
+    protected $fillable = [
+        'event_uuid', 'user_id', 'device_id', 'device_session_id', 'post_id', 'author_id',
+        'surface', 'event_type', 'position', 'candidate_source', 'request_id',
+        'experiment_assignments', 'metadata', 'occurred_at', 'received_at',
+    ];
 
     protected function casts(): array
     {

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Http\Requests\StoreGroupInviteRequest;
 use App\Http\Resources\GroupInviteResource;
 use App\Models\Group;
 use App\Models\GroupInvite;
@@ -15,11 +16,9 @@ class GroupInviteController extends Controller
 {
     public function __construct(private readonly GroupInviteService $invites) {}
 
-    public function store(Request $request, Group $group): JsonResponse
+    public function store(StoreGroupInviteRequest $request, Group $group): JsonResponse
     {
-        $data = $request->validate([
-            'user_id' => ['required', 'integer', 'exists:users,id'],
-        ]);
+        $data = $request->validated();
 
         $invite = $this->invites
             ->invite($this->user($request), $group, User::query()->findOrFail((int) $data['user_id']))

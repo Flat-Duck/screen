@@ -7,7 +7,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ExperimentAssignment extends Model
 {
-    protected $guarded = [];
+    /** @var list<string> */
+    protected $fillable = [
+        'experiment_id', 'user_id', 'variant', 'experiment_version', 'assigned_at',
+    ];
 
     protected function casts(): array
     {

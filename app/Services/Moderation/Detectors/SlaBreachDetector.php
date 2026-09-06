@@ -32,6 +32,9 @@ class SlaBreachDetector implements AlertDetector
 
         $cases = ModerationCase::query()
             ->whereIn('status', [ModerationCaseStatus::Open->value, ModerationCaseStatus::Investigating->value])
+            // `$case->target` below is a morphTo. Left lazy it is one extra query per breaching
+            // case on a path that runs every five minutes; eager loading groups them by target type.
+            ->with('target')
             ->orderBy('created_at')
             ->get();
 

@@ -2,6 +2,12 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Http\Requests\AddSavedCollectionItemRequest;
+use App\Http\Requests\DeleteSavedCollectionRequest;
+use App\Http\Requests\RemoveSavedCollectionItemRequest;
+use App\Http\Requests\StoreSavedCollectionRequest;
+use App\Http\Requests\UpdateSavedCollectionItemRequest;
+use App\Http\Requests\UpdateSavedCollectionRequest;
 use App\Http\Resources\CollectionItemResource;
 use App\Http\Resources\SavedCollectionResource;
 use App\Models\CollectionItem;
@@ -13,7 +19,6 @@ use App\Services\SavedCollectionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Validation\Rule;
 
 class SavedCollectionController extends Controller
 {
@@ -27,34 +32,24 @@ class SavedCollectionController extends Controller
         return SavedCollectionResource::collection($this->collections->collections($this->user($request)));
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreSavedCollectionRequest $request): JsonResponse
     {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:100'],
-            'description' => ['nullable', 'string', 'max:500'],
-            'visibility' => ['sometimes', Rule::in(['private'])],
-        ]);
+        $data = $request->validated();
         $collection = $this->collections->create($this->user($request), $data);
 
         return (new SavedCollectionResource($collection))->response()->setStatusCode(201);
     }
 
-    public function update(Request $request, SavedCollection $collection): SavedCollectionResource
+    public function update(UpdateSavedCollectionRequest $request, SavedCollection $collection): SavedCollectionResource
     {
-        $data = $request->validate([
-            'name' => ['sometimes', 'required', 'string', 'max:100'],
-            'description' => ['sometimes', 'nullable', 'string', 'max:500'],
-            'position' => ['sometimes', 'integer', 'min:0', 'max:999'],
-            'version' => ['required', 'integer', 'min:1'],
-            'visibility' => ['sometimes', Rule::in(['private'])],
-        ]);
+        $data = $request->validated();
 
         return new SavedCollectionResource($this->collections->update($this->user($request), $collection, $data));
     }
 
-    public function destroy(Request $request, SavedCollection $collection): JsonResponse
+    public function destroy(DeleteSavedCollectionRequest $request, SavedCollection $collection): JsonResponse
     {
-        $data = $request->validate(['version' => ['required', 'integer', 'min:1']]);
+        $data = $request->validated();
         $this->collections->delete($this->user($request), $collection, $data['version']);
 
         return response()->json(null, 204);
@@ -72,13 +67,9 @@ class SavedCollectionController extends Controller
         ]);
     }
 
-    public function addItem(Request $request, SavedCollection $collection, Post $post): JsonResponse
+    public function addItem(AddSavedCollectionItemRequest $request, SavedCollection $collection, Post $post): JsonResponse
     {
-        $data = $request->validate([
-            'collection_version' => ['required', 'integer', 'min:1'],
-            'note' => ['nullable', 'string', 'max:1000'],
-            'position' => ['nullable', 'integer', 'min:0', 'max:9999'],
-        ]);
+        $data = $request->validated();
         $item = $this->collections->addItem($this->user($request), $collection, $post, $data['collection_version'], $data['note'] ?? null, $data['position'] ?? null);
         $this->hydrateItem($item, $this->user($request));
 
@@ -87,14 +78,9 @@ class SavedCollectionController extends Controller
         ])->response()->setStatusCode($item->wasRecentlyCreated ? 201 : 200);
     }
 
-    public function updateItem(Request $request, SavedCollection $collection, Post $post): CollectionItemResource
+    public function updateItem(UpdateSavedCollectionItemRequest $request, SavedCollection $collection, Post $post): CollectionItemResource
     {
-        $data = $request->validate([
-            'collection_version' => ['required', 'integer', 'min:1'],
-            'version' => ['required', 'integer', 'min:1'],
-            'note' => ['sometimes', 'nullable', 'string', 'max:1000'],
-            'position' => ['sometimes', 'integer', 'min:0', 'max:9999'],
-        ]);
+        $data = $request->validated();
         $item = $this->collections->updateItem($this->user($request), $collection, $post, $data);
         $this->hydrateItem($item, $this->user($request));
 
@@ -103,12 +89,9 @@ class SavedCollectionController extends Controller
         ]);
     }
 
-    public function removeItem(Request $request, SavedCollection $collection, Post $post): JsonResponse
+    public function removeItem(RemoveSavedCollectionItemRequest $request, SavedCollection $collection, Post $post): JsonResponse
     {
-        $data = $request->validate([
-            'collection_version' => ['required', 'integer', 'min:1'],
-            'version' => ['required', 'integer', 'min:1'],
-        ]);
+        $data = $request->validated();
         $this->collections->removeItem($this->user($request), $collection, $post, $data['collection_version'], $data['version']);
 
         return response()->json(null, 204);

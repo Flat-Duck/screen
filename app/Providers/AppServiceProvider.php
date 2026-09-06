@@ -18,6 +18,7 @@ use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Console\Events\ScheduledTaskFailed;
 use Illuminate\Console\Events\ScheduledTaskFinished;
 use Illuminate\Console\Events\ScheduledTaskStarting;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\DevCommands;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
@@ -193,6 +194,16 @@ class AppServiceProvider extends ServiceProvider
         DB::prohibitDestructiveCommands(
             app()->isProduction(),
         );
+
+        // Turns three classes of silent bug into loud ones: a lazy-loaded relation (the N+1 this
+        // codebase eager-loads by hand in ~120 places, with nothing enforcing it), a fill() of an
+        // attribute the model does not declare fillable, and a read of an attribute that was
+        // never selected — the last of which is exactly how `select()` after `withCount()` came
+        // to silently null out counts here before.
+        //
+        // Deliberately off in production: every one of these is a developer mistake worth a
+        // stack trace in local and CI, and worth degrading rather than 500ing for a real user.
+        Model::shouldBeStrict(! app()->isProduction());
 
         Password::defaults(fn (): ?Password => app()->isProduction()
             ? Password::min(12)

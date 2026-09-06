@@ -24,7 +24,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class CrashGroup extends Model
 {
-    protected $guarded = [];
+    /** @var list<string> */
+    protected $fillable = [
+        'fingerprint', 'name', 'exception_class', 'status', 'assigned_to', 'fixed_app_version',
+        'occurrence_count', 'affected_user_count', 'first_seen_at', 'last_seen_at',
+        'resolved_at',
+    ];
 
     protected function casts(): array
     {

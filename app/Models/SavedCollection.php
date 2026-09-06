@@ -10,7 +10,10 @@ class SavedCollection extends Model
 {
     protected $table = 'collections';
 
-    protected $guarded = [];
+    /** @var list<string> */
+    protected $fillable = [
+        'user_id', 'name', 'description', 'position', 'visibility', 'version',
+    ];
 
     protected function casts(): array
     {

@@ -89,26 +89,29 @@ class ImageProcessingService
 
         $maxBytes = (int) config('social.images.remote_avatar_max_bytes');
         try {
-            $response = Http::withOptions([
-                'allow_redirects' => [
-                    'max' => (int) config('social.images.remote_avatar_max_redirects'),
-                    'strict' => true,
-                    'referer' => false,
-                    'protocols' => ['https'],
-                ],
-                'sink' => $temporaryPath,
-                'on_headers' => function ($response) use ($maxBytes): void {
-                    $length = $response->getHeaderLine('Content-Length');
-                    if ($length !== '' && (int) $length > $maxBytes) {
-                        throw new PermanentRemoteImageException('Remote image exceeds the byte limit.');
-                    }
-                },
-                'progress' => function (int $downloadTotal, int $downloaded) use ($maxBytes): void {
-                    if ($downloadTotal > $maxBytes || $downloaded > $maxBytes) {
-                        throw new PermanentRemoteImageException('Remote image exceeds the byte limit.');
-                    }
-                },
-            ])->timeout(10)->get($url);
+            // The read timeout is already set at the end of this chain; this adds the connect
+            // half, so a remote host that accepts nothing cannot hold the worker either.
+            $response = Http::connectTimeout(3)
+                ->withOptions([
+                    'allow_redirects' => [
+                        'max' => (int) config('social.images.remote_avatar_max_redirects'),
+                        'strict' => true,
+                        'referer' => false,
+                        'protocols' => ['https'],
+                    ],
+                    'sink' => $temporaryPath,
+                    'on_headers' => function ($response) use ($maxBytes): void {
+                        $length = $response->getHeaderLine('Content-Length');
+                        if ($length !== '' && (int) $length > $maxBytes) {
+                            throw new PermanentRemoteImageException('Remote image exceeds the byte limit.');
+                        }
+                    },
+                    'progress' => function (int $downloadTotal, int $downloaded) use ($maxBytes): void {
+                        if ($downloadTotal > $maxBytes || $downloaded > $maxBytes) {
+                            throw new PermanentRemoteImageException('Remote image exceeds the byte limit.');
+                        }
+                    },
+                ])->timeout(10)->get($url);
 
             if ($response->serverError()) {
                 throw new TransientRemoteImageException("Remote image server returned {$response->status()}.");

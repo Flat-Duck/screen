@@ -51,10 +51,17 @@ class SearchService
                 ->select('id');
 
             $searchQuery->whereIn('user_id', $visibleAuthorIds)
-                ->when($blockedIds !== [], fn (Builder $query) => $query->whereNotIn('user_id', $blockedIds))
+                ->when($blockedIds !== [], fn (Builder $query) => $query->whereNotIn('user_id', $blockedIds));
+        })
+            // Eager loads and counts belong on ->query(), which shapes the Eloquent query Scout
+            // uses to hydrate the matched models. The callback above is the *engine* query — it
+            // decides which rows match, and anything loaded there is discarded before the
+            // results come back. Left there, every search result shipped null counts, which the
+            // Android client rejects outright.
+            ->query(fn (Builder $results): Builder => $results
                 ->with(['user', 'media', 'category'])
-                ->withCount(['likes', 'comments', 'reposts']);
-        })->paginate($perPage);
+                ->withCount(['likes', 'comments', 'reposts']))
+            ->paginate($perPage);
     }
 
     /** @return LengthAwarePaginator<int, Hashtag> */
@@ -63,7 +70,9 @@ class SearchService
         return Hashtag::search(Hashtag::normalize($query), function (Builder $searchQuery): void {
             // Moderated tags are undiscoverable, not merely unranked — a blocked tag that
             // still surfaced under its exact name would defeat the point of blocking it.
-            $searchQuery->where('moderation_state', HashtagModerationState::Clear->value)->withCount('posts');
-        })->paginate($perPage);
+            $searchQuery->where('moderation_state', HashtagModerationState::Clear->value);
+        })
+            ->query(fn (Builder $results): Builder => $results->withCount('posts'))
+            ->paginate($perPage);
     }
 }

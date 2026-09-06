@@ -11,7 +11,13 @@ use Illuminate\Support\Str;
  * comparison) | 'verified_match' | 'verified_mismatch'. */
 class MediaAnalysisItem extends Model
 {
-    protected $guarded = [];
+    /** @var list<string> */
+    protected $fillable = [
+        'media_analysis_id', 'position', 'original_path', 'width', 'height', 'mime_type',
+        'size_bytes', 'alt_text', 'ocr_text', 'ocr_language', 'ocr_status', 'safety_status',
+        'analysis_version', 'findings', 'upload_id', 'source_disk', 'ocr_source',
+        'verification_status', 'device_ocr_text', 'ocr_duration_ms',
+    ];
 
     protected function casts(): array
     {

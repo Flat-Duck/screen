@@ -13,7 +13,11 @@ use Illuminate\Support\Facades\URL;
  */
 class Group extends Model
 {
-    protected $guarded = [];
+    /** @var list<string> */
+    protected $fillable = [
+        'creator_id', 'name', 'description', 'visibility', 'member_count', 'photo_path',
+        'is_discoverable',
+    ];
 
     protected function casts(): array
     {

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Http\Requests\IndexGroupRequest;
+use App\Http\Requests\StoreGroupRequest;
 use App\Http\Resources\GroupResource;
 use App\Http\Resources\PostResource;
 use App\Models\Group;
@@ -22,27 +24,18 @@ class GroupController extends Controller
         private readonly SavedPostService $savedPosts,
     ) {}
 
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(IndexGroupRequest $request): AnonymousResourceCollection
     {
-        $validated = $request->validate([
-            'q' => ['nullable', 'string', 'max:100'],
-            'mine' => ['nullable', 'boolean'],
-        ]);
+        $validated = $request->validated();
 
         return GroupResource::collection(
             $this->groups->discover($this->user($request), $validated['q'] ?? null, (bool) ($validated['mine'] ?? false)),
         );
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreGroupRequest $request): JsonResponse
     {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:100'],
-            'description' => ['nullable', 'string', 'max:500'],
-            'visibility' => ['sometimes', 'string', 'in:public,private'],
-            'is_discoverable' => ['sometimes', 'boolean'],
-            'photo' => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:5120', 'dimensions:min_width=100,min_height=100'],
-        ]);
+        $data = $request->validated();
 
         $group = $this->groups->create($this->user($request), $data);
 

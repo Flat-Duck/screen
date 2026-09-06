@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ExcludePostFromRecommendationsRequest;
+use App\Http\Requests\RestoreRecommendationExclusionRequest;
+use App\Http\Requests\UpdateRecommendationServingRequest;
 use App\Models\DailyPostMetric;
 use App\Models\FeatureFlag;
 use App\Models\Interest;
@@ -51,25 +54,25 @@ class RecommendationAdminController extends Controller
         ]);
     }
 
-    public function exclude(Request $request, Post $post, RecommendationAdministrationService $admin): RedirectResponse
+    public function exclude(ExcludePostFromRecommendationsRequest $request, Post $post, RecommendationAdministrationService $admin): RedirectResponse
     {
-        $data = $request->validate(['reason' => ['required', 'string', 'min:3', 'max:1000'], 'expires_at' => ['nullable', 'date', 'after:now']]);
+        $data = $request->validated();
         $admin->exclude($post, $this->user($request), $data['reason'], isset($data['expires_at']) ? CarbonImmutable::parse($data['expires_at']) : null);
 
         return back()->with('status', 'Post excluded from recommendations.');
     }
 
-    public function restore(Request $request, RecommendationExclusion $exclusion, RecommendationAdministrationService $admin): RedirectResponse
+    public function restore(RestoreRecommendationExclusionRequest $request, RecommendationExclusion $exclusion, RecommendationAdministrationService $admin): RedirectResponse
     {
-        $data = $request->validate(['reason' => ['required', 'string', 'min:3', 'max:1000']]);
+        $data = $request->validated();
         $admin->restore($exclusion, $this->user($request), $data['reason']);
 
         return back()->with('status', 'Recommendation exclusion removed.');
     }
 
-    public function serving(Request $request, RecommendationAdministrationService $admin): RedirectResponse
+    public function serving(UpdateRecommendationServingRequest $request, RecommendationAdministrationService $admin): RedirectResponse
     {
-        $data = $request->validate(['enabled' => ['required', 'boolean'], 'reason' => ['required', 'string', 'min:3', 'max:1000']]);
+        $data = $request->validated();
         $admin->setServing($this->user($request), (bool) $data['enabled'], $data['reason']);
 
         return back()->with('status', 'Recommendation serving updated.');

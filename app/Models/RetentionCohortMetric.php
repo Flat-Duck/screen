@@ -6,7 +6,11 @@ use Illuminate\Database\Eloquent\Model;
 
 class RetentionCohortMetric extends Model
 {
-    protected $guarded = [];
+    /** @var list<string> */
+    protected $fillable = [
+        'cohort_date', 'activity_date', 'day_number', 'cohort_size', 'retained_users',
+        'is_partial',
+    ];
 
     protected function casts(): array
     {

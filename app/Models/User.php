@@ -75,8 +75,37 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     use HasApiTokens, HasFactory, Notifiable, PasskeyAuthenticatable, Searchable, SoftDeletes, TwoFactorAuthenticatable;
 
     /** @var array<string, mixed> */
+    /**
+     * Mirrors the column defaults in the users table. Without these a freshly `create()`d User
+     * carries no value for them at all — the database fills them in on insert, but the in-memory
+     * model never learns that — so anything reading `is_admin`, `is_active` or the state columns
+     * on the instance it just made (a Gate, `isPubliclyVisible()`, `hasAdminPermission()`) sees
+     * nothing there. That read silently returned null before `Model::shouldBeStrict()`, which is
+     * the more dangerous half: a permission check against a missing flag simply says no, and an
+     * `isPubliclyVisible()` against one says the account is hidden.
+     *
+     * `is_admin` and `admin_role` staying out of #[Fillable] is unaffected — these are defaults
+     * applied to the attribute bag directly, never through fill().
+     */
     protected $attributes = [
         'account_visibility' => AccountVisibility::Public->value,
+        'is_admin' => false,
+        'is_active' => true,
+        'admin_role' => null,
+        'avatar_path' => null,
+        'country_code' => null,
+        'interests_completed_at' => null,
+        'interests_skipped_at' => null,
+        'visibility_state' => UserVisibilityState::Visible->value,
+        'moderation_state' => UserModerationState::Clear->value,
+        'moderated_at' => null,
+        'moderation_reason' => null,
+        'bio' => null,
+        'birth_date' => null,
+        'settings' => null,
+        'pending_email' => null,
+        'invite_code' => null,
+        'points_balance' => 0,
     ];
 
     /** @return array<string, string|null> */

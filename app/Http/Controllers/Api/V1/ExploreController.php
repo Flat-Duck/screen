@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Http\Requests\IndexExploreRequest;
 use App\Http\Resources\PostResource;
 use App\Models\User;
 use App\Services\FeedService;
 use App\Services\LikeService;
 use App\Services\SavedPostService;
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class ExploreController extends Controller
@@ -18,17 +18,12 @@ class ExploreController extends Controller
         private readonly SavedPostService $savedPosts,
     ) {}
 
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(IndexExploreRequest $request): AnonymousResourceCollection
     {
         /** @var User $viewer */
         $viewer = $request->user();
 
-        $validated = $request->validate([
-            'category' => ['sometimes', 'string', 'max:100'],
-            // Format only, same reasoning as UpdateProfileRequest's own country_code rule —
-            // not validated against the full ISO 3166-1 alpha-2 list.
-            'country' => ['sometimes', 'string', 'size:2', 'alpha'],
-        ]);
+        $validated = $request->validated();
 
         $page = max(1, (int) $request->integer('page', 1));
 

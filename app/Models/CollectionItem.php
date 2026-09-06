@@ -7,7 +7,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CollectionItem extends Model
 {
-    protected $guarded = [];
+    /** @var list<string> */
+    protected $fillable = [
+        'collection_id', 'post_id', 'note', 'position', 'version',
+    ];
 
     protected function casts(): array
     {

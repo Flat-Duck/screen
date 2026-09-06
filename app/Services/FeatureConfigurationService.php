@@ -85,9 +85,23 @@ class FeatureConfigurationService
         }
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * One key list covers both FeatureFlag and Experiment, so it names columns that only one of
+     * them has. Filtering to what is actually on the instance keeps that convenience without
+     * asking a model for an attribute it does not carry — which `only()` would answer with null,
+     * writing a phantom "allocation_basis_points: null → null" into the audit record.
+     *
+     * @return array<string, mixed>
+     */
     private function snapshot(Model $model): array
     {
-        return $model->only(['key', 'name', 'description', 'scope', 'is_enabled', 'kill_switch', 'rollout_basis_points', 'allocation_basis_points', 'payload', 'variants', 'version', 'starts_at', 'ends_at']);
+        $keys = ['key', 'name', 'description', 'scope', 'is_enabled', 'kill_switch', 'rollout_basis_points', 'allocation_basis_points', 'payload', 'variants', 'version', 'starts_at', 'ends_at'];
+
+        $attributes = $model->getAttributes();
+
+        return $model->only(array_values(array_filter(
+            $keys,
+            fn (string $key): bool => array_key_exists($key, $attributes),
+        )));
     }
 }

@@ -12,5 +12,8 @@ class RecommendationTargetFeedback extends Model
 
     protected $table = 'recommendation_target_feedback';
 
-    protected $guarded = [];
+    /** @var list<string> */
+    protected $fillable = [
+        'user_id', 'target_type', 'target_id',
+    ];
 }

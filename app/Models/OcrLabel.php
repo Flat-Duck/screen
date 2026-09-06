@@ -16,7 +16,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class OcrLabel extends Model
 {
-    protected $guarded = [];
+    /** @var list<string> */
+    protected $fillable = [
+        'post_media_id', 'labeled_by', 'verdict', 'notes', 'ocr_text_hash', 'ocr_char_count',
+        'ocr_source', 'engine_version', 'ocr_language',
+    ];
 
     /** @return array<string, string> */
     protected function casts(): array

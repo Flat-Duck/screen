@@ -53,10 +53,16 @@ class FacebookTokenVerifier implements SocialTokenVerifier
     {
         $appToken = config('services.facebook.app_id').'|'.config('services.facebook.app_secret');
 
-        $debug = Http::get('https://graph.facebook.com/debug_token', [
-            'input_token' => $token,
-            'access_token' => $appToken,
-        ]);
+        // This sits on the synchronous login request. Without an explicit timeout it inherits
+        // the 30s default, and a slow Graph endpoint pins a PHP-FPM worker for the whole of it
+        // on every Facebook sign-in. Deliberately no retry: failing fast and letting the client
+        // try again beats doubling the worst case a user waits through.
+        $debug = Http::connectTimeout(2)
+            ->timeout(5)
+            ->get('https://graph.facebook.com/debug_token', [
+                'input_token' => $token,
+                'access_token' => $appToken,
+            ]);
 
         $isValid = $debug->ok() && (bool) $debug->json('data.is_valid');
         $matchesApp = $debug->json('data.app_id') === (string) config('services.facebook.app_id');

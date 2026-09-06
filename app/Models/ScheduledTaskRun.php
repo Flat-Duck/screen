@@ -6,7 +6,11 @@ use Illuminate\Database\Eloquent\Model;
 
 class ScheduledTaskRun extends Model
 {
-    protected $guarded = [];
+    /** @var list<string> */
+    protected $fillable = [
+        'task_key', 'task_name', 'status', 'runtime_ms', 'last_started_at', 'last_succeeded_at',
+        'last_failed_at', 'last_error_class',
+    ];
 
     /** @return array<string, string> */
     protected function casts(): array

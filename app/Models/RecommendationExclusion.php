@@ -8,7 +8,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class RecommendationExclusion extends Model
 {
-    protected $guarded = [];
+    /** @var list<string> */
+    protected $fillable = [
+        'post_id', 'created_by', 'reason', 'expires_at',
+    ];
 
     protected function casts(): array
     {

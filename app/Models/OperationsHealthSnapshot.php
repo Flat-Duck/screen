@@ -13,7 +13,10 @@ use Illuminate\Database\Eloquent\Model;
  */
 class OperationsHealthSnapshot extends Model
 {
-    protected $guarded = [];
+    /** @var list<string> */
+    protected $fillable = [
+        'status', 'checks', 'metrics', 'captured_at',
+    ];
 
     /** @return array<string, string> */
     protected function casts(): array

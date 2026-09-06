@@ -12,7 +12,10 @@ class RecommendationFeedSession extends Model
 
     public $incrementing = false;
 
-    protected $guarded = [];
+    /** @var list<string> */
+    protected $fillable = [
+        'request_id', 'user_id', 'ranking_version', 'items', 'expires_at',
+    ];
 
     protected function casts(): array
     {

@@ -10,7 +10,11 @@ class AdminAuditLog extends Model
 {
     public const UPDATED_AT = null;
 
-    protected $guarded = [];
+    /** @var list<string> */
+    protected $fillable = [
+        'actor_id', 'action', 'target_type', 'target_id', 'reason', 'before_state',
+        'after_state', 'request_id', 'ip_hash',
+    ];
 
     protected function casts(): array
     {

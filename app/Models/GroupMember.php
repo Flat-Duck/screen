@@ -7,7 +7,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class GroupMember extends Model
 {
-    protected $guarded = [];
+    /** @var list<string> */
+    protected $fillable = [
+        'group_id', 'user_id', 'role',
+    ];
 
     /** @return BelongsTo<Group, $this> */
     public function group(): BelongsTo

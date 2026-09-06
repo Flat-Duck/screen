@@ -56,7 +56,7 @@ class PostResource extends JsonResource
             'archived_at' => $this->archived_at,
             'deleted_at' => $this->deleted_at,
             'scheduled_purge_at' => $this->deleted_at?->copy()->addDays((int) config('social.post_retention_days', 30)),
-            'recommendation' => $this->when($this->recommendation !== null, $this->recommendation),
+            'recommendation' => $this->whenNotNull($this->resource->getAttributes()['recommendation'] ?? null),
         ];
     }
 }

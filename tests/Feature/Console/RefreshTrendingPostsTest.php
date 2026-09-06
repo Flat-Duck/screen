@@ -3,7 +3,6 @@
 namespace Tests\Feature\Console;
 
 use App\Models\Comment;
-use App\Models\Like;
 use App\Models\Post;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -19,7 +18,7 @@ class RefreshTrendingPostsTest extends TestCase
     {
         $popular = Post::factory()->create(['created_at' => now()->subHours(2)]);
         User::factory()->count(5)->create()->each(
-            fn (User $liker) => Like::create(['post_id' => $popular->id, 'user_id' => $liker->id])
+            fn (User $liker) => $popular->likes()->create(['user_id' => $liker->id])
         );
         Comment::factory()->count(2)->create(['post_id' => $popular->id]);
 
@@ -53,7 +52,7 @@ class RefreshTrendingPostsTest extends TestCase
     {
         $old = Post::factory()->create(['created_at' => now()->subDays(30)]);
         User::factory()->count(10)->create()->each(
-            fn (User $liker) => Like::create(['post_id' => $old->id, 'user_id' => $liker->id])
+            fn (User $liker) => $old->likes()->create(['user_id' => $liker->id])
         );
 
         $recent = Post::factory()->create(['created_at' => now()->subHour()]);

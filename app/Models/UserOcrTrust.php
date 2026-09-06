@@ -19,7 +19,10 @@ class UserOcrTrust extends Model
 
     protected $table = 'user_ocr_trust';
 
-    protected $guarded = [];
+    /** @var list<string> */
+    protected $fillable = [
+        'user_id', 'trust_tier', 'consecutive_verified_count', 'last_mismatch_at',
+    ];
 
     protected function casts(): array
     {

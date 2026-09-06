@@ -6,7 +6,11 @@ use Illuminate\Database\Eloquent\Model;
 
 class RecommendationFeedbackAggregate extends Model
 {
-    protected $guarded = [];
+    /** @var list<string> */
+    protected $fillable = [
+        'metric_date', 'surface', 'candidate_source', 'unique_users', 'impressions', 'opens',
+        'saves', 'follows', 'hides', 'not_interested', 'reports',
+    ];
 
     protected function casts(): array
     {

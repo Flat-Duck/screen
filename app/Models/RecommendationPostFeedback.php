@@ -12,5 +12,8 @@ class RecommendationPostFeedback extends Model
 
     protected $table = 'recommendation_post_feedback';
 
-    protected $guarded = [];
+    /** @var list<string> */
+    protected $fillable = [
+        'user_id', 'post_id', 'type',
+    ];
 }

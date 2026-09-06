@@ -1145,3 +1145,42 @@ unchanged.
 
 **Still not built:** reordering. `position` is assigned on create (defaults 0–2, customs appended)
 and there is no endpoint to change it — say so if you want drag-to-reorder.
+
+---
+
+## Shipped: 2026-09-06 — two response bugs fixed (no contract change)
+
+Nothing here changes an endpoint, a field name, or a response shape. Both are cases where the
+API was already documented to return something and quietly wasn't. Listed because the client
+may be working around them.
+
+### 1. Search results carried null engagement counts
+
+`GET /v1/search/posts` returned every post with `likes_count`, `comments_count` and
+`reposts_count` set to **null**, while every other post-returning endpoint sent real integers.
+The eager-loaded counts were attached to Scout's *engine* query (which only decides which rows
+match) instead of the query that hydrates the results, so they were discarded before
+serialization. They are now on `->query()` and come back as integers, same as everywhere else.
+
+`GET /v1/search/hashtags` had the identical problem with `posts_count`.
+
+**If the client has a null-guard or a "counts unavailable in search" branch, it can go.** If it
+was rejecting the payload outright — the counts are non-nullable in the contract — search
+results should start rendering without any client change.
+
+### 2. Social sign-in never marked the email verified
+
+`POST /v1/auth/social/google` and `POST /v1/auth/social/facebook` created new accounts with
+`email_verified_at` left null even when the provider asserted a verified email. The timestamp
+was being mass-assigned through a field that is deliberately not fillable, so it was silently
+dropped on every social registration.
+
+**Effect on the client:** a brand-new social account was created unverified and then blocked by
+the `EnsureApiEmailIsVerified` middleware on the rest of the API — the sign-in itself succeeded
+and the next call 403'd. Newly created social accounts are now verified at creation when the
+provider says the email is verified.
+
+**Existing accounts are not backfilled.** Anyone who signed up socially before this is still
+unverified in the database and will keep hitting the same wall until they verify by email. On
+the Neon database today that is **14 of the 16 accounts that have a social identity**. Say the
+word and I will write the one-off backfill.

@@ -61,13 +61,20 @@ final class CompleteSocialLogin
                     $inviter = $this->inviteCodes->resolveOrFail($inviteCode);
 
                     $isNewAccount = true;
-                    $user = User::create([
+                    $user = new User([
                         'name' => $payload->name ?: Str::before($payload->email, '@'),
                         'email' => $payload->email,
                         'username' => null,
                         'password' => null,
-                        'email_verified_at' => $payload->emailVerified ? Carbon::now() : null,
                     ]);
+
+                    // Assigned rather than passed to create(): `email_verified_at` is deliberately
+                    // not fillable, so mass assignment dropped it on the floor and every social
+                    // account was created unverified no matter what the provider asserted. It must
+                    // stay out of #[Fillable] — a registration payload that could set its own
+                    // verification timestamp is a self-verification hole.
+                    $user->email_verified_at = $payload->emailVerified ? Carbon::now() : null;
+                    $user->save();
 
                     if ($inviter !== null) {
                         $this->inviteCodes->redeem($inviter, $user, (string) $inviteCode);

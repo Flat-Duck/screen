@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\HashtagModerationState;
+use App\Http\Requests\IndexTrendingHashtagsRequest;
 use App\Http\Resources\HashtagResource;
 use App\Http\Resources\PostResource;
 use App\Models\Hashtag;
@@ -22,15 +23,12 @@ class HashtagController extends Controller
         private readonly SavedPostService $savedPosts,
     ) {}
 
-    public function trending(Request $request): AnonymousResourceCollection
+    public function trending(IndexTrendingHashtagsRequest $request): AnonymousResourceCollection
     {
         /** @var User $viewer */
         $viewer = $request->user();
 
-        $validated = $request->validate([
-            'limit' => ['sometimes', 'integer', 'min:1', 'max:50'],
-            'days' => ['sometimes', 'integer', 'min:1', 'max:90'],
-        ]);
+        $validated = $request->validated();
 
         $hashtags = $this->hashtags->trending((int) ($validated['limit'] ?? 10), (int) ($validated['days'] ?? 7));
         $this->hashtags->annotateIsFollowed($hashtags, $viewer);
