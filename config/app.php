@@ -17,6 +17,34 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Public Brand
+    |--------------------------------------------------------------------------
+    |
+    | The product name as the public sees it. Deliberately separate from APP_NAME,
+    | which is this repository's internal name and appears in the admin dashboard,
+    | mail subjects and log context. The landing page and the legal documents that
+    | Play Console links to must say "Akukas" regardless of what the deployment
+    | calls itself.
+    |
+    */
+
+    'brand' => env('APP_BRAND', 'Akukas'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Google Play Listing
+    |--------------------------------------------------------------------------
+    |
+    | Null until the listing is public. The landing page shows an unlinked
+    | "coming soon" badge rather than a button that leads nowhere, so the page is
+    | honest during open testing without needing a second version of itself.
+    |
+    */
+
+    'play_url' => env('APP_PLAY_URL'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Environment
     |--------------------------------------------------------------------------
     |

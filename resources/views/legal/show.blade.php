@@ -3,6 +3,7 @@
         'privacy' => ['en' => 'Privacy Policy', 'ar' => 'سياسة الخصوصية'],
         'terms' => ['en' => 'Terms of Service', 'ar' => 'شروط الخدمة'],
         'account-deletion' => ['en' => 'Delete your account', 'ar' => 'حذف الحساب'],
+        'csae' => ['en' => 'Child Safety Standards', 'ar' => 'معايير سلامة الأطفال'],
     ];
     $localeNames = ['en' => 'English', 'ar' => 'العربية'];
     $title = $titles[$document][$locale] ?? ucfirst($document);
@@ -12,9 +13,9 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ $title }} — {{ config('app.name') }}</title>
+    <title>{{ $title }} — {{ config('app.brand') }}</title>
     {{-- Play's crawler and any link previewer should see a clean description. --}}
-    <meta name="description" content="{{ $title }} for {{ config('app.name') }}">
+    <meta name="description" content="{{ $title }} for {{ config('app.brand') }}">
     <style>
         :root { color-scheme: light dark; --fg:#1a1a1a; --muted:#6b6b6b; --bg:#ffffff; --rule:#e5e5e5; --link:#0b5fff; }
         @media (prefers-color-scheme: dark) {
@@ -54,7 +55,7 @@
             {{-- No <h1> or date here: each document in resources/legal/ opens with its own
                  title and an authoritative "Last Updated" line. Repeating them risks showing a
                  file-mtime date that contradicts the one the document legally states. --}}
-            <div class="brand">{{ config('app.name') }}</div>
+            <div class="brand">{{ config('app.brand') }}</div>
             <nav>
                 @foreach ($otherLocales as $other)
                     <a href="{{ route('legal.show', ['document' => $document, 'locale' => $other]) }}"
@@ -74,7 +75,7 @@
         &middot;
         <a href="{{ route('legal.show', ['document' => 'terms', 'locale' => $locale]) }}">{{ $titles['terms'][$locale] }}</a>
         &middot;
-        {{ config('app.name') }}
+        {{ config('app.brand') }}
     </footer>
 </div>
 </body>

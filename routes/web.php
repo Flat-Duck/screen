@@ -11,6 +11,7 @@ use App\Http\Controllers\EventController;
 use App\Http\Controllers\ExperimentStatusController;
 use App\Http\Controllers\GroupPhotoDeliveryController;
 use App\Http\Controllers\HealthCheckController;
+use App\Http\Controllers\LandingController;
 use App\Http\Controllers\LegalController;
 use App\Http\Controllers\MobileEmailVerificationController;
 use App\Http\Controllers\MobilePasswordResetController;
@@ -25,7 +26,10 @@ use App\Http\Controllers\UserAvatarDeliveryController;
 use App\Http\Middleware\PreventSensitivePageCaching;
 use Illuminate\Support\Facades\Route;
 
-Route::view('/', 'welcome')->name('home');
+// The public front page. Kept as the `home` route name because the auth layouts and Fortify's
+// own links point at it; what changed is only that it is now the product's landing page rather
+// than the framework's welcome view.
+Route::get('/', LandingController::class)->name('home');
 
 Route::get('/up/deep', HealthCheckController::class)->name('health.deep');
 
