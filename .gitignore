@@ -9,6 +9,8 @@
 /storage/app/firebase-service-account.json
 /vendor
 .env
+.DS_Store
+/**/.DS_Store
 .env.backup
 .env.production
 .phpactor.json

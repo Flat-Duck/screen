@@ -26,12 +26,30 @@ class LandingController extends Controller
     {
         $locale = $this->resolveLocale($request);
 
+        // Checked here rather than assumed in the view: a credit must appear when its photo does
+        // and not otherwise, since crediting a photographer for an image nobody is being shown is
+        // its own kind of wrong. Falling back leaves the drawn artwork in place.
+        /** @var array<string, string> $configured */
+        $configured = config('app.landing_photos', []);
+
+        $photos = array_map(
+            fn (string $path): ?string => is_file(public_path($path)) ? '/'.$path : null,
+            $configured,
+        );
+
+        /** @var array{url: string, author: string, source: string}|null $credit */
+        $credit = config('app.landing_photo_credit');
+
         return response()->view('landing', [
             'locale' => $locale,
             'dir' => in_array($locale, self::RTL_LOCALES, true) ? 'rtl' : 'ltr',
             'otherLocale' => $locale === 'ar' ? 'en' : 'ar',
             'brand' => (string) config('app.brand'),
             'playUrl' => config('app.play_url'),
+            'heroPhoto' => $photos['hero'] ?? null,
+            'photoUrl' => $photos['closing'] ?? null,
+            // Shown only alongside the photograph it credits, and only when one is configured.
+            'photoCredit' => ($photos['closing'] ?? null) === null ? null : $credit,
         ]);
     }
 

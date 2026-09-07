@@ -16,6 +16,12 @@
     <title>{{ $title }} — {{ config('app.brand') }}</title>
     {{-- Play's crawler and any link previewer should see a clean description. --}}
     <meta name="description" content="{{ $title }} for {{ config('app.brand') }}">
+
+    {{-- These pages are linked straight from the Play Console listing, so they are often the
+         first Akukas page anyone opens. They should not show a blank tab icon. --}}
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <style>
         :root { color-scheme: light dark; --fg:#1a1a1a; --muted:#6b6b6b; --bg:#ffffff; --rule:#e5e5e5; --link:#0b5fff; }
         @media (prefers-color-scheme: dark) {

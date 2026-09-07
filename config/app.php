@@ -45,6 +45,36 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Landing Page Photography
+    |--------------------------------------------------------------------------
+    |
+    | Paths relative to public/. Both are optional — the hero falls back to a plain
+    | disc and the closing band to its drawn ridges — so neither is a deploy blocker.
+    | Configurable rather than hardcoded so the filenames can change without a code
+    | edit, and so tests can point at a fixture instead of at a real asset.
+    |
+    */
+
+    'landing_photos' => [
+        'hero' => env('APP_LANDING_HERO_PHOTO', 'images/akakus-arch.jpg'),
+        'closing' => env('APP_LANDING_CLOSING_PHOTO', 'images/akakus-panorama.jpg'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Landing Photograph Credit
+    |--------------------------------------------------------------------------
+    |
+    | Null when the imagery needs no attribution. Set all three keys when a stock
+    | licence requires a visible credit; the footer then renders it, but only on
+    | pages that actually show the photograph.
+    |
+    */
+
+    'landing_photo_credit' => null,
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Environment
     |--------------------------------------------------------------------------
     |

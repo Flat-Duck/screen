@@ -17,7 +17,20 @@ class LandingPageTest extends TestCase
         $this->get('/')
             ->assertOk()
             ->assertSee('Akukas')
-            ->assertSee('already halfway shared', false);
+            ->assertSee('Not Just Screenshots', false);
+    }
+
+    /**
+     * There is no iOS build — the only client is the Android app in kotlin/screenshot-detector.
+     * A store badge the app is not in would be a claim, not decoration, so the design reference's
+     * App Store button is deliberately absent.
+     */
+    public function test_it_advertises_no_store_the_app_is_not_in(): void
+    {
+        $this->get('/')
+            ->assertOk()
+            ->assertDontSee('App Store')
+            ->assertDontSee('apps.apple.com');
     }
 
     /**
@@ -83,6 +96,62 @@ class LandingPageTest extends TestCase
             ->assertOk()
             ->assertSee('id=ly.akukas.akukasapp', false)
             ->assertDontSee('Coming soon to Google Play');
+    }
+
+    /**
+     * Both photographs are optional. The page must be complete without either, so neither file
+     * can become a silent deploy blocker — the hero falls back to a plain disc and the closing
+     * band to its drawn ridges.
+     *
+     * Points the config at a fixture rather than writing to public/images. An earlier version of
+     * this test wrote a placeholder to the configured path and only cleaned up when the file had
+     * not already existed — so the first run after a real photograph was added destroyed it.
+     */
+    public function test_it_renders_whether_or_not_the_photographs_have_been_added(): void
+    {
+        $fixture = 'images/__test-fixture-'.uniqid().'.jpg';
+        config(['app.landing_photos' => ['hero' => $fixture, 'closing' => $fixture]]);
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('Not Just Screenshots', false)
+            ->assertDontSee($fixture, false);
+
+        $path = public_path($fixture);
+        @mkdir(dirname($path), 0755, true);
+        file_put_contents($path, 'fixture');
+
+        try {
+            $this->get('/')
+                ->assertOk()
+                ->assertSee("style=\"--hero-photo: url('/{$fixture}')\"", false);
+        } finally {
+            @unlink($path);
+        }
+    }
+
+    /**
+     * A credit is licence compliance, not decoration: it must appear with the photograph it
+     * belongs to, and never without one.
+     */
+    public function test_a_configured_credit_appears_only_alongside_its_photograph(): void
+    {
+        $fixture = 'images/__test-fixture-'.uniqid().'.jpg';
+        $credit = ['url' => 'https://example.test/photo', 'author' => 'Someone', 'source' => 'Somewhere'];
+        config(['app.landing_photo_credit' => $credit]);
+
+        config(['app.landing_photos' => ['hero' => $fixture, 'closing' => $fixture]]);
+        $this->get('/')->assertOk()->assertDontSee('Someone');
+
+        $path = public_path($fixture);
+        @mkdir(dirname($path), 0755, true);
+        file_put_contents($path, 'fixture');
+
+        try {
+            $this->get('/')->assertOk()->assertSee('Someone')->assertSee('https://example.test/photo', false);
+        } finally {
+            @unlink($path);
+        }
     }
 
     /**
