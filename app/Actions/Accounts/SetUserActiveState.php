@@ -3,6 +3,7 @@
 namespace App\Actions\Accounts;
 
 use App\Actions\Auth\RevokeUserSessions;
+use App\Actions\Media\SyncPublicMedia;
 use App\Enums\SessionEndReason;
 use App\Enums\UserModerationState;
 use App\Enums\UserVisibilityState;
@@ -18,7 +19,10 @@ use App\Services\AccountService;
  */
 final class SetUserActiveState
 {
-    public function __construct(private readonly RevokeUserSessions $revokeSessions) {}
+    public function __construct(
+        private readonly RevokeUserSessions $revokeSessions,
+        private readonly SyncPublicMedia $publicMedia,
+    ) {}
 
     public function __invoke(User $user, bool $active): void
     {
@@ -37,5 +41,9 @@ final class SetUserActiveState
         if (! $active) {
             ($this->revokeSessions)($user, SessionEndReason::Revoked);
         }
+
+        // is_active feeds isPubliclyVisible(), which isPubliclyCacheable() consults — so
+        // deactivating an account must pull its public media, and reactivating restores it.
+        $this->publicMedia->forUser($user);
     }
 }

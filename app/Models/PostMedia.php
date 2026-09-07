@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Jobs\UnpublishPostMediaFromCdn;
 use Database\Factories\PostMediaFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -56,6 +57,11 @@ class PostMedia extends Model
         'thumbnail_path',
         'width',
         'height',
+        'thumbhash',
+        'public_token',
+        'public_path',
+        'public_thumbnail_path',
+        'published_publicly_at',
         'mime_type',
         'size_bytes',
         'status',
@@ -81,6 +87,7 @@ class PostMedia extends Model
             'height' => 'integer',
             'size_bytes' => 'integer',
             'ocr_duration_ms' => 'integer',
+            'published_publicly_at' => 'datetime',
             'ocr_text' => 'encrypted',
         ];
     }
@@ -126,10 +133,54 @@ class PostMedia extends Model
 
     private function deliveryUrl(string $variant, User $viewer): string
     {
-        return URL::temporarySignedRoute(
+        return $this->publicCdnUrl($variant) ?? URL::temporarySignedRoute(
             'media.posts.show',
             now()->addSeconds((int) config('social.media_url_ttl_seconds', 1200)),
             ['media' => $this->getKey(), 'variant' => $variant, 'viewer' => $viewer->getKey()],
         );
+    }
+
+    /**
+     * The CDN URL for this variant, when one has been published and the feature is on.
+     *
+     * Keys off the stored `public_path` rather than re-evaluating visibility here, deliberately.
+     * Two reasons: minting a URL happens once per media per response and must not add queries, and
+     * it makes invalidation a *write* — {@see UnpublishPostMediaFromCdn} nulls these
+     * columns — rather than a check that every read has to remember to perform. The corollary is
+     * that those unpublish paths are load-bearing, with `media:reconcile-public` as the net.
+     */
+    public function publicCdnUrl(string $variant): ?string
+    {
+        if (! config('social.public_cdn.enabled')) {
+            return null;
+        }
+
+        $path = $variant === 'thumbnail' ? $this->public_thumbnail_path : $this->public_path;
+
+        if (! is_string($path) || $path === '') {
+            return null;
+        }
+
+        $base = config('filesystems.disks.'.config('social.public_cdn.disk').'.url');
+
+        if (! is_string($base) || $base === '') {
+            return null;
+        }
+
+        return rtrim($base, '/').'/'.ltrim($path, '/');
+    }
+
+    /** Object keys under the public bucket. Unguessable, stable, and content-immutable. */
+    public function publicObjectKey(string $variant): ?string
+    {
+        if (! is_string($this->public_token) || $this->public_token === '') {
+            return null;
+        }
+
+        $extension = $variant === 'thumbnail'
+            ? 'webp'
+            : (pathinfo((string) $this->original_path, PATHINFO_EXTENSION) ?: 'jpg');
+
+        return $this->public_token.'/'.($variant === 'thumbnail' ? 't' : 'o').'.'.$extension;
     }
 }

@@ -96,6 +96,30 @@ return [
             'report' => false,
         ],
 
+        /*
+         * The public half of the hybrid CDN: a *separate* bucket, fronted by a custom domain, for
+         * media on public posts only. Nothing is copied here unless Post::isPubliclyCacheable()
+         * says so, and the objects are named by an unguessable random token rather than by id.
+         *
+         * Deliberately not the same bucket as 'r2' above. Making that one public would expose
+         * every private save and every private account's media at once; a second bucket means the
+         * blast radius of a misconfiguration is only what was deliberately published into it.
+         */
+        'r2_public' => [
+            'driver' => 's3',
+            'key' => env('R2_ACCESS_KEY_ID'),
+            'secret' => env('R2_SECRET_ACCESS_KEY'),
+            'region' => 'auto',
+            'bucket' => env('R2_PUBLIC_BUCKET'),
+            'endpoint' => env('R2_ENDPOINT'),
+            'use_path_style_endpoint' => true,
+            'visibility' => 'public',
+            // The custom domain in front of the bucket. Object URLs are built from this, so it is
+            // what a client actually talks to — the bucket endpoint above is only used for writes.
+            'url' => env('R2_PUBLIC_URL'),
+            'throw' => false,
+        ],
+
     ],
 
     /*

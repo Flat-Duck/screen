@@ -7426,6 +7426,7 @@
                     "position",
                     "url",
                     "original_url",
+                    "thumbhash",
                     "width",
                     "height",
                     "status",
@@ -7444,6 +7445,13 @@
                     },
                     "original_url": {
                         "type": "string"
+                    },
+                    "thumbhash": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Base64 ThumbHash (~25 bytes decoded). Render as a blurred placeholder while the image loads; null on media that predates the field."
                     },
                     "width": {
                         "type": [

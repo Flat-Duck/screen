@@ -19,7 +19,6 @@ class GroupPhotoDeliveryController extends Controller
         abort_unless($groupModel->visibility !== 'private' || $groupModel->isMember($viewer), 404);
 
         $disk = Storage::disk(config('social.media_disk'));
-        abort_unless($disk->exists($groupModel->photo_path), 404);
 
         return MediaDelivery::respond(
             $disk,

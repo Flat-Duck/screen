@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\AccountVisibility;
 use App\Models\Post;
 use App\Models\PostMedia;
 use App\Models\Scopes\NotArchivedScope;
@@ -37,12 +36,33 @@ class PostMediaDeliveryController extends Controller
 
         abort_unless(is_string($path) && $path !== '' && ! str_contains($path, '://'), 404);
 
-        $disk = Storage::disk($postMedia->sourceDisk());
-        abort_unless($disk->exists($path), 404);
+        // A signed URL minted before this media was published to the CDN still works, and still
+        // reauthorizes here — but there is no reason to stream or presign the private object when
+        // an edge-cached public copy exists. Costs those older clients one extra hop, once.
+        if (($cdn = $postMedia->publicCdnUrl($variant)) !== null) {
+            return redirect()->away($cdn, 302, [
+                'Cache-Control' => 'public, max-age='.(int) config('social.public_cdn.max_age_seconds', 31536000),
+                'X-Content-Type-Options' => 'nosniff',
+            ]);
+        }
 
-        return MediaDelivery::respond($disk, $path, $this->cacheControl($post), [
-            'Content-Type' => $mimeType,
-        ]);
+        $disk = Storage::disk($postMedia->sourceDisk());
+
+        return MediaDelivery::respond(
+            $disk,
+            $path,
+            $this->cacheControl($post),
+            ['Content-Type' => $mimeType],
+            // Published media bytes are immutable per (row, variant) — editing a post never
+            // rewrites them — so a strong validator needs no I/O at all. updated_at is in there
+            // only so a reprocessed thumbnail invalidates rather than serving the old bytes.
+            $this->etag($postMedia, $variant),
+        );
+    }
+
+    private function etag(PostMedia $media, string $variant): string
+    {
+        return sprintf('pm-%d-%s-%d', $media->getKey(), $variant, $media->updated_at?->getTimestamp() ?? 0);
     }
 
     private function authorizeViewer(User $viewer, Post $post): void
@@ -58,12 +78,7 @@ class PostMediaDeliveryController extends Controller
 
     private function cacheControl(Post $post): string
     {
-        $publiclyCacheable = ! $post->trashed()
-            && $post->archived_at === null
-            && $post->user->account_visibility === AccountVisibility::Public
-            && $post->user->isPubliclyVisible();
-
-        if (! $publiclyCacheable) {
+        if (! $post->isPubliclyCacheable()) {
             return 'no-store, private';
         }
 

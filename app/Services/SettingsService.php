@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Actions\Media\SyncPublicMedia;
 use App\Enums\AccountVisibility;
 use App\Enums\InteractionAudience;
 use App\Models\User;
@@ -17,6 +18,8 @@ use Illuminate\Support\Carbon;
  */
 class SettingsService
 {
+    public function __construct(private readonly SyncPublicMedia $publicMedia) {}
+
     /** @return array<string, mixed> */
     public function defaults(): array
     {
@@ -92,9 +95,17 @@ class SettingsService
      */
     public function update(User $user, array $data): array
     {
+        $visibilityChanged = false;
         if (isset($data['privacy']['account_visibility'])) {
+            $previousVisibility = $user->account_visibility;
             $user->account_visibility = AccountVisibility::from($data['privacy']['account_visibility']);
             unset($data['privacy']['account_visibility']);
+
+            // Going private has to pull every CDN copy this account has; going public may publish
+            // them. Both are the same reconciliation, so it is dispatched either way.
+            if ($previousVisibility !== $user->account_visibility) {
+                $visibilityChanged = true;
+            }
         }
 
         if (isset($data['notifications']['quiet_hours'])) {
@@ -104,6 +115,10 @@ class SettingsService
 
         $user->settings = $this->mergeOneLevelDeep($user->settings ?? [], $data);
         $user->save();
+
+        if ($visibilityChanged) {
+            $this->publicMedia->forUser($user);
+        }
 
         return $this->getFor($user);
     }

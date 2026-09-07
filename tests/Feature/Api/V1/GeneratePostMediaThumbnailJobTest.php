@@ -39,6 +39,54 @@ class GeneratePostMediaThumbnailJobTest extends TestCase
         Storage::disk('public')->assertExists($media->thumbnail_path);
     }
 
+    /**
+     * The placeholder rides along with the thumbnail deliberately: this job is the only place in
+     * the pipeline that already has the image decoded, so computing it anywhere else would mean a
+     * second fetch out of the object store and a second decode, per image.
+     */
+    public function test_job_records_a_placeholder_and_the_original_dimensions(): void
+    {
+        Storage::fake('public');
+
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/v1/posts', [
+            'images' => [UploadedFile::fake()->image('shot.jpg', 900, 400)],
+        ])->assertCreated();
+
+        $media = PostMedia::firstOrFail();
+
+        $this->assertNotNull($media->thumbhash);
+        // Base64 of a ~25-byte hash. Asserting it decodes and is plausibly sized catches a column
+        // that is being written garbage; ThumbHashTest is what proves the bytes are correct.
+        $decoded = base64_decode($media->thumbhash, true);
+        $this->assertIsString($decoded);
+        $this->assertGreaterThanOrEqual(5, strlen($decoded));
+        $this->assertLessThanOrEqual(48, strlen($decoded));
+
+        // The original's dimensions, not the 640px thumbnail's — the client needs the real ratio.
+        $this->assertSame(900, $media->width);
+        $this->assertSame(400, $media->height);
+    }
+
+    /** The API has to hand the placeholder to the client, or none of the above is worth anything. */
+    public function test_the_placeholder_is_exposed_on_the_post_resource(): void
+    {
+        Storage::fake('public');
+
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $post = $this->postJson('/api/v1/posts', [
+            'images' => [UploadedFile::fake()->image('shot.jpg', 400, 400)],
+        ])->assertCreated()->json('data.id');
+
+        $this->getJson("/api/v1/posts/{$post}")
+            ->assertOk()
+            ->assertJsonPath('data.media.0.thumbhash', PostMedia::firstOrFail()->thumbhash);
+    }
+
     public function test_job_marks_post_ready_once_all_media_are_processed(): void
     {
         Storage::fake('public');

@@ -18,7 +18,6 @@ class PrivateSaveMediaDeliveryController extends Controller
         abort_unless($save->user_id === $viewer->id, 404);
 
         $disk = Storage::disk($save->sourceDisk());
-        abort_unless($disk->exists($save->path), 404);
 
         return MediaDelivery::respond($disk, $save->path, 'no-store, private', [
             'Content-Type' => $save->mime_type,

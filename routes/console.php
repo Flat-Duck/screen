@@ -36,6 +36,9 @@ Schedule::command('operations:capture-health')->everyMinute()->onOneServer()->wi
 // Raises ModerationAlerts for report spikes, SLA breaches, brigading and anything entering the
 // top of the ranking. Detection only — every alert waits on a moderator, so a missed run delays
 // notice rather than causing an unreviewed action. Individual detectors fail independently.
+// Catches media whose public CDN copy outlived its post going private, archived or deleted.
+// Every unpublish trigger is a place a future change can forget; this is the net under them.
+Schedule::command('media:reconcile-public --fix')->hourly()->onOneServer()->withoutOverlapping();
 Schedule::command('moderation:detect-alerts')->everyFiveMinutes()->onOneServer()->withoutOverlapping();
 Schedule::command('model:prune', ['--model' => [ApiRequestMetric::class]])->daily()->onOneServer()->withoutOverlapping();
 

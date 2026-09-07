@@ -26,21 +26,65 @@ final class MediaDelivery
 {
     /**
      * @param  array<string, string>  $headers
+     * @param  string|null  $etag  A strong validator for these bytes, unquoted. Media is immutable
+     *                             per (record, variant), so callers can build one from ids and a
+     *                             timestamp without touching the object store.
      */
     public static function respond(
         FilesystemAdapter $disk,
         string $path,
         string $cacheControl,
         array $headers = [],
+        ?string $etag = null,
     ): Response {
-        if (self::shouldOffload($disk)) {
-            return self::offload($disk, $path, $cacheControl);
+        if ($etag !== null && self::matchesIfNoneMatch($etag)) {
+            // Answered before anything else happens — in particular before minting a presigned
+            // URL, which is the whole point of having a validator on the offload path.
+            return response('', Response::HTTP_NOT_MODIFIED, [
+                'ETag' => '"'.$etag.'"',
+                'Cache-Control' => $cacheControl,
+            ]);
         }
+
+        if ($etag !== null) {
+            $headers['ETag'] = '"'.$etag.'"';
+        }
+
+        if (self::shouldOffload($disk)) {
+            return self::offload($disk, $path, $cacheControl, $etag);
+        }
+
+        // Only the streaming branch needs to know whether the object is there. On an object store
+        // this is a network HEAD on the critical path of every single image, asking a question the
+        // presigned URL already answers for free — a missing object 404s at the store, with the
+        // same result for the viewer. On a local disk it is a stat, so it stays here.
+        abort_unless($disk->exists($path), Response::HTTP_NOT_FOUND);
 
         return $disk->response($path, null, array_merge($headers, [
             'Cache-Control' => $cacheControl,
             'X-Content-Type-Options' => 'nosniff',
         ]));
+    }
+
+    /**
+     * Deliberately exact rather than weak-comparing or honouring `*`: these validators are
+     * generated, not client-supplied, and anything we did not mint should be treated as a miss.
+     */
+    private static function matchesIfNoneMatch(string $etag): bool
+    {
+        $header = request()->headers->get('If-None-Match');
+
+        if ($header === null || $header === '') {
+            return false;
+        }
+
+        foreach (explode(',', $header) as $candidate) {
+            if (trim(trim($candidate), '"') === $etag) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static function shouldOffload(FilesystemAdapter $disk): bool
@@ -53,8 +97,12 @@ final class MediaDelivery
             && $disk->providesTemporaryUrls();
     }
 
-    private static function offload(FilesystemAdapter $disk, string $path, string $cacheControl): RedirectResponse
-    {
+    private static function offload(
+        FilesystemAdapter $disk,
+        string $path,
+        string $cacheControl,
+        ?string $etag = null,
+    ): RedirectResponse {
         $ttl = max(1, (int) config('social.media_offload_ttl_seconds', 120));
         $target = $disk->temporaryUrl($path, now()->addSeconds($ttl));
 
@@ -66,9 +114,15 @@ final class MediaDelivery
             ? 'no-store, private'
             : 'private, max-age='.$ttl;
 
-        return redirect()->away($target, 302, [
+        $headers = [
             'Cache-Control' => $redirectCacheControl,
             'X-Content-Type-Options' => 'nosniff',
-        ]);
+        ];
+
+        if ($etag !== null) {
+            $headers['ETag'] = '"'.$etag.'"';
+        }
+
+        return redirect()->away($target, 302, $headers);
     }
 }

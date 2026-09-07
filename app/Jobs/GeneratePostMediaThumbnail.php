@@ -49,15 +49,28 @@ class GeneratePostMediaThumbnail implements ShouldQueue
             pathinfo($media->original_path, PATHINFO_FILENAME),
         );
 
-        $images->generateThumbnail($media->original_path, $thumbnailPath, $media->source_disk);
+        $decoded = $images->generateThumbnail($media->original_path, $thumbnailPath, $media->source_disk);
 
         $media->update([
             'thumbnail_path' => $thumbnailPath,
             'status' => PostMedia::STATUS_READY,
+            'thumbhash' => $decoded['thumbhash'],
+            // Only filled in when they are missing. The multipart path measures the image at
+            // upload and is authoritative; this is the safety net for anything that reached
+            // post_media without dimensions, which is what the client needs to reserve layout
+            // space before the bitmap decodes.
+            'width' => $media->width ?? $decoded['width'],
+            'height' => $media->height ?? $decoded['height'],
         ]);
 
         if ($media->post) {
             $this->syncPostStatus($media->post);
+
+            // Both variants exist now, which is the earliest point the public copy can be made.
+            // The job re-checks visibility itself, so dispatching optimistically is safe.
+            if (config('social.public_cdn.enabled') && $media->post->isPubliclyCacheable()) {
+                PublishPostMediaToCdn::dispatch($media->id)->afterCommit();
+            }
         }
     }
 

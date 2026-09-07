@@ -29,6 +29,9 @@ class PostMediaResource extends JsonResource
             // to render even while status=processing, so this is never a blocking state.
             'url' => $this->thumbnailUrl($viewer) ?? $this->originalUrl($viewer),
             'original_url' => $this->originalUrl($viewer),
+            // ~25 bytes that decode to a blurred impression of the image. Render it immediately
+            // and swap in the real bytes when they land; null on media that predates the column.
+            'thumbhash' => $this->thumbhash,
             'width' => $this->width,
             'height' => $this->height,
             'status' => $this->status,

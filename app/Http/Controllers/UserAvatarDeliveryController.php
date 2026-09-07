@@ -22,7 +22,6 @@ class UserAvatarDeliveryController extends Controller
         abort_if($this->blocks->isBlockedEitherWay($viewer, $profile), 404);
 
         $disk = Storage::disk(config('social.media_disk'));
-        abort_unless($disk->exists($profile->avatar_path), 404);
         $public = $profile->account_visibility === AccountVisibility::Public;
 
         return MediaDelivery::respond(

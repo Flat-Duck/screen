@@ -173,8 +173,12 @@ class MediaDeliveryTest extends TestCase
 
         $response = $this->get($url)->assertRedirect();
         $this->assertStringStartsWith('https://objects.test/posts/offloaded.jpg', (string) $response->headers->get('Location'));
-        // Never "public": the Location header is a bearer capability for the object itself.
-        $this->assertSame('max-age=120, private', $response->headers->get('Cache-Control'));
+        // Never "public": the Location header is a bearer capability for the object itself, and
+        // it may be reused only for as long as the presigned URL it carries stays valid.
+        $this->assertSame(
+            'max-age='.config('social.media_offload_ttl_seconds').', private',
+            $response->headers->get('Cache-Control'),
+        );
     }
 
     public function test_offloaded_restricted_media_is_never_cacheable(): void
@@ -232,6 +236,82 @@ class MediaDeliveryTest extends TestCase
      * storage reproduces what an R2 disk looks like to the delivery code — presigning, remote —
      * while keeping the files themselves readable by the rest of the test.
      */
+    /**
+     * The existence check used to run in the controller, before the branch. On an object store
+     * that is a network HEAD on the critical path of every image, asking a question the presigned
+     * URL answers for free — a missing object 404s at the store either way. Asserted by the
+     * absence of the object: the redirect must still be issued.
+     */
+    public function test_the_offload_path_does_not_probe_the_object_store_for_existence(): void
+    {
+        Storage::fake('public');
+        $this->presignFakeDisk('public');
+        $viewer = User::factory()->create();
+        $post = Post::factory()->create();
+        PostMedia::factory()->for($post)->create(['original_path' => 'posts/never-written.jpg']);
+        Sanctum::actingAs($viewer);
+
+        $url = $this->getJson("/api/v1/posts/{$post->id}")->assertOk()->json('data.media.0.original_url');
+
+        // Nothing was ever put on the disk, and it still redirects rather than 404ing.
+        $this->get($url)->assertRedirect();
+    }
+
+    public function test_delivery_carries_a_strong_validator(): void
+    {
+        Storage::fake('public');
+        $viewer = User::factory()->create();
+        $post = Post::factory()->create();
+        $media = PostMedia::factory()->for($post)->create(['original_path' => 'posts/tagged.jpg']);
+        Storage::disk('public')->put($media->original_path, 'post-bytes');
+        Sanctum::actingAs($viewer);
+
+        $url = $this->getJson("/api/v1/posts/{$post->id}")->assertOk()->json('data.media.0.original_url');
+
+        $this->get($url)->assertOk()->assertHeader(
+            'ETag',
+            sprintf('"pm-%d-original-%d"', $media->id, $media->updated_at->getTimestamp()),
+        );
+    }
+
+    /**
+     * The 304 is answered before a presigned URL is minted, which is the point of having a
+     * validator on a path that otherwise does work per request.
+     */
+    public function test_a_matching_if_none_match_is_answered_without_the_bytes(): void
+    {
+        Storage::fake('public');
+        $this->presignFakeDisk('public');
+        $viewer = User::factory()->create();
+        $post = Post::factory()->create();
+        $media = PostMedia::factory()->for($post)->create(['original_path' => 'posts/revalidated.jpg']);
+        Storage::disk('public')->put($media->original_path, 'post-bytes');
+        Sanctum::actingAs($viewer);
+
+        $url = $this->getJson("/api/v1/posts/{$post->id}")->assertOk()->json('data.media.0.original_url');
+        $etag = sprintf('"pm-%d-original-%d"', $media->id, $media->updated_at->getTimestamp());
+
+        $response = $this->get($url, ['If-None-Match' => $etag]);
+
+        $response->assertStatus(304);
+        $this->assertSame('', $response->getContent());
+        $this->assertNull($response->headers->get('Location'));
+    }
+
+    public function test_a_stale_if_none_match_still_serves_the_media(): void
+    {
+        Storage::fake('public');
+        $viewer = User::factory()->create();
+        $post = Post::factory()->create();
+        $media = PostMedia::factory()->for($post)->create(['original_path' => 'posts/stale.jpg']);
+        Storage::disk('public')->put($media->original_path, 'post-bytes');
+        Sanctum::actingAs($viewer);
+
+        $url = $this->getJson("/api/v1/posts/{$post->id}")->assertOk()->json('data.media.0.original_url');
+
+        $this->get($url, ['If-None-Match' => '"pm-999-original-1"'])->assertOk();
+    }
+
     private function presignFakeDisk(string $disk): void
     {
         $faked = Storage::disk($disk);

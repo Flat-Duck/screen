@@ -135,6 +135,28 @@ class Post extends Model
         $query->whereIn('user_id', $visibleAuthorIds);
     }
 
+    /**
+     * Whether this post's media may be served to anyone, without a per-request check.
+     *
+     * The single definition of "public" for media. Used both for the `Cache-Control` on the
+     * authorized delivery path and to decide whether bytes may be copied to the public CDN — those
+     * two must never disagree, because a post that is cacheable-but-not-CDN-eligible (or the
+     * reverse) is a privacy bug in one direction and a broken image in the other.
+     */
+    public function isPubliclyCacheable(): bool
+    {
+        $author = $this->user;
+
+        if (! $author instanceof User) {
+            return false;
+        }
+
+        return ! $this->trashed()
+            && $this->archived_at === null
+            && $author->account_visibility === AccountVisibility::Public
+            && $author->isPubliclyVisible();
+    }
+
     public function isVisibleTo(User $viewer): bool
     {
         $author = $this->relationLoaded('user') ? $this->user : $this->user()->firstOrFail();

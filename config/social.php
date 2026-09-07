@@ -22,7 +22,7 @@ return [
 
     // API resources return signed application URLs, never raw object-store paths. A short TTL
     // bounds capability leakage while still allowing image clients to retry and cache briefly.
-    'media_url_ttl_seconds' => (int) env('SOCIAL_MEDIA_URL_TTL_SECONDS', 1200),
+    'media_url_ttl_seconds' => (int) env('SOCIAL_MEDIA_URL_TTL_SECONDS', 3600),
 
     'public_media_cache_seconds' => (int) env('SOCIAL_PUBLIC_MEDIA_CACHE_SECONDS', 300),
 
@@ -37,7 +37,37 @@ return [
     // viewer who just lost access can still fetch the object, so it is deliberately far shorter
     // than 'media_url_ttl_seconds' — the capability URL is reauthorized on every use, the
     // presigned URL it mints is not.
-    'media_offload_ttl_seconds' => (int) env('SOCIAL_MEDIA_OFFLOAD_TTL_SECONDS', 120),
+    'media_offload_ttl_seconds' => (int) env('SOCIAL_MEDIA_OFFLOAD_TTL_SECONDS', 300),
+
+    /*
+     * Hybrid CDN. Media on *public* posts can be copied to a public bucket and served from a CDN
+     * in one round trip, edge-cached, with a URL a client can genuinely cache. Everything else —
+     * private accounts, private saves, archived and deleted posts — keeps the signed,
+     * reauthorized-on-every-request path above.
+     *
+     * Off by default, and turning it off is the rollback: every newly minted URL immediately
+     * reverts to the signed route with no deploy. Already-published objects keep working until
+     * `media:reconcile-public` or an explicit unpublish removes them.
+     *
+     * The trade this accepts: a CDN URL has no per-viewer check, so someone who obtained one
+     * before being blocked keeps access to those bytes until the token is rotated. Feed and
+     * profile queries already exclude blocked authors, so they are never *handed* the URL — but
+     * this is a real behaviour change from the authorized path, not an oversight.
+     */
+    'public_cdn' => [
+        'enabled' => (bool) env('SOCIAL_PUBLIC_CDN_ENABLED', false),
+        'disk' => env('SOCIAL_PUBLIC_CDN_DISK', 'r2_public'),
+        // Objects are content-immutable and named by a random token, so they can be cached
+        // effectively forever; revocation is deletion plus a token rotation, not expiry.
+        'max_age_seconds' => (int) env('SOCIAL_PUBLIC_CDN_MAX_AGE', 31536000),
+        // Optional. Without these, deleting the object still leaves the edge serving its copy
+        // until the CDN's own TTL expires — so either set them, or configure a bounded edge TTL
+        // and accept that window. See docs/frontend-handoff.md.
+        'purge' => [
+            'zone_id' => env('CLOUDFLARE_ZONE_ID'),
+            'token' => env('CLOUDFLARE_PURGE_TOKEN'),
+        ],
+    ],
 
     'media_cleanup_grace_minutes' => (int) env('SOCIAL_MEDIA_CLEANUP_GRACE_MINUTES', 60),
 

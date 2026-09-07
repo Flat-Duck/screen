@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Http\Requests\ShowFeedRequest;
 use App\Http\Requests\ShowForYouFeedRequest;
 use App\Http\Resources\PostResource;
 use App\Models\User;
@@ -11,7 +12,6 @@ use App\Services\FollowService;
 use App\Services\LikeService;
 use App\Services\Recommendations\RecommendationFeedService;
 use App\Services\SavedPostService;
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class FeedController extends Controller
@@ -25,12 +25,12 @@ class FeedController extends Controller
         private readonly FollowService $follows,
     ) {}
 
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(ShowFeedRequest $request): AnonymousResourceCollection
     {
         /** @var User $user */
         $user = $request->user();
 
-        $posts = $this->feed->feedFor($user);
+        $posts = $this->feed->feedFor($user, $request->perPage());
 
         // Only the first page — a cursor points at a specific position in the pure
         // in-network sequence, so splicing extra posts into a later page would make it
@@ -53,11 +53,11 @@ class FeedController extends Controller
         ]);
     }
 
-    public function following(Request $request): AnonymousResourceCollection
+    public function following(ShowFeedRequest $request): AnonymousResourceCollection
     {
         /** @var User $user */
         $user = $request->user();
-        $posts = $this->feed->feedFor($user);
+        $posts = $this->feed->feedFor($user, $request->perPage());
         $this->likes->annotateLikes($posts->getCollection(), $user);
         $this->savedPosts->annotateIsSaved($posts->getCollection(), $user);
         $this->follows->annotatePostAuthorsAreFollowed($posts->getCollection(), $user);

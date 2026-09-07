@@ -44,6 +44,16 @@ class PurgePost
             ])->save();
 
             try {
+                // Public CDN copies first: they are the ones reachable without authorization,
+                // so leaving them behind after a purge is the worst of the possible orphans.
+                $publicPaths = $post->media
+                    ->flatMap(static fn ($media): array => array_filter([$media->public_path, $media->public_thumbnail_path]))
+                    ->all();
+
+                if ($publicPaths !== []) {
+                    $this->files->deletePaths(array_values($publicPaths), (string) config('social.public_cdn.disk'));
+                }
+
                 foreach ($post->media->groupBy(static fn ($media): string => $media->sourceDisk()) as $diskName => $mediaOnDisk) {
                     $paths = $mediaOnDisk->flatMap(
                         static fn ($media): array => array_values(array_filter([$media->original_path, $media->thumbnail_path]))

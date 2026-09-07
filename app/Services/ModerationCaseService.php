@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Actions\Accounts\SetUserActiveState;
+use App\Actions\Media\SyncPublicMedia;
 use App\Enums\ModerationCasePriority;
 use App\Enums\ModerationCaseStatus;
 use App\Enums\UserModerationState;
@@ -18,7 +19,11 @@ use Illuminate\Validation\ValidationException;
 
 class ModerationCaseService
 {
-    public function __construct(private readonly AdminAuditLogger $audit, private readonly SetUserActiveState $setActiveState) {}
+    public function __construct(
+        private readonly AdminAuditLogger $audit,
+        private readonly SetUserActiveState $setActiveState,
+        private readonly SyncPublicMedia $publicMedia,
+    ) {}
 
     public function assign(ModerationCase $case, User $actor, ?User $assignee, string $reason): void
     {
@@ -80,6 +85,11 @@ class ModerationCaseService
         $this->requireReason($reason);
         $before = ['deleted_at' => $content->getAttribute('deleted_at')];
         $content->delete();
+        if ($content instanceof Post) {
+            // Removing a post has to remove its public bytes too, or moderation only hides the
+            // card while the image stays reachable to anyone holding its CDN URL.
+            $this->publicMedia->forPost($content);
+        }
         $this->audit->record($actor, 'content.removed', $content, $reason, $before, ['deleted_at' => $content->getAttribute('deleted_at')]);
     }
 
@@ -88,6 +98,7 @@ class ModerationCaseService
         $this->requireReason($reason);
         $before = ['deleted_at' => $post->deleted_at];
         $post->restore();
+        $this->publicMedia->forPost($post);
         $this->audit->record($actor, 'content.restored', $post, $reason, $before, ['deleted_at' => null]);
     }
 
@@ -109,6 +120,9 @@ class ModerationCaseService
             $user->forceFill(['moderation_state' => UserModerationState::Banned, 'visibility_state' => UserVisibilityState::Hidden]);
         }
         $user->save();
+        // Again after the save: setActiveState already synced, but that ran *before* the ban
+        // flags were applied, and moderation_state/visibility_state both feed isPubliclyVisible().
+        $this->publicMedia->forUser($user);
         $this->audit->record($actor, $ban ? 'user.banned' : 'user.suspended', $user, $reason, $before, $user->only(array_keys($before)));
     }
 

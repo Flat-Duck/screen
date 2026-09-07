@@ -107,6 +107,11 @@ class CreateMediaAnalysis
             'source_disk' => config('social.uploads.disk', 'r2'),
             'mime_type' => $upload->mime_type,
             'size_bytes' => $upload->size_bytes,
+            // CommitUpload already read these off the object via ImageSafetyInspector; without
+            // carrying them here they stay null all the way through PublishMediaAnalysis into
+            // post_media, and the client has no aspect ratio to reserve layout space with.
+            'width' => $upload->width,
+            'height' => $upload->height,
             'upload_id' => $upload->id,
             'ocr_source' => 'device',
         ];

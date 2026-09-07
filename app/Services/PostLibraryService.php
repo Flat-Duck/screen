@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Actions\Media\SyncPublicMedia;
 use App\Actions\Posts\PurgePost;
 use App\Enums\PostPurgeOutcome;
 use App\Models\Post;
@@ -12,7 +13,10 @@ use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 class PostLibraryService
 {
-    public function __construct(private readonly PurgePost $purgePost) {}
+    public function __construct(
+        private readonly PurgePost $purgePost,
+        private readonly SyncPublicMedia $publicMedia,
+    ) {}
 
     public function archive(User $user, int $postId): void
     {
@@ -23,6 +27,8 @@ class PostLibraryService
         $post->archived_at = now();
         $post->save();
         $post->unsearchable();
+        // An archived post is no longer publicly cacheable, so its CDN copies must go.
+        $this->publicMedia->forPost($post);
     }
 
     public function unarchive(User $user, int $postId): void
@@ -37,6 +43,7 @@ class PostLibraryService
         if ($post->shouldBeSearchable()) {
             $post->searchable();
         }
+        $this->publicMedia->forPost($post);
     }
 
     /** @return CursorPaginator<int, Post> */
