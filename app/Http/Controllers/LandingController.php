@@ -40,6 +40,11 @@ class LandingController extends Controller
         /** @var array{url: string, author: string, source: string}|null $credit */
         $credit = config('app.landing_photo_credit');
 
+        /** @var array{hero?: string, cluster?: list<string>} $shots */
+        $shots = config('app.landing_screenshots', []);
+
+        $resolve = fn (?string $path): ?string => $path !== null && is_file(public_path($path)) ? '/'.$path : null;
+
         return response()->view('landing', [
             'locale' => $locale,
             'dir' => in_array($locale, self::RTL_LOCALES, true) ? 'rtl' : 'ltr',
@@ -47,7 +52,11 @@ class LandingController extends Controller
             'brand' => (string) config('app.brand'),
             'playUrl' => config('app.play_url'),
             'heroPhoto' => $photos['hero'] ?? null,
-            'photoUrl' => $photos['closing'] ?? null,
+            'closingPhoto' => $photos['closing'] ?? null,
+            'engravePhoto' => $photos['engrave'] ?? null,
+            'heroShot' => $resolve($shots['hero'] ?? null),
+            // Reindexed so the view can rely on 0/1/2 even if a middle file is missing.
+            'clusterShots' => array_values(array_filter(array_map($resolve, $shots['cluster'] ?? []))),
             // Shown only alongside the photograph it credits, and only when one is configured.
             'photoCredit' => ($photos['closing'] ?? null) === null ? null : $credit,
         ]);

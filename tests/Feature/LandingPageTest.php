@@ -124,7 +124,7 @@ class LandingPageTest extends TestCase
         try {
             $this->get('/')
                 ->assertOk()
-                ->assertSee("style=\"--hero-photo: url('/{$fixture}')\"", false);
+                ->assertSee("--hero-photo: url('/{$fixture}')", false);
         } finally {
             @unlink($path);
         }

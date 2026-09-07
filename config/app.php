@@ -56,8 +56,26 @@ return [
     */
 
     'landing_photos' => [
-        'hero' => env('APP_LANDING_HERO_PHOTO', 'images/akakus-arch.jpg'),
-        'closing' => env('APP_LANDING_CLOSING_PHOTO', 'images/akakus-panorama.jpg'),
+        'hero' => env('APP_LANDING_HERO_PHOTO', 'images/akakus-arch.webp'),
+        'closing' => env('APP_LANDING_CLOSING_PHOTO', 'images/akakus-panorama.webp'),
+        'engrave' => env('APP_LANDING_ENGRAVE_PHOTO', 'images/engrves.webp'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Landing Page Screenshots
+    |--------------------------------------------------------------------------
+    |
+    | Real captures of the Android app. They arrive with the device bezel already
+    | drawn into the image, so the page renders them as plain pictures rather than
+    | wrapping them in a second frame. Any entry whose file is missing falls back
+    | to the drawn placeholder device, so the page never depends on them.
+    |
+    */
+
+    'landing_screenshots' => [
+        'hero' => 'images/1.webp',
+        'cluster' => ['images/2.webp', 'images/1.webp', 'images/3.webp'],
     ],
 
     /*

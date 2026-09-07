@@ -375,8 +375,8 @@
             align-items: center;
             gap: .5rem;
             text-decoration: none;
-            background: var(--ink);
-            color: var(--bg);
+            background: var(--primary);
+            color: var(--on-primary);
             font-size: .92rem;
             font-weight: 550;
             padding: .6rem 1.35rem;
@@ -386,12 +386,6 @@
             white-space: nowrap;
         }
 
-        @media (prefers-color-scheme: dark) {
-            .pill {
-                background: var(--fg);
-                color: #141312;
-            }
-        }
 
         .pill:hover {
             filter: brightness(1.15);
@@ -410,19 +404,21 @@
             align-items: center;
             gap: .7rem;
             text-decoration: none;
-            background: var(--ink);
-            color: #FFFFFF;
+            background: var(--primary);
+            color: var(--on-primary);
             border-radius: .8rem;
             padding: .62rem 1.25rem;
             line-height: 1.2;
+            transition: filter .15s ease;
         }
 
-        @media (prefers-color-scheme: dark) {
-            .badge {
-                background: #000;
-                border: 1px solid var(--rule);
-            }
+        .badge:hover {
+            filter: brightness(1.06);
         }
+
+        /* No dark-mode override: --primary and --on-primary already swap through the palette
+           (terracotta on white becomes #FFB4A8 on dark ink), so pinning a colour here would
+           fight the tokens rather than follow them. */
 
         .badge svg {
             width: 1.6rem;
@@ -511,24 +507,29 @@
             isolation: isolate;
         }
 
-        /* The landscape spreading out behind the disc, feathered to nothing at its edges so it
-           dissolves into the page instead of ending on a hard rectangle. Paints only when a
-           photograph has been added; otherwise the disc below stands on its own. */
+        /* The engravings, thrown out of focus behind everything else. Blurred on purpose: they
+           are twelve-thousand-year-old pictures of people, and at full sharpness they compete
+           with the phone for attention instead of sitting behind it. Feathered to nothing at the
+           edges so the picture dissolves into the page rather than ending on a rectangle.
+           The negative inset gives the blur room to bleed without exposing a soft border. */
         .stage::after {
             content: "";
             position: absolute;
-            inset: -6% -12%;
+            inset: -20% -5%;
             z-index: 0;
-            background-image: var(--hero-photo, none);
-            background-size: cover;
-            background-position: center 28%;
-            -webkit-mask-image: radial-gradient(58% 52% at 52% 48%, #000 42%, transparent 76%);
-            mask-image: radial-gradient(58% 52% at 52% 48%, #000 42%, transparent 76%);
-            opacity: .5;
+            background-image: var(--engrave-photo, none);
+            background-size: contain;
+            background-position: bottom;
+            filter: blur(1px) saturate(1.55);
+            /* Kept alongside the unprefixed property: Safari only dropped the -webkit- form in
+               15.4, and without it the wall ends on a hard rectangle there instead of fading. */
+            -webkit-mask-image: radial-gradient(65% 53% at 49% 60%, #000 0%, transparent 76%);
+            mask-image: radial-gradient(65% 53% at 49% 60%, #000 0%, transparent 76%);
+            opacity: .75;
         }
 
-        /* The disc the reference puts behind the phone. A warm shape on its own; a window onto
-           the landscape once there is one. */
+        /* The disc behind the phone, and the one sharp photograph in the hero: the arch, framed
+           by the circle. A warm shape on its own when no photograph has been added. */
         .stage::before {
             content: "";
             position: absolute;
@@ -541,6 +542,24 @@
             background-position: center;
             border-radius: 50%;
             inset-block-start: 6%;
+        }
+
+        .device-shot {
+            position: relative;
+            z-index: 2;
+            width: min(17.5rem, 78%);
+            height: auto;
+            display: block;
+            /* The bezel in the image has its own rounding; the shadow has to follow it or the
+               phone looks like it is sitting on a rectangular card. */
+            border-radius: 2.1rem;
+            filter: drop-shadow(0 24px 48px rgba(88, 52, 40, .34));
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .device-shot {
+                filter: drop-shadow(0 24px 48px rgba(0, 0, 0, .7));
+            }
         }
 
         .device {
@@ -815,6 +834,27 @@
             --tilt: -8deg;
         }
 
+        .mini-shot {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 10.75rem;
+            height: auto;
+            display: block;
+            border-radius: 1.5rem;
+            --fan: 0rem;
+            --tilt: 0deg;
+            --lift: 1;
+            transform: translate(-50%, -50%) translateX(var(--fan)) rotate(var(--tilt)) scale(var(--lift));
+            filter: drop-shadow(0 18px 36px rgba(88, 52, 40, .3));
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .mini-shot {
+                filter: drop-shadow(0 18px 36px rgba(0, 0, 0, .65));
+            }
+        }
+
         .mini-screen {
             height: 100%;
             border-radius: 1.35rem;
@@ -883,12 +923,52 @@
 
         /* ---- about -------------------------------------------------------------------- */
         .about {
+            position: relative;
             background: var(--surface-2);
             border-block: 1px solid var(--rule);
             padding-block: 4.5rem;
+            overflow: hidden;
+            isolation: isolate;
+        }
+
+        /* The engraved wall as texture rather than as a picture.
+           mix-blend-mode is what makes it a pattern instead of a photograph pasted behind text:
+           the image's own tones interact with whatever the section's background happens to be,
+           so it reads as marks *in* the surface. Multiply in light — the ochre figures darken
+           the cream the way pigment darkens rock. Screen in dark, where multiplying against a
+           near-black surface would leave nothing to see; there the pale sandstone lifts the
+           ground and the figures stay as negative space.
+           Desaturated and low-contrast on purpose: this sits under body copy, and anything more
+           assertive would win an argument it should not be having. */
+        .about::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            background-image: var(--engrave-photo, none);
+            background-size: cover;
+            background-position: center 62%;
+            filter: grayscale(.55) contrast(.9);
+            mix-blend-mode: multiply;
+            opacity: .16;
+            /* Fades out before the section edges so the texture never ends on a visible seam
+               against the bands above and below. */
+            -webkit-mask-image: radial-gradient(120% 88% at 50% 50%, #000 30%, transparent 92%);
+            mask-image: radial-gradient(120% 88% at 50% 50%, #000 30%, transparent 92%);
+            pointer-events: none;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .about::before {
+                mix-blend-mode: screen;
+                filter: grayscale(.7) contrast(.85);
+                opacity: .12;
+            }
         }
 
         .about .wrap {
+            position: relative;
+            z-index: 1;
             max-width: 46rem;
         }
 
@@ -940,14 +1020,20 @@
             position: absolute;
             inset: 0;
             z-index: 2;
-            background: radial-gradient(ellipse 40% 125% at 50% 50%,
-                    var(--bg) 0%,
-                    var(--bg) 52%,
-                    color-mix(in srgb, var(--bg) 88%, transparent) 72%,
-                    color-mix(in srgb, var(--bg) 52%, transparent) 88%,
-                    transparent 100%);
+            background: radial-gradient(ellipse 50% 150% at 50% 50%,
+                    var(--bg) 10%,
+                    var(--bg) 20%,
+                    color-mix(in srgb, var(--bg) 0%, transparent) 100%)
+                /* color-mix(in srgb, var(--bg) 88%, transparent) 72%, */
+                /* color-mix(in srgb, var(--bg) 52%, transparent) 88%, */
+                /* transparent 100%); */
         }
 
+        /* 
+        radial-gradient(ellipse 50% 150% at 50% 50%,
+            var(--bg) 10%,
+            var(--bg) 20%,
+            color-mix(in srgb, var(--bg) 0%, transparent) 100%)  */
         .closing .wrap {
             position: relative;
             z-index: 3;
@@ -1059,7 +1145,12 @@
     </style>
 </head>
 
-<body>
+{{-- Declared once, here, rather than on each section: the engravings are used twice (behind the
+hero and as the texture under "Where the name comes from") and a custom property set on one
+section is invisible to the other. Each only exists when its file does. --}}
+
+<body
+    style="@if ($heroPhoto) --hero-photo: url('{{ $heroPhoto }}'); @endif @if ($engravePhoto) --engrave-photo: url('{{ $engravePhoto }}'); @endif @if ($closingPhoto) --closing-photo: url('{{ $closingPhoto }}'); @endif">
 
     <header class="site-header">
         <div class="wrap">
@@ -1100,16 +1191,26 @@
                     </div>
                 </div>
 
-                <div class="stage" @if ($heroPhoto) style="--hero-photo: url('{{ $heroPhoto }}')" @endif>
-                    <div class="device">
-                        <div class="device-notch"></div>
-                        <div class="device-screen">
-                            <span class="device-antelope">@include('partials.rock-art', ['figure' => 'antelope'])</span>
-                            <p class="device-word">{{ Str::upper($brand) }}</p>
-                            <p class="device-tag">{{ $t['phone_tagline'] }}</p>
-                            <span class="device-dancers">@include('partials.rock-art', ['figure' => 'dancers'])</span>
+                {{-- Two photographs, two jobs: the arch is the sharp picture inside the disc, the
+                engravings are the soft wash spreading behind it. Both are set here rather
+                than in the stylesheet so each only exists when its file does. --}}
+                <div class="stage">
+                    @if ($heroShot)
+                        {{-- The capture already contains its own device bezel, so it is shown as a
+                        picture rather than dropped inside the drawn frame below. --}}
+                        <img class="device-shot" src="{{ $heroShot }}" alt="{{ $brand }}" width="800" height="1633"
+                            fetchpriority="high" decoding="async">
+                    @else
+                        <div class="device">
+                            <div class="device-notch"></div>
+                            <div class="device-screen">
+                                <span class="device-antelope">@include('partials.rock-art', ['figure' => 'antelope'])</span>
+                                <p class="device-word">{{ Str::upper($brand) }}</p>
+                                <p class="device-tag">{{ $t['phone_tagline'] }}</p>
+                                <span class="device-dancers">@include('partials.rock-art', ['figure' => 'dancers'])</span>
+                            </div>
                         </div>
-                    </div>
+                    @endif
                     <p class="stage-note">{{ $t['hero_note'] }}</p>
                 </div>
             </div>
@@ -1129,42 +1230,62 @@
             </div>
         </section>
 
+        <section class="about" id="about">
+            <div class="wrap">
+                <p class="eyebrow">{{ $t['about_eyebrow'] }}</p>
+                <h2 class="display">{{ $t['about_h2'] }}</h2>
+                <p>{{ $t['about_p'] }}</p>
+                <a href="{{ route('legal.show', ['document' => 'privacy', 'locale' => $locale]) }}">{{ $t['about_link'] }}
+                    &rarr;</a>
+            </div>
+        </section>
+
         <section class="diary">
             <div class="wrap">
+                {{-- Real captures where they exist, drawn placeholders otherwise. The captures
+                already include a device bezel, so they are not wrapped in .mini's frame —
+                only positioned by the same fan. --}}
                 <div class="cluster" aria-hidden="true">
-                    <div class="mini mini--back">
-                        <div class="mini-screen">
-                            <div class="mini-bar"></div>
-                            <div class="mini-body">
-                                <div class="mini-tile rock">@include('partials.rock-art', ['figure' => 'antelope'])
-                                </div>
-                                <div class="mini-tile line"></div>
-                                <div class="mini-tile line short"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="mini mini--main">
-                        <div class="mini-screen">
-                            <div class="mini-bar"></div>
-                            <div class="mini-body">
-                                <div class="mini-tile rock">@include('partials.rock-art', ['figure' => 'dancers'])</div>
-                                <div class="mini-tile line"></div>
-                                <div class="mini-tile line short"></div>
-                                <div class="mini-tile tall"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="mini mini--front">
-                        <div class="mini-screen">
-                            <div class="mini-bar"></div>
-                            <div class="mini-body">
-                                <div class="mini-grid">
-                                    @for ($i = 0; $i < 9; $i++)
-                                    <div></div>@endfor
+                    @if (count($clusterShots) >= 3)
+                        @foreach (['back', 'main', 'front'] as $i => $slot)
+                            <img class="mini-shot mini--{{ $slot }}" src="{{ $clusterShots[$i] }}" alt="" width="800"
+                                height="1633" loading="lazy" decoding="async">
+                        @endforeach
+                    @else
+                        <div class="mini mini--back">
+                            <div class="mini-screen">
+                                <div class="mini-bar"></div>
+                                <div class="mini-body">
+                                    <div class="mini-tile rock">@include('partials.rock-art', ['figure' => 'antelope'])
+                                    </div>
+                                    <div class="mini-tile line"></div>
+                                    <div class="mini-tile line short"></div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                        <div class="mini mini--main">
+                            <div class="mini-screen">
+                                <div class="mini-bar"></div>
+                                <div class="mini-body">
+                                    <div class="mini-tile rock">@include('partials.rock-art', ['figure' => 'dancers'])</div>
+                                    <div class="mini-tile line"></div>
+                                    <div class="mini-tile line short"></div>
+                                    <div class="mini-tile tall"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mini mini--front">
+                            <div class="mini-screen">
+                                <div class="mini-bar"></div>
+                                <div class="mini-body">
+                                    <div class="mini-grid">
+                                        @for ($i = 0; $i < 9; $i++)
+                                        <div></div>@endfor
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
                 </div>
 
                 <div>
@@ -1187,17 +1308,8 @@
             </div>
         </section>
 
-        <section class="about" id="about">
-            <div class="wrap">
-                <p class="eyebrow">{{ $t['about_eyebrow'] }}</p>
-                <h2 class="display">{{ $t['about_h2'] }}</h2>
-                <p>{{ $t['about_p'] }}</p>
-                <a href="{{ route('legal.show', ['document' => 'privacy', 'locale' => $locale]) }}">{{ $t['about_link'] }}
-                    &rarr;</a>
-            </div>
-        </section>
 
-        <section class="closing" @if ($photoUrl) style="--closing-photo: url('{{ $photoUrl }}')" @endif>
+        <section class="closing">
             @include('partials.desert-ridges')
             <div class="wrap">
                 <p class="eyebrow">{{ $t['closing_eyebrow'] }}</p>
@@ -1231,8 +1343,8 @@
 
             @if ($photoCredit)
                 {{-- Licence compliance, not decoration: rendered only when a credit is configured
-                     AND a photograph is actually on the page. config('app.landing_photo_credit')
-                     is null by default, so nothing shows unless a licence requires it. --}}
+                AND a photograph is actually on the page. config('app.landing_photo_credit')
+                is null by default, so nothing shows unless a licence requires it. --}}
                 <p class="photo-credit">
                     {{ $t['photo_by'] }}
                     <a href="{{ $photoCredit['url'] }}" rel="noopener nofollow">{{ $photoCredit['author'] }}</a>
