@@ -13,6 +13,8 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -37,6 +39,27 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (DeviceProofOfPossessionRequired $exception, Request $request) {
             if ($request->is('api/*') || $request->expectsJson()) {
                 return response()->json(['message' => $exception->getMessage()], 401);
+            }
+
+            return null;
+        });
+        // A rejected API request is invisible in production otherwise: a 422 is not an
+        // exception Laravel reports, nginx's access log is root-only, and the mobile client
+        // surfaces it as a bare `ApiException` with no message. That combination cost a full
+        // debugging session over a failing upload whose actual cause nothing had recorded.
+        //
+        // Field *names* and messages only — never the submitted values, which on this API are
+        // user content (screenshots, post bodies, credentials on the auth routes).
+        //
+        // Returning null falls through to the framework's own 422 response; this only observes.
+        $exceptions->render(function (ValidationException $exception, Request $request): null {
+            if ($request->is('api/*')) {
+                Log::warning('API validation failed', [
+                    'method' => $request->method(),
+                    'route' => $request->route()?->uri(),
+                    'user_id' => $request->user()?->getAuthIdentifier(),
+                    'errors' => $exception->errors(),
+                ]);
             }
 
             return null;
