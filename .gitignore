@@ -6,6 +6,8 @@
 /public/storage
 /storage/*.key
 /storage/pail
+/storage/framework/*.*
+
 /storage/app/firebase-service-account.json
 /vendor
 .env
