@@ -8,10 +8,14 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * One row per event/error/crash reported by a device. Error-specific columns are nullable and only
  * populated when kind != 'event' — they're 1:1 with the row, not a separate has-many relation.
+ *
+ * @property array<string, mixed>|null $extras
+ * @property Carbon $occurred_at
  */
 class TelemetryEvent extends Model
 {

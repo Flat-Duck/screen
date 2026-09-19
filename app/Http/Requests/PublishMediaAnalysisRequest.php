@@ -17,6 +17,7 @@ class PublishMediaAnalysisRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'capture_id' => ['nullable', 'uuid'],
             'caption' => ['nullable', 'string', 'max:2200'],
             'comments_enabled' => ['sometimes', 'boolean'],
             'reposts_enabled' => ['sometimes', 'boolean'],

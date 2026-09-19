@@ -34,6 +34,9 @@
                     <flux:sidebar.item icon="device-phone-mobile" :href="route('devices.index')" :current="request()->routeIs('devices.*')" wire:navigate>
                         {{ __('Devices') }}
                     </flux:sidebar.item>
+                    @can('viewTelemetry')
+                        <flux:sidebar.item icon="chart-bar" :href="route('screenshots.index')" :current="request()->routeIs('screenshots.*')" wire:navigate>Screenshot Analytics</flux:sidebar.item>
+                    @endcan
                     <flux:sidebar.item icon="bolt" :href="route('events.index')" :current="request()->routeIs('events.*')" wire:navigate>
                         {{ __('Events & Crashes') }}
                     </flux:sidebar.item>

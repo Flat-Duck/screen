@@ -16,6 +16,7 @@ class StorePrivateSaveRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'capture_id' => ['nullable', 'uuid'],
             'image' => ['required', 'image', 'mimes:jpeg,png,webp', 'max:10240'],
             // Optional — omitting it files the save under General. Scoped to the caller's own
             // folders so a guessed id can never drop a screenshot into someone else's account.

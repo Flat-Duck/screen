@@ -13,15 +13,18 @@ use App\Http\Resources\PostResource;
 use App\Models\MediaAnalysis;
 use App\Models\User;
 use App\Services\SavedPostService;
+use App\Services\Screenshots\CaptureAnalytics;
 use App\Services\UserRestrictionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class MediaAnalysisController extends Controller
 {
     public function __construct(
         private readonly UserRestrictionService $restrictions,
         private readonly SavedPostService $savedPosts,
+        private readonly CaptureAnalytics $captureAnalytics,
     ) {}
 
     public function store(StoreMediaAnalysisRequest $request, CreateMediaAnalysis $create): JsonResponse
@@ -47,7 +50,16 @@ class MediaAnalysisController extends Controller
         /** @var User $user */
         $user = $request->user();
         $this->restrictions->enforce($user, UserRestrictionType::Posting);
-        $post = $publish($user, $this->resolve($request, $token), $request->validated());
+        $post = DB::transaction(function () use ($request, $user, $token, $publish) {
+            $analytics = $this->captureAnalytics;
+            if ($request->filled('capture_id')) {
+                $analytics->claim($request->string('capture_id')->toString(), $analytics->session($request)->device_id);
+            }
+            $post = $publish($user, $this->resolve($request, $token), $request->validated());
+            $analytics->complete($request, 'share_completed');
+
+            return $post;
+        });
         $post->loadCount(['likes', 'comments', 'reposts']);
         $post->is_liked = false;
         $post->is_saved = $this->savedPosts->isSaved($user, $post);

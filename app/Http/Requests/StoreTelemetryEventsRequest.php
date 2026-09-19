@@ -5,9 +5,12 @@ namespace App\Http\Requests;
 use App\Data\Telemetry\TelemetryBatchData;
 use App\Data\Telemetry\TelemetryEventData;
 use App\Enums\TelemetryKind;
+use App\Services\Screenshots\CaptureAnalytics;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class StoreTelemetryEventsRequest extends FormRequest
 {
@@ -99,6 +102,37 @@ class StoreTelemetryEventsRequest extends FormRequest
     {
         return [function ($validator): void {
             foreach ((array) $this->input('events', []) as $index => $event) {
+                if (! is_array($event)) {
+                    continue;
+                }
+                $rules = match ($event['name'] ?? null) {
+                    'screenshot_capture_v1' => [
+                        'kind' => ['required', 'in:event'],
+                        'extras' => ['required', 'array:capture_id,stage'],
+                        'extras.capture_id' => ['required', 'uuid'],
+                        'extras.stage' => ['required', Rule::in(CaptureAnalytics::CLIENT_STAGES)],
+                    ],
+                    'screenshot_library_v1' => [
+                        'kind' => ['required', 'in:event'],
+                        'extras' => ['required', 'array:count,coverage'],
+                        'extras.coverage' => ['required', 'in:full,partial,denied,unavailable'],
+                        'extras.count' => [
+                            Rule::requiredIf(in_array($event['extras']['coverage'] ?? null, ['full', 'partial'], true)),
+                            Rule::prohibitedIf(in_array($event['extras']['coverage'] ?? null, ['denied', 'unavailable'], true)),
+                            'nullable', 'integer', 'min:0',
+                        ],
+                    ],
+                    default => [],
+                };
+                if ($rules !== []) {
+                    $rules['occurred_at'] = ['required', 'date', 'before_or_equal:'.now()->addMinutes(5)->toIso8601String()];
+                    $check = Validator::make($event, $rules);
+                    foreach ($check->errors()->messages() as $field => $messages) {
+                        foreach ($messages as $message) {
+                            $validator->errors()->add("events.{$index}.{$field}", $message);
+                        }
+                    }
+                }
                 $context = json_encode([
                     'extras' => $event['extras'] ?? null,
                     'breadcrumbs' => $event['breadcrumbs'] ?? null,

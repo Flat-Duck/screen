@@ -84,6 +84,7 @@ Route::get('/email/verify-change/{user}', [EmailChangeVerificationController::cl
     ->name('email.change.verify');
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::view('screenshot-analytics', 'screenshots.index')->middleware(['can:viewTelemetry', PreventSensitivePageCaching::class])->name('screenshots.index');
     Route::get('dashboard', [DashboardController::class, 'index'])->middleware('can:viewDashboard')->name('dashboard');
     Route::get('operations', OperationsDashboardController::class)->middleware(['can:viewOperations', PreventSensitivePageCaching::class])->name('operations.index');
     Route::get('experiments', ExperimentStatusController::class)->middleware('can:viewDashboard')->name('experiments.index');
