@@ -48,6 +48,11 @@ class RegisterUserRequest extends FormRequest
             // whether it resolves to a real user is checked inside RegisterUser/InviteCodeService,
             // not here, since that's a business rule keyed on live flag state, not request shape.
             'invite_code' => ['nullable', 'string', 'max:32'],
+            // When present, takes priority over invite_code — AuthController resolves it via
+            // InviteCodeService::resolveTicket() before building RegisterUserData, since a ticket
+            // (from POST /v1/auth/invites/reserve) is proof the invite-gate screen already
+            // validated a code, and toData() below should never need to know the difference.
+            'invite_ticket' => ['nullable', 'string', 'max:64'],
             'device_name' => ['nullable', 'string', 'max:255'],
         ];
     }

@@ -167,6 +167,19 @@ return [
 
     'message_request_rejection_cooldown_days' => (int) env('SOCIAL_MESSAGE_REQUEST_REJECTION_COOLDOWN_DAYS', 30),
 
+    // How long an InviteReservation ticket (InviteCodeService::reserve()) stays valid for. Purely
+    // a UX window — the underlying invite code itself is still unlimited-use regardless of this —
+    // long enough to cover filling out the signup form or going through Google's consent screen,
+    // short enough that `invites:prune-reservations` doesn't need to keep much around.
+    'invite_reservation_ttl_minutes' => (int) env('INVITE_RESERVATION_TTL_MINUTES', 15),
+
+    // Used only by the `/invite/{code}` web fallback page (resources/views/invite/show.blade.php)
+    // for whoever opens an invite link without the app installed — the verified Android App Link
+    // intercepts the same URL client-side first when it *is* installed, so this never renders for
+    // that case. The `referrer` query param carries the code through the Play Store install via
+    // the Play Install Referrer API, so a fresh install still lands pre-filled.
+    'android_package_name' => env('ANDROID_PACKAGE_NAME', 'ly.akukas.akukasapp'),
+
     'analytics' => [
         // Raw event rows are intentionally short-lived. Milestone 4.2 aggregates will
         // outlive them without retaining per-event behavioral history indefinitely.

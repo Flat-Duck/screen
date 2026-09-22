@@ -180,6 +180,44 @@ class SocialAuthTest extends TestCase
         $this->assertDatabaseHas('user_invites', ['inviter_user_id' => $inviter->id, 'invitee_user_id' => $invitee->id]);
     }
 
+    public function test_google_sign_up_with_a_valid_ticket_succeeds_without_resending_the_raw_code(): void
+    {
+        $inviter = User::factory()->create();
+        $this->enableInviteOnly();
+        $ticket = $this->postJson('/api/v1/auth/invites/reserve', ['invite_code' => $inviter->invite_code])
+            ->json('data.ticket');
+        $this->fakeGoogleUser(providerUserId: 'google-user-1', email: 'newuser@example.com', emailVerified: true, name: 'New User');
+
+        // No invite_code in this payload at all — only the ticket from the reservation above.
+        $this->postJson('/api/v1/auth/social/google', [
+            'access_token' => 'fake-google-access-token',
+            'invite_ticket' => $ticket,
+        ])->assertCreated();
+
+        $invitee = User::query()->where('email', 'newuser@example.com')->firstOrFail();
+        $this->assertDatabaseHas('user_invites', ['inviter_user_id' => $inviter->id, 'invitee_user_id' => $invitee->id]);
+    }
+
+    public function test_google_sign_up_with_an_expired_ticket_is_rejected_distinctly_from_an_invalid_code(): void
+    {
+        $inviter = User::factory()->create();
+        $this->enableInviteOnly();
+        $ticket = $this->postJson('/api/v1/auth/invites/reserve', ['invite_code' => $inviter->invite_code])
+            ->json('data.ticket');
+        $this->travel(config('social.invite_reservation_ttl_minutes') + 1)->minutes();
+        $this->fakeGoogleUser(providerUserId: 'google-user-1', email: 'newuser@example.com', emailVerified: true, name: 'New User');
+
+        $response = $this->postJson('/api/v1/auth/social/google', [
+            'access_token' => 'fake-google-access-token',
+            'invite_ticket' => $ticket,
+        ]);
+
+        $response->assertUnprocessable();
+        $response->assertJsonValidationErrors(['invite_ticket']);
+        // Just the inviter created above — the sign-up itself must not have gone through.
+        $this->assertDatabaseCount('users', 1);
+    }
+
     public function test_google_sign_in_to_an_existing_account_is_never_gated_by_invite_only(): void
     {
         $existing = User::factory()->create(['email' => 'ada@example.com']);

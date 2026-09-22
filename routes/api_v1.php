@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\V1\HashtagController;
 use App\Http\Controllers\Api\V1\HiddenTermController;
 use App\Http\Controllers\Api\V1\InterestController;
 use App\Http\Controllers\Api\V1\InviteController;
+use App\Http\Controllers\Api\V1\InviteReservationController;
 use App\Http\Controllers\Api\V1\LikeController;
 use App\Http\Controllers\Api\V1\MediaAnalysisController;
 use App\Http\Controllers\Api\V1\MuteController;
@@ -58,6 +59,8 @@ Route::middleware(['auth:sanctum', 'auth.device:device:manage'])->group(function
     Route::post('auth/two-factor-challenge', [AuthController::class, 'twoFactorChallenge'])->middleware('throttle:two-factor-challenge');
     Route::post('auth/forgot-password', [AccountRecoveryController::class, 'forgotPassword'])->middleware('throttle:auth-recovery');
     Route::post('auth/reset-password', [AccountRecoveryController::class, 'resetPassword'])->middleware('throttle:auth-recovery');
+    Route::get('auth/invite-config', [InviteReservationController::class, 'config'])->middleware('throttle:reads');
+    Route::post('auth/invites/reserve', [InviteReservationController::class, 'reserve'])->middleware('throttle:auth-register');
 });
 
 Route::middleware(['auth:sanctum', 'auth.device:push-token:write'])->group(function () {

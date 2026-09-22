@@ -30,6 +30,9 @@ class GoogleLoginRequest extends FormRequest
             // required-when-invite-only-active + resolves-to-a-real-user checks, which only apply
             // when this call turns out to create a brand-new account.
             'invite_code' => ['nullable', 'string', 'max:32'],
+            // Takes priority over invite_code when present — see RegisterUserRequest's identical
+            // field for why.
+            'invite_ticket' => ['nullable', 'string', 'max:64'],
             'device_name' => ['nullable', 'string', 'max:255'],
         ];
     }

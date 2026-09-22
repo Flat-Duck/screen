@@ -467,6 +467,47 @@
 					"name": "Auth",
 					"item": [
 						{
+							"name": "Invite Config",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{device_token}}", "type": "string" }] },
+								"method": "GET",
+								"header": [{ "key": "Accept", "value": "application/json" }],
+								"url": { "raw": "{{base_url}}/v1/auth/invite-config", "host": ["{{base_url}}"], "path": ["v1", "auth", "invite-config"] },
+								"description": "Tells the client whether an invite code is currently required to sign up (`registration.invite_only` feature flag). Fetched on the Landing screen before the user taps Sign up, so the invite-gate step never causes tap-triggered lag."
+							},
+							"response": [{ "name": "200 OK", "originalRequest": { "method": "GET", "url": { "raw": "{{base_url}}/v1/auth/invite-config", "host": ["{{base_url}}"], "path": ["v1", "auth", "invite-config"] } }, "status": "OK", "code": 200, "header": [{ "key": "Content-Type", "value": "application/json" }], "body": "{\n  \"data\": {\n    \"required\": false\n  }\n}" }]
+						},
+						{
+							"name": "Reserve Invite",
+							"request": {
+								"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{device_token}}", "type": "string" }] },
+								"method": "POST",
+								"header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+								"body": { "mode": "raw", "raw": "{\n  \"invite_code\": \"ABC123\"\n}", "options": { "raw": { "language": "json" } } },
+								"url": { "raw": "{{base_url}}/v1/auth/invites/reserve", "host": ["{{base_url}}"], "path": ["v1", "auth", "invites", "reserve"] },
+								"description": "Reserves a short-lived ticket for an invite code (default 15 min TTL). The client carries the returned `ticket` into `invite_ticket` on Register/Continue with Google/Continue with Facebook instead of resending the raw code."
+							},
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"if (pm.response.code === 201) {",
+											"    const json = pm.response.json();",
+											"    pm.collectionVariables.set('invite_ticket', json.data.ticket);",
+											"}",
+											"pm.test('Status is 201', () => pm.response.to.have.status(201));"
+										]
+									}
+								}
+							],
+							"response": [
+								{ "name": "201 Created", "originalRequest": { "method": "POST", "body": { "mode": "raw", "raw": "{\n  \"invite_code\": \"ABC123\"\n}", "options": { "raw": { "language": "json" } } }, "url": { "raw": "{{base_url}}/v1/auth/invites/reserve", "host": ["{{base_url}}"], "path": ["v1", "auth", "invites", "reserve"] } }, "status": "Created", "code": 201, "header": [{ "key": "Content-Type", "value": "application/json" }], "body": "{\n  \"data\": {\n    \"ticket\": \"JNh1ed9sfb8i49vkaFMG45BzXmKO5jvF9pzx0xs5\",\n    \"expires_at\": \"2026-09-22T00:18:25.000000Z\"\n  }\n}" },
+								{ "name": "422 Unprocessable Entity", "originalRequest": { "method": "POST", "body": { "mode": "raw", "raw": "{\n  \"invite_code\": \"NOPE\"\n}", "options": { "raw": { "language": "json" } } }, "url": { "raw": "{{base_url}}/v1/auth/invites/reserve", "host": ["{{base_url}}"], "path": ["v1", "auth", "invites", "reserve"] } }, "status": "Unprocessable Entity", "code": 422, "header": [{ "key": "Content-Type", "value": "application/json" }], "body": "{\n  \"message\": \"That invite code is not valid.\",\n  \"errors\": {\n    \"invite_code\": [\"That invite code is not valid.\"]\n  }\n}" }
+							]
+						},
+						{
 							"name": "Register",
 							"request": {
 								"auth": {

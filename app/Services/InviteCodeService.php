@@ -3,9 +3,11 @@
 namespace App\Services;
 
 use App\Models\FeatureFlag;
+use App\Models\InviteReservation;
 use App\Models\User;
 use App\Models\UserInvite;
 use Illuminate\Contracts\Pagination\CursorPaginator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -69,6 +71,47 @@ class InviteCodeService
         }
 
         return $inviter;
+    }
+
+    /**
+     * A UX layer only — see InviteReservation's own kdoc. Does not, and cannot, introduce any
+     * scarcity the underlying `users.invite_code` referral system doesn't already have: two
+     * different reservations for the same code are both perfectly valid, since the code itself
+     * stays unlimited-use. This is purely "the invite-gate screen already confirmed this code, so
+     * the signup screen a minute later doesn't have to ask again."
+     */
+    public function reserve(string $code): InviteReservation
+    {
+        $normalized = strtoupper(trim($code));
+        $inviter = User::query()->where('invite_code', $normalized)->first();
+
+        if ($inviter === null) {
+            throw ValidationException::withMessages([
+                'invite_code' => [__('That invite code is not valid.')],
+            ]);
+        }
+
+        return InviteReservation::create([
+            'code' => $normalized,
+            'ticket' => Str::random(40),
+            'expires_at' => now()->addMinutes((int) config('social.invite_reservation_ttl_minutes')),
+        ]);
+    }
+
+    /**
+     * Resolves a reservation ticket back to its code — null for a missing or expired ticket,
+     * never an exception, since the caller (AuthController) needs to distinguish "no ticket sent"
+     * from "ticket present but invalid" to fall back to the legacy raw `invite_code` field
+     * correctly. An expired ticket is deliberately treated the same as a missing one here; the
+     * field-specific "your invite session expired" error is the caller's responsibility.
+     */
+    public function resolveTicket(string $ticket): ?string
+    {
+        return InviteReservation::query()
+            ->where('ticket', $ticket)
+            ->where('expires_at', '>', now())
+            ->first()
+            ?->code;
     }
 
     public function redeem(User $inviter, User $invitee, string $code): UserInvite

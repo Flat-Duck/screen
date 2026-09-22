@@ -28,6 +28,9 @@ class FacebookLoginRequest extends FormRequest
             'access_token' => ['required', 'string'],
             // See GoogleLoginRequest's matching field for why this is structural-only here.
             'invite_code' => ['nullable', 'string', 'max:32'],
+            // Takes priority over invite_code when present — see RegisterUserRequest's identical
+            // field for why.
+            'invite_ticket' => ['nullable', 'string', 'max:64'],
             'device_name' => ['nullable', 'string', 'max:255'],
         ];
     }

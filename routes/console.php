@@ -48,6 +48,7 @@ Schedule::command('model:prune', ['--model' => [ApiRequestMetric::class]])->dail
 Schedule::command('posts:refresh-trending')->everyTenMinutes()->onOneServer()->withoutOverlapping();
 Schedule::command('recommendations:refresh-pools')->everyTenMinutes()->onOneServer()->withoutOverlapping();
 Schedule::command('recommendations:prune-sessions')->hourly()->onOneServer()->withoutOverlapping();
+Schedule::command('invites:prune-reservations')->hourly()->onOneServer()->withoutOverlapping();
 
 // Telescope is local-only (require-dev, registered by AppServiceProvider::registerTelescope()),
 // so this command simply does not exist in production — scheduling it unconditionally would fail

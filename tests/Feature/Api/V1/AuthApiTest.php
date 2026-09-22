@@ -6,12 +6,24 @@ use App\Models\Device;
 use App\Models\FeatureFlag;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class AuthApiTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // The array cache store isn't torn down between tests in this run, so IP-keyed
+        // throttles (e.g. auth-register, 5/min) leak across every test in this class that
+        // hits a throttled endpoint. Clear it fresh per test rather than let unrelated
+        // tests' call counts trip each other's assertions.
+        Cache::flush();
+    }
 
     private function registerPayload(array $overrides = []): array
     {
@@ -202,6 +214,101 @@ class AuthApiTest extends TestCase
 
         $this->postJson('/api/v1/auth/register', $this->registerPayload(['invite_code' => $inviter->invite_code]))
             ->assertCreated();
+    }
+
+    // --- invite reservation (ticket) ---
+
+    public function test_invite_config_reflects_the_invite_only_flag(): void
+    {
+        $this->authenticateDevice();
+
+        $this->getJson('/api/v1/auth/invite-config')->assertOk()->assertJson(['data' => ['required' => false]]);
+
+        $this->enableInviteOnly();
+
+        $this->getJson('/api/v1/auth/invite-config')->assertOk()->assertJson(['data' => ['required' => true]]);
+    }
+
+    public function test_reserving_a_valid_code_returns_a_ticket(): void
+    {
+        $inviter = User::factory()->create();
+        $this->authenticateDevice();
+
+        $response = $this->postJson('/api/v1/auth/invites/reserve', ['invite_code' => $inviter->invite_code]);
+
+        $response->assertCreated();
+        $response->assertJsonStructure(['data' => ['ticket', 'expires_at']]);
+        $this->assertDatabaseHas('invite_reservations', ['code' => $inviter->invite_code]);
+    }
+
+    public function test_reserving_an_unknown_code_is_rejected(): void
+    {
+        $this->authenticateDevice();
+
+        $response = $this->postJson('/api/v1/auth/invites/reserve', ['invite_code' => 'NOPE']);
+
+        $response->assertUnprocessable();
+        $response->assertJsonValidationErrors(['invite_code']);
+        $this->assertDatabaseCount('invite_reservations', 0);
+    }
+
+    public function test_registering_with_a_valid_ticket_succeeds_without_resending_the_raw_code(): void
+    {
+        $inviter = User::factory()->create();
+        $this->authenticateDevice();
+        $ticket = $this->postJson('/api/v1/auth/invites/reserve', ['invite_code' => $inviter->invite_code])
+            ->json('data.ticket');
+
+        // No invite_code in this payload at all — only the ticket from the reservation above.
+        $response = $this->postJson('/api/v1/auth/register', $this->registerPayload(['invite_ticket' => $ticket]));
+
+        $response->assertCreated();
+        $invitee = User::query()->where('username', 'ada')->firstOrFail();
+        $this->assertDatabaseHas('user_invites', [
+            'inviter_user_id' => $inviter->id,
+            'invitee_user_id' => $invitee->id,
+            'code_used' => $inviter->invite_code,
+        ]);
+    }
+
+    public function test_registering_with_an_expired_ticket_is_rejected_distinctly_from_an_invalid_code(): void
+    {
+        $inviter = User::factory()->create();
+        $this->authenticateDevice();
+        $ticket = $this->postJson('/api/v1/auth/invites/reserve', ['invite_code' => $inviter->invite_code])
+            ->json('data.ticket');
+
+        $this->travel(config('social.invite_reservation_ttl_minutes') + 1)->minutes();
+
+        $response = $this->postJson('/api/v1/auth/register', $this->registerPayload(['invite_ticket' => $ticket]));
+
+        $response->assertUnprocessable();
+        $response->assertJsonValidationErrors(['invite_ticket']);
+        // Just the inviter created above — the registration itself must not have gone through.
+        $this->assertDatabaseCount('users', 1);
+    }
+
+    public function test_registering_with_a_garbage_ticket_is_rejected(): void
+    {
+        $this->authenticateDevice();
+
+        $response = $this->postJson('/api/v1/auth/register', $this->registerPayload(['invite_ticket' => 'not-a-real-ticket']));
+
+        $response->assertUnprocessable();
+        $response->assertJsonValidationErrors(['invite_ticket']);
+    }
+
+    public function test_registering_with_no_ticket_still_falls_back_to_the_raw_invite_code(): void
+    {
+        $inviter = User::factory()->create();
+        $this->authenticateDevice();
+
+        // The legacy path, completely unaffected by the ticket feature existing.
+        $response = $this->postJson('/api/v1/auth/register', $this->registerPayload(['invite_code' => $inviter->invite_code]));
+
+        $response->assertCreated();
+        $invitee = User::query()->where('username', 'ada')->firstOrFail();
+        $this->assertDatabaseHas('user_invites', ['inviter_user_id' => $inviter->id, 'invitee_user_id' => $invitee->id]);
     }
 
     private function enableInviteOnly(): void

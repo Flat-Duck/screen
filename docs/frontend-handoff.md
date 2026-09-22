@@ -1334,3 +1334,78 @@ A capture may first arrive as a successful operation, because diagnostic uploads
 Counters represent unique screenshots reaching each stage, not repeated button presses. A retried capture can have failure and completion stages. Ignored requires an actually displayed overlay and no Share/Save tap. Replaced, unavailable, interrupted, canceled and failed are separate. Missing completion is never inferred to be cancellation. Conversion rates only count completions linked to their matching tap. Per-user capture cohorts use the validated detection session (anonymous when absent); individual stages also retain their validated actor. Late events update their original cohort. Phone counts are metadata-based estimates of accessible files per installation (including pre-installation screenshots, excluding pending writes and editor exports); they are not unique images owned across devices. Snapshots older than 24 hours are labeled stale.
 
 Android refreshes the inventory on foreground and the existing telemetry worker, sharing a persistent 15-minute throttle; no extra periodic worker is registered. Offline delivery and retention use the existing telemetry queue, so reporting reflects received data, not a guarantee that every capture during an unlimited offline period will reach the server.
+
+## Shipped: 2026-09-22 — invite reservation tickets for the new Landing → Invite → Signup flow
+
+Backend-only so far — this lands ahead of the Android client work (blocked on a local toolchain
+issue, unrelated to this API). Two new device-authenticated endpoints, plus an `invite_ticket`
+field on `register`/`google`/`facebook`. The existing raw `invite_code` field on all three is
+completely unchanged and still works exactly as before — nothing here is a breaking change.
+
+### 1. Check whether an invite is required
+
+`GET /v1/auth/invite-config` — call this **once, on Landing screen load**, not on a "Sign up"
+tap. The whole point is to avoid tap-triggered network lag before showing the invite-gate step.
+
+```json
+{ "data": { "required": false } }
+```
+
+**`required` reflects the `registration.invite_only` feature flag live — always trust this over
+any hardcoded copy.** If the UI ever shows invite-code entry as "optional," that text is only
+correct when this returns `required: false`; when it's `true`, do not present it as optional.
+
+### 2. Reserve a ticket for a code
+
+`POST /v1/auth/invites/reserve`, body `{ "invite_code": "ABC123" }` (throttled 5/min by IP, same
+limiter as `register`). 201 with a ticket:
+
+```json
+{ "data": { "ticket": "JNh1ed9sfb8i49vkaFMG45BzXmKO5jvF9pzx0xs5", "expires_at": "2026-09-22T00:18:25.000000Z" } }
+```
+
+422 (`invite_code` field error) if the code doesn't resolve to a real user's `invite_code` — show
+this inline on the invite-gate screen itself, before ever reaching the signup form or Google's
+consent screen.
+
+The ticket is a **UX convenience only, not scarcity** — reserving a code does not make it
+single-use or lock it against anyone else; the underlying `invite_code` referral system is still
+unlimited-use. It exists purely so the signup screen doesn't have to re-collect/re-validate a code
+the gate screen already confirmed. Default TTL is 15 minutes.
+
+### 3. Spend the ticket on register / social sign-in
+
+`POST /v1/auth/register`, `POST /v1/auth/social/google`, `POST /v1/auth/social/facebook` all
+accept an optional `invite_ticket` field now. Send **either** `invite_ticket` (from step 2) **or**
+the legacy raw `invite_code` — never both; `invite_ticket` takes priority if both are present.
+Sending neither behaves exactly as before (required or not, per `invite-config`).
+
+**A missing/expired/garbage ticket 422s on the `invite_ticket` field specifically** — distinct
+from an `invite_code` field error:
+
+```json
+{ "message": "Your invite session has expired. Please enter your invite code again.", "errors": { "invite_ticket": ["Your invite session has expired. Please enter your invite code again."] } }
+```
+
+Treat this as "bounce back to the invite-gate screen," not a generic error toast — it's the one
+failure mode this design specifically exists to make actionable instead of a dead end after the
+user already filled out the whole signup form (or came back through Google's consent screen).
+
+### 4. Deep-linked invites
+
+`GET /invite/{code}` (web, not `/api/v1`) is the fallback landing page for anyone who taps an
+invite link without the app installed — shows the code and a Play Store link carrying
+`&referrer=invite_code%3D{code}`, meant to be read via the Play Install Referrer API on first
+cold start so a fresh install still lands pre-filled on the invite-gate screen. An installed app
+should intercept the same URL client-side via a verified Android App Link before this ever
+renders.
+
+### What's not here yet
+
+- No inviter display name on the reserve response — the signup screen can show the *code* the
+  user entered, not "invited by @someone."
+- Login (existing users) never touches any of this — invites are a one-time gate at account
+  creation only.
+- No true single-use/capped codes. If that's ever wanted, it's a separate, larger change to
+  `InviteCodeService`'s data model (e.g. a `max_uses` column) — the ticket layer above doesn't
+  provide it for free.

@@ -11,6 +11,7 @@ use App\Http\Controllers\EventController;
 use App\Http\Controllers\ExperimentStatusController;
 use App\Http\Controllers\GroupPhotoDeliveryController;
 use App\Http\Controllers\HealthCheckController;
+use App\Http\Controllers\InviteLandingController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\LegalController;
 use App\Http\Controllers\MobileEmailVerificationController;
@@ -40,6 +41,13 @@ Route::get('/mobile/email/verify/{user}/{hash}', MobileEmailVerificationControll
 Route::get('/mobile/password/reset/{token}', MobilePasswordResetController::class)
     ->middleware('throttle:30,1')
     ->name('mobile.password.reset');
+
+// Fallback for whoever opens a shared invite link without the app installed — see
+// InviteLandingController's kdoc. The installed-app case never reaches this route at all; a
+// verified Android App Link on the same path intercepts it client-side first.
+Route::get('/invite/{code}', InviteLandingController::class)
+    ->middleware('throttle:30,1')
+    ->name('invite.show');
 
 // Image clients cannot reliably attach a Sanctum bearer token, so API resources issue these
 // short-lived signed capability URLs. The controllers still recheck the encoded viewer's current
