@@ -9,7 +9,7 @@ class MediaCleanupTask extends Model
 {
     /** @var list<string> */
     protected $fillable = [
-        'directory', 'status', 'attempts', 'available_at', 'last_error',
+        'directory', 'source_disk', 'status', 'attempts', 'available_at', 'last_error',
     ];
 
     /** @return array<string, string> */

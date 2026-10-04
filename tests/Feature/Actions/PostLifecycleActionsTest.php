@@ -11,6 +11,8 @@ use App\Contracts\MediaFileStore;
 use App\Data\Posts\CreatePostData;
 use App\Enums\PostPurgeOutcome;
 use App\Enums\PostPurgeStatus;
+use App\Jobs\ComputePostMediaPerceptualHash;
+use App\Jobs\ExtractPostMediaText;
 use App\Jobs\GeneratePostMediaThumbnail;
 use App\Models\MediaCleanupTask;
 use App\Models\Post;
@@ -49,6 +51,8 @@ class PostLifecycleActionsTest extends TestCase
         $post = $action(User::factory()->create(), new CreatePostData(null, [UploadedFile::fake()->image('shot.jpg')]));
 
         Queue::assertPushed(GeneratePostMediaThumbnail::class, fn (GeneratePostMediaThumbnail $job): bool => $job->afterCommit === true);
+        Queue::assertPushed(ExtractPostMediaText::class, fn (ExtractPostMediaText $job): bool => $job->afterCommit === true);
+        Queue::assertPushed(ComputePostMediaPerceptualHash::class, fn (ComputePostMediaPerceptualHash $job): bool => $job->afterCommit === true);
         $this->assertSame($post->id, PostMedia::firstOrFail()->post_id);
     }
 

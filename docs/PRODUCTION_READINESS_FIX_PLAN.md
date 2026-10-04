@@ -117,7 +117,7 @@ Repositories: Backend and Android
 - [x] Define behavior for social accounts without a password.
 - [x] Rate-limit verification and recovery endpoints and avoid account enumeration.
 - [x] Add backend feature tests and Android UI/repository tests.
-- [ ] **Side note — deferred:** execute the new Android tests and lint after the `/Volumes/devDSK` build JDK is reconnected.
+- [x] The new Android verification/unit tests and lint were run after the `/Volumes/devDSK` toolchain became available; see `screenshot-detector/docs/audit-fix-checklist-2026-10-02.md` for exact results. This does not close the separate device, release-signing, or store-submission gates below.
 - [ ] Publish Android App Links `assetlinks.json` with the production signing fingerprint (manual/external release task).
 
 Acceptance criteria:
@@ -133,7 +133,7 @@ Acceptance criteria:
 - [x] Stop deleting crash data solely because a transient retry count was reached.
 - [x] Bound storage using age and byte limits with explicit eviction priority.
 - [x] Add exponential backoff with jitter and tests for offline, timeout, 429, and 5xx cases.
-- [ ] **Side note — deferred:** execute the telemetry unit tests and Android lint after the Android SDK/JDK toolchain is available.
+- [x] Telemetry changes are included in the full Android unit suite (724 tests, 0 failures/errors/skips) and `lintDebug` passed on 2026-10-03; exact evidence is in `screenshot-detector/docs/audit-fix-checklist-2026-10-02.md`. Production retry/retention behavior remains a staging gate.
 
 ### 8. Enforce or remove Firebase App Check
 
@@ -149,7 +149,8 @@ Acceptance criteria:
 - [x] Route post, conversation, follow, and other supported types to their intended destinations.
 - [x] Validate IDs and provide a safe feed fallback for invalid or stale/deleted targets.
 - [x] Route notification taps through current authentication and email-verification state.
-- [ ] **Side note — deferred:** execute Android unit/lint checks and device-test foreground, background, killed-process, authenticated, and signed-out notification states when the Android toolchain/device is available.
+- [x] Android unit tests (724 tests, 0 failures/errors/skips) and `lintDebug` passed on 2026-10-03; see `screenshot-detector/docs/audit-fix-checklist-2026-10-02.md` for evidence.
+- [ ] Device-test notification taps in foreground, background and killed-process states, with authenticated and signed-out sessions.
 
 ### 10. Harden image and direct-upload processing
 
@@ -159,7 +160,12 @@ Verified complete 2026-08-29 — the code landed in `b312411` but the boxes were
       (`App\Services\ImageSafetyInspector`: streaming byte cap, `getimagesize` header read,
       `finfo` magic check, dimension and total-pixel caps — all before any full decode).
 - [x] Cap remote avatar response sizes and redirects (`ImageProcessingService`, via
-      `social.images.remote_avatar_max_bytes` / `remote_avatar_max_redirects`).
+      `social.images.remote_avatar_max_bytes` / `remote_avatar_max_redirects`); accept only
+      Google/Facebook avatar host domains and revalidate every redirect before following it
+      (`TrustedSocialImageUrl`, added 2026-10-02). Resolve every A/AAAA answer, reject private,
+      reserved and other non-public ranges, pin each direct cURL request to a validated address,
+      disable proxy routing, and follow redirects manually so every hop is independently resolved,
+      checked and pinned. Live provider DNS/redirect behavior remains a staging verification.
 - [x] Verify committed object hashes and expected content server-side.
 - [x] Bind upload commits to a nonce, user/device identity, protocol version, and expiry.
 - [x] Test decompression bombs, malformed images, spoofed MIME types, and stale commits
@@ -219,8 +225,17 @@ Verified complete 2026-08-29 — the code landed in `b312411` but the boxes were
 - [x] Re-run npm dependency/security checks — `npm audit` and `npm audit --omit=dev` both report
       0 vulnerabilities, verified against a clean `rm -rf node_modules && npm ci` plus a
       successful `npm run build`.
-- [ ] Re-run Composer and Gradle dependency/security checks.
-- [ ] Document accepted exceptions with owner and expiry date.
+- [x] Re-run Composer dependency/security audit after user approval — the initial online audit found
+      Laravel 13.29.0, `league/commonmark` 2.10.0 and `phpseclib` 3.0.56 advisories; the lockfile
+      now selects patched Laravel 13.34.0, CommonMark 2.10.3 and phpseclib 3.0.57, and the follow-up
+      `composer audit --locked` reports no advisories. The lockfile validation passes. Post-update
+      Laravel suites passed on SQLite and PostgreSQL 18.6; serial Pint, PHPStan and the API contract
+      check passed. The initial Composer hook failed under Homebrew PHP 8.5 because it lacked Redis;
+      rerunning with ServBay PHP 8.4.24 completed package discovery successfully. Detailed evidence
+      is recorded in the 2026-10-03 audit checklist.
+- [ ] Re-run Gradle dependency/security checks.
+- [x] No Composer/npm advisory exceptions need acceptance or expiry tracking as of the 2026-10-03
+      registry results (both audit reports contain no remaining advisories).
 
 ### 14. Perform a clean Android release qualification
 

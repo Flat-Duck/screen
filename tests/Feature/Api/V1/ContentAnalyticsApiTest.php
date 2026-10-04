@@ -109,6 +109,34 @@ class ContentAnalyticsApiTest extends TestCase
             ->assertUnprocessable()->assertJsonValidationErrors('events.0.metadata.rewatch_count');
     }
 
+    public function test_android_dwell_velocity_contract_is_accepted_in_a_mixed_batch(): void
+    {
+        $issued = $this->startUserSession(User::factory()->create());
+        $post = Post::factory()->create();
+        $fixture = json_decode(
+            file_get_contents(base_path('tests/Fixtures/content-analytics-dwell-batch.json')),
+            true,
+            flags: JSON_THROW_ON_ERROR,
+        );
+        $dwell = $fixture['events'][0];
+        $dwell['event_id'] = (string) Str::uuid();
+        $dwell['author_id'] = $post->user_id;
+        $dwell['occurred_at'] = now()->toIso8601String();
+        $dwell['post_id'] = $post->id;
+
+        $this->withToken($issued->token)->postJson('/api/v1/analytics/content-events', [
+            'events' => [$dwell, $this->event($post, 'impression'), $this->event($post, 'like')],
+        ])->assertOk();
+
+        $this->assertDatabaseCount('content_events', 3);
+
+        $malformed = $this->event($post, 'dwell');
+        $malformed['metadata'] = ['duration_ms' => 2400, 'scroll_velocity_px_per_ms' => 100_001];
+        $this->withToken($issued->token)->postJson('/api/v1/analytics/content-events', ['events' => [$malformed]])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('events.0.metadata.scroll_velocity_px_per_ms');
+    }
+
     public function test_share_channel_accepts_group_and_rejects_unknown_values(): void
     {
         $issued = $this->startUserSession(User::factory()->create());

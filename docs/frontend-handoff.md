@@ -792,7 +792,8 @@ Allowed surfaces: `following_feed`, `for_you_feed`, `explore`, `search`, `hashta
 
 Event-specific metadata is deliberately narrow:
 
-- `dwell`: `duration_ms` (0–600,000) — see the 2026-08-08 entry below for two more optional fields
+- `dwell`: `duration_ms` (0–600,000), optional `scroll_velocity_px_per_ms` (0–100,000),
+  `completion_rate` (0–1), and `rewatch_count` (0–999)
 - `carousel_swipe`: `media_position` (0–9) and `direction` (`next`/`previous`)
 - `zoom`: `media_position`
 - `share`: `share_channel` (`system`, `copy_link`, `external`, or `group` — see 2026-08-08 below)
@@ -1001,6 +1002,33 @@ as every other per-type metadata field.
 Dwell's affinity weight now factors both in: still +1 per 10 seconds (capped at +3), plus +1 if
 `completion_rate` is at least 0.9, plus +1 if `rewatch_count` is greater than 0 — max +5 instead of
 the previous +3. An event that omits both fields (or predates them) scores exactly as before.
+
+## Shipped: 2026-10-02 — dwell scroll velocity and retry-aware screenshot analytics
+
+`dwell.metadata.scroll_velocity_px_per_ms` is an optional nonnegative number up to 100,000. It is
+accepted only on `dwell` events and records the observed absolute list-scroll velocity while a
+post was visible. A missing/null value preserves older client behavior; an out-of-range value or
+use on another event type returns validation failure.
+
+Screenshot lifecycle telemetry also accepts `share_started` and `private_save_started` so a retry
+can reopen an action whose earlier attempt failed. Tap and completion counts remain unique per
+capture per stage, not physical taps. The latest action start is compared against its latest
+completion/cancellation/failure to determine whether that action is still unfinished. Thus a
+private-save completion does not resolve an unfinished share, and a failed action followed by a
+later retry is unfinished until another terminal event arrives. Stages are deduplicated by
+capture and stage; `last_occurred_at` advances monotonically for duplicate/reordered stage uploads.
+Successful share/private-save completion is still written atomically by the server operation and
+cannot be asserted by client telemetry.
+
+## Shipped: 2026-10-02 — conditional push-token revocation
+
+`DELETE /api/v1/devices/push-token` accepts optional `fcm_token` and `session_id`. New clients send
+the values captured before logout. The server removes the installation's registration only when
+the token still matches and either the device is signed out or the requesting session is still
+the active session for its current user. This prevents a delayed device-level logout from deleting
+a token reused by a later sign-in on the same or another account, including when FCM did not rotate
+the token. Older clients that omit `session_id` retain the original device-scoped deletion
+behavior.
 
 Also: `share`'s required `share_channel` metadata gains a fourth allowed value, **`group`** —
 alongside `system`, `copy_link`, and `external` — for the existing "share into a group you've
@@ -1325,7 +1353,7 @@ Deploy the additive screenshot analytics migration/backend before the Android re
 
 Use the existing device-authenticated `POST /api/v1/telemetry/events` envelope and durable Android upload queue. Both reserved event names require `kind: "event"` and `occurred_at` no more than five minutes in the future. Snapshot time/session before asynchronously queuing. Do not send screenshot paths, filenames, image contents, or OCR in these events.
 
-- `screenshot_capture_v1`: `extras` contains exactly `capture_id` (UUID) and `stage`. Client stages: `detected`, `overlay_shown`, `ignored_timeout`, `ignored_dismissed`, `overlay_replaced`, `overlay_unavailable`, `overlay_interrupted`, `share_tapped`, `private_save_tapped`, `share_cancelled`, `private_save_cancelled`, `share_failed`, `private_save_failed`.
+- `screenshot_capture_v1`: `extras` contains exactly `capture_id` (UUID) and `stage`. Client stages: `detected`, `overlay_shown`, `ignored_timeout`, `ignored_dismissed`, `overlay_replaced`, `overlay_unavailable`, `overlay_interrupted`, `share_tapped`, `share_started`, `private_save_tapped`, `private_save_started`, `share_cancelled`, `private_save_cancelled`, `share_failed`, `private_save_failed`. `share_completed` and `private_save_completed` are server-only authoritative stages.
 - `screenshot_library_v1`: `extras` contains `coverage` (`full`, `partial`, `denied`, `unavailable`) and `count` (nonnegative integer/numeric string, required for full/partial, omitted for denied/unavailable). The event's timestamp is the observation timestamp. Only the newest observation replaces an installation's snapshot.
 - Publishing an analyzed image (`POST /api/v1/media/analyses/{token}/publish`) and creating a private save (`POST /api/v1/private-saves`) accept optional `capture_id` (JSON and multipart text respectively). A supplied ID requires a live device-linked user session. Cross-device IDs are rejected before creating the post/save. The successful operation and its `share_completed` or `private_save_completed` stage commit together. These completion stages cannot be supplied through client telemetry.
 

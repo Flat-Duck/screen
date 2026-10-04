@@ -17,7 +17,6 @@ use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Support\Facades\DB;
 
 class PrivateSaveController extends Controller
 {
@@ -39,15 +38,12 @@ class PrivateSaveController extends Controller
             ? $folders->firstWhere('id', $folderId)
             : $folders->firstWhere('slug', PrivateSaveFolder::SLUG_GENERAL);
 
-        $save = DB::transaction(function () use ($request, $user, $folder, $create) {
+        $save = $create($user, $request->file('image'), $folder, function () use ($request): void {
             $analytics = $this->captureAnalytics;
             if ($request->filled('capture_id')) {
                 $analytics->claim($request->string('capture_id')->toString(), $analytics->session($request)->device_id);
             }
-            $save = $create($user, $request->file('image'), $folder);
             $analytics->complete($request, 'private_save_completed');
-
-            return $save;
         });
 
         return (new PrivateSaveResource($save->load('folder')))->response()->setStatusCode(201);

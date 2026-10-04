@@ -14,9 +14,9 @@ use Illuminate\Support\Facades\DB;
 use Throwable;
 
 /**
- * Creates a post + its media rows atomically, then dispatches one thumbnail job per
- * image after commit. The post is immediately visible/servable (via each media's
- * already-EXIF-stripped original) — status=processing only gates the thumbnail.
+ * Creates a post + its media rows atomically, then dispatches its media-processing jobs
+ * after the outermost transaction commits. The post is immediately visible/servable (via
+ * each media's already-EXIF-stripped original) — status=processing gates derived assets.
  */
 class CreatePost
 {
@@ -63,8 +63,8 @@ class CreatePost
             ($this->syncMentions)($post, $data->caption);
 
             foreach ($post->media as $media) {
-                ExtractPostMediaText::dispatch($media->id);
-                ComputePostMediaPerceptualHash::dispatch($media->id);
+                ExtractPostMediaText::dispatch($media->id)->afterCommit();
+                ComputePostMediaPerceptualHash::dispatch($media->id)->afterCommit();
             }
 
             return $post;

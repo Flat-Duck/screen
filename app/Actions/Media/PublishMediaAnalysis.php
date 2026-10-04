@@ -162,7 +162,7 @@ class PublishMediaAnalysis
 
         ($this->syncMentions)($post, $post->caption);
         foreach ($post->media as $media) {
-            ComputePostMediaPerceptualHash::dispatch($media->id);
+            ComputePostMediaPerceptualHash::dispatch($media->id)->afterCommit();
         }
 
         return $post;

@@ -19,6 +19,8 @@ use Illuminate\Support\Carbon;
  */
 class TelemetryEvent extends Model
 {
+    protected $dateFormat = 'Y-m-d H:i:s.u';
+
     /** @use HasFactory<TelemetryEventFactory> */
     use HasFactory;
 

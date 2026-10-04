@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Actions\Media\CreateMediaAnalysis;
 use App\Actions\Media\DeleteMediaAnalysis;
-use App\Actions\Media\PublishMediaAnalysis;
+use App\Actions\Media\PublishMediaAnalysisOnce;
 use App\Enums\UserRestrictionType;
 use App\Http\Requests\PublishMediaAnalysisRequest;
 use App\Http\Requests\StoreMediaAnalysisRequest;
@@ -45,7 +45,7 @@ class MediaAnalysisController extends Controller
         return new MediaAnalysisResource($this->resolve($request, $token)->load('items'));
     }
 
-    public function publish(PublishMediaAnalysisRequest $request, string $token, PublishMediaAnalysis $publish): JsonResponse
+    public function publish(PublishMediaAnalysisRequest $request, string $token, PublishMediaAnalysisOnce $publish): JsonResponse
     {
         /** @var User $user */
         $user = $request->user();
@@ -55,7 +55,7 @@ class MediaAnalysisController extends Controller
             if ($request->filled('capture_id')) {
                 $analytics->claim($request->string('capture_id')->toString(), $analytics->session($request)->device_id);
             }
-            $post = $publish($user, $this->resolve($request, $token), $request->validated());
+            $post = $publish($user, $token, $request->validated());
             $analytics->complete($request, 'share_completed');
 
             return $post;

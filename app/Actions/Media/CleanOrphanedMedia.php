@@ -8,6 +8,7 @@ use App\Enums\MediaCleanupStatus;
 use App\Models\MediaAnalysis;
 use App\Models\MediaCleanupTask;
 use App\Models\PostMedia;
+use App\Models\PrivateSave;
 use App\Models\User;
 use Illuminate\Support\Str;
 use Throwable;
@@ -31,8 +32,12 @@ final class CleanOrphanedMedia
 
             $analysis = MediaAnalysis::query()->where('cleanup_task_id', $task->id)->first();
 
-            $isReferenced = PostMedia::query()->where('original_path', 'like', $task->directory.'/%')->exists()
-                || User::withTrashed()->where('avatar_path', 'like', $task->directory.'/%')->exists();
+            $disk = $task->source_disk ?? (string) config('social.media_disk');
+            $isReferenced = PostMedia::query()->where('original_path', 'like', $task->directory.'/%')
+                ->whereRaw('COALESCE(source_disk, ?) = ?', [config('social.media_disk'), $disk])->exists()
+                || PrivateSave::query()->where('path', 'like', $task->directory.'/%')
+                    ->whereRaw('COALESCE(source_disk, ?) = ?', [config('social.media_disk'), $disk])->exists()
+                || ($disk === config('social.media_disk') && User::withTrashed()->where('avatar_path', 'like', $task->directory.'/%')->exists());
 
             if ($isReferenced) {
                 $task->delete();
@@ -42,7 +47,7 @@ final class CleanOrphanedMedia
             }
 
             try {
-                $this->files->deleteDirectory($task->directory);
+                $this->files->deleteDirectory($task->directory, $disk);
                 $analysis?->delete();
                 $task->delete();
                 $cleaned++;

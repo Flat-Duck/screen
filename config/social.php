@@ -134,6 +134,7 @@ return [
         'max_pixels' => (int) env('SOCIAL_IMAGE_MAX_PIXELS', 40000000),
         'remote_avatar_max_bytes' => (int) env('SOCIAL_REMOTE_AVATAR_MAX_BYTES', 5 * 1024 * 1024),
         'remote_avatar_max_redirects' => (int) env('SOCIAL_REMOTE_AVATAR_MAX_REDIRECTS', 2),
+        'remote_avatar_allowed_domains' => ['googleusercontent.com', 'fbsbx.com', 'fbcdn.net', 'graph.facebook.com'],
     ],
 
     /*

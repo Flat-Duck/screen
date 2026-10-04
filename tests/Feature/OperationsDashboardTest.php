@@ -7,6 +7,7 @@ use App\Models\Device;
 use App\Models\OperationsHealthSnapshot;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -42,6 +43,7 @@ class OperationsDashboardTest extends TestCase
 
     public function test_api_requests_are_aggregated_without_storing_request_content(): void
     {
+        DB::table('api_request_metrics')->delete();
         Sanctum::actingAs(User::factory()->create());
 
         $this->getJson('/api/v1/search/users?q=screen')->assertOk();

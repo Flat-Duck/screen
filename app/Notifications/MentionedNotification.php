@@ -20,7 +20,9 @@ class MentionedNotification extends Notification implements FcmNotification, Sho
     public function __construct(
         private readonly Post|Comment $mentionable,
         private readonly User $mentioner,
-    ) {}
+    ) {
+        $this->afterCommit();
+    }
 
     /** @return array<int, string> */
     public function via(object $notifiable): array

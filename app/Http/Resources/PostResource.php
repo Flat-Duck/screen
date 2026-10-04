@@ -48,7 +48,9 @@ class PostResource extends JsonResource
             // annotation didn't run, so a client can tell "nobody visible liked this" from "this
             // endpoint doesn't say"; see the whenNotNull convention on UserSummaryResource.
             'liked_by' => $this->whenNotNull(
-                $this->like_preview?->map(fn (User $liker): UserSummaryResource => new UserSummaryResource($liker))->values()
+                ($this->resource->getAttributes()['like_preview'] ?? null)?->map(
+                    fn (User $liker): UserSummaryResource => new UserSummaryResource($liker)
+                )->values()
             ),
             'is_saved' => (bool) ($this->is_saved ?? false),
             'created_at' => $this->created_at,

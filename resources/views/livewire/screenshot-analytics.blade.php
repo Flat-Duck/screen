@@ -23,7 +23,7 @@
         <span>Published / Share taps: {{ $totals->share_tapped ? number_format(100 * $totals->share_converted / $totals->share_tapped, 1).'%' : '—' }}</span>
         <span>Saved / Save taps: {{ $totals->private_save_tapped ? number_format(100 * $totals->private_save_converted / $totals->private_save_tapped, 1).'%' : '—' }}</span>
     </div>
-    <p class="text-sm text-zinc-500">Counts are unique captures per stage, not button presses. A retried flow can have both a failure and a completion. “Completion not recorded” does not mean canceled. Missing detection events remain unattributed until received.</p>
+    <p class="text-sm text-zinc-500">Counts are unique captures per stage, not button presses. A retried flow can have both a failure and a completion. Unfinished uses the latest start and outcome for each action separately. “Completion not recorded” does not mean canceled. Missing detection events remain unattributed until received.</p>
     <h2 class="text-lg font-semibold">Daily trends</h2>
     <div class="overflow-x-auto">
         <table class="w-full text-left text-sm">

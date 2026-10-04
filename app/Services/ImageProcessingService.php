@@ -4,8 +4,12 @@ namespace App\Services;
 
 use App\Exceptions\PermanentRemoteImageException;
 use App\Exceptions\TransientRemoteImageException;
+use App\Services\SocialAuth\PublicSocialImageAddressResolver;
+use App\Services\SocialAuth\TrustedSocialImageUrl;
 use App\Support\Media\ThumbHash;
 use GdImage;
+use GuzzleHttp\Psr7\UriResolver;
+use GuzzleHttp\Psr7\Utils as Psr7Utils;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -26,8 +30,10 @@ class ImageProcessingService
 {
     private ImageManager $manager;
 
-    public function __construct(private readonly ImageSafetyInspector $inspector)
-    {
+    public function __construct(
+        private readonly ImageSafetyInspector $inspector,
+        private readonly PublicSocialImageAddressResolver $addressResolver,
+    ) {
         $this->manager = new ImageManager(new Driver);
     }
 
@@ -81,8 +87,9 @@ class ImageProcessingService
      */
     public function storeFromUrl(string $url, string $directory, ?int $maxDimension = 512): array
     {
-        if (parse_url($url, PHP_URL_SCHEME) !== 'https') {
-            throw new PermanentRemoteImageException('Remote image URL must use HTTPS.');
+        TrustedSocialImageUrl::from($url);
+        if (! extension_loaded('curl') || ! defined('CURLOPT_RESOLVE')) {
+            throw new TransientRemoteImageException('Remote image transport cannot safely pin DNS results.');
         }
 
         $temporaryPath = tempnam(sys_get_temp_dir(), 'remote-avatar-');
@@ -91,30 +98,63 @@ class ImageProcessingService
         }
 
         $maxBytes = (int) config('social.images.remote_avatar_max_bytes');
+        $redirectPaths = [];
         try {
             // The read timeout is already set at the end of this chain; this adds the connect
             // half, so a remote host that accepts nothing cannot hold the worker either.
-            $response = Http::connectTimeout(3)
-                ->withOptions([
-                    'allow_redirects' => [
-                        'max' => (int) config('social.images.remote_avatar_max_redirects'),
-                        'strict' => true,
-                        'referer' => false,
-                        'protocols' => ['https'],
-                    ],
-                    'sink' => $temporaryPath,
-                    'on_headers' => function ($response) use ($maxBytes): void {
-                        $length = $response->getHeaderLine('Content-Length');
-                        if ($length !== '' && (int) $length > $maxBytes) {
-                            throw new PermanentRemoteImageException('Remote image exceeds the byte limit.');
-                        }
-                    },
-                    'progress' => function (int $downloadTotal, int $downloaded) use ($maxBytes): void {
-                        if ($downloadTotal > $maxBytes || $downloaded > $maxBytes) {
-                            throw new PermanentRemoteImageException('Remote image exceeds the byte limit.');
-                        }
-                    },
-                ])->timeout(10)->get($url);
+            $response = null;
+            $nextUrl = $url;
+            $maxRedirects = (int) config('social.images.remote_avatar_max_redirects');
+            for ($redirectCount = 0; ; $redirectCount++) {
+                $trustedUrl = TrustedSocialImageUrl::from($nextUrl);
+                $addresses = $this->addressResolver->resolve($trustedUrl->host);
+                $downloadPath = $redirectCount === 0
+                    ? $temporaryPath
+                    : tempnam(sys_get_temp_dir(), 'remote-avatar-hop-');
+                if ($downloadPath === false) {
+                    throw new TransientRemoteImageException('Could not allocate temporary redirect storage.');
+                }
+                if ($downloadPath !== $temporaryPath) {
+                    $redirectPaths[] = $downloadPath;
+                }
+                $response = Http::connectTimeout(3)
+                    ->withOptions([
+                        'curl' => [CURLOPT_RESOLVE => $this->addressResolver->curlResolveEntries($trustedUrl->host, [$addresses[0]])],
+                        'proxy' => '',
+                        'allow_redirects' => false,
+                        'sink' => $downloadPath,
+                        'on_headers' => function ($response) use ($maxBytes): void {
+                            $length = $response->getHeaderLine('Content-Length');
+                            if ($length !== '' && (int) $length > $maxBytes) {
+                                throw new PermanentRemoteImageException('Remote image exceeds the byte limit.');
+                            }
+                        },
+                        'progress' => function (int $downloadTotal, int $downloaded) use ($maxBytes): void {
+                            if ($downloadTotal > $maxBytes || $downloaded > $maxBytes) {
+                                throw new PermanentRemoteImageException('Remote image exceeds the byte limit.');
+                            }
+                        },
+                    ])->timeout(10)->get($nextUrl);
+
+                if (! $this->isRedirectStatus($response->status())) {
+                    if ($downloadPath !== $temporaryPath && ! copy($downloadPath, $temporaryPath)) {
+                        throw new TransientRemoteImageException('Could not retain the remote image response.');
+                    }
+                    break;
+                }
+
+                if ($downloadPath !== $temporaryPath) {
+                    @unlink($downloadPath);
+                }
+
+                $location = $response->header('Location');
+                if ($location === '' || $redirectCount >= $maxRedirects) {
+                    throw new PermanentRemoteImageException('Remote image redirect is invalid or exceeds the limit.');
+                }
+
+                $nextUrl = (string) UriResolver::resolve(Psr7Utils::uriFor($nextUrl), Psr7Utils::uriFor($location));
+                TrustedSocialImageUrl::from($nextUrl);
+            }
 
             if ($response->serverError()) {
                 throw new TransientRemoteImageException("Remote image server returned {$response->status()}.");
@@ -156,7 +196,15 @@ class ImageProcessingService
             ];
         } finally {
             @unlink($temporaryPath);
+            foreach ($redirectPaths as $redirectPath) {
+                @unlink($redirectPath);
+            }
         }
+    }
+
+    private function isRedirectStatus(int $status): bool
+    {
+        return in_array($status, [301, 302, 303, 307, 308], true);
     }
 
     /**

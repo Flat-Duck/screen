@@ -1,0 +1,19 @@
+{
+  "events": [
+    {
+      "event_id": "00000000-0000-4000-8000-000000000001",
+      "event_type": "dwell",
+      "author_id": 456,
+      "surface": "following_feed",
+      "occurred_at": "2026-10-02T12:00:00+00:00",
+      "post_id": 123,
+      "position": 2,
+      "metadata": {
+        "duration_ms": 2400,
+        "scroll_velocity_px_per_ms": 0.42,
+        "completion_rate": 0.8,
+        "rewatch_count": 0
+      }
+    }
+  ]
+}

@@ -8,6 +8,7 @@ use App\Models\TelemetryEvent;
 use App\Models\User;
 use App\Services\Screenshots\CaptureAnalytics;
 use App\Services\Screenshots\CaptureReport;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -203,4 +204,108 @@ it('cascades installation deletion without retaining identifiable capture record
     $device->delete();
     expect(DB::table('screenshot_captures')->count())->toBe(0);
     expect(DB::table('screenshot_capture_stages')->count())->toBe(0);
+});
+
+it('reports unfinished per action when the other action completed', function (): void {
+    $this->authenticateDevice();
+    $id = (string) Str::uuid();
+    $this->postJson('/api/v1/telemetry/events', capturePayload($id, 'detected'))->assertOk();
+    DB::table('screenshot_capture_stages')->insert([
+        'capture_id' => $id, 'stage' => 'private_save_completed', 'occurred_at' => now(),
+    ]);
+    $this->postJson('/api/v1/telemetry/events', capturePayload($id, 'private_save_tapped'))->assertOk();
+    $this->postJson('/api/v1/telemetry/events', capturePayload($id, 'share_tapped'))->assertOk();
+    $report = app(CaptureReport::class);
+    $totals = $report->aggregates($report->captures())->first();
+    expect((int) $totals->unfinished)->toBe(1);
+    expect((int) $totals->private_save_completed)->toBe(1);
+    expect((int) $totals->share_tapped)->toBe(1);
+});
+
+it('counts each capture once while a retry advances its unfinished state monotonically', function (): void {
+    $this->freezeTime();
+    $this->authenticateDevice();
+    $id = (string) Str::uuid();
+    $emit = function (string $stage, int $milliseconds) use ($id): void {
+        $this->postJson('/api/v1/telemetry/events', capturePayload($id, $stage, [
+            'occurred_at' => now()->addMilliseconds($milliseconds)->toISOString(),
+        ]))->assertOk();
+    };
+    $report = app(CaptureReport::class);
+    $totals = fn () => $report->aggregates($report->captures())->first();
+    $emit('share_tapped', 0);
+    $emit('share_failed', 100);
+    expect((int) $totals()->unfinished)->toBe(0);
+    $emit('share_started', 200);
+    $emit('share_started', 200); // a duplicate stage still counts the capture once
+    $emit('share_failed', 150); // late arrival predates the pending retry
+    expect((int) $totals()->unfinished)->toBe(1);
+    expect((int) $totals()->share_tapped)->toBe(1);
+    expect((int) $totals()->share_failed)->toBe(1);
+    $emit('share_failed', 300);
+    expect((int) $totals()->unfinished)->toBe(0);
+});
+
+it('groups stages without multiplying captures or leaking another cohort', function (): void {
+    $device = Device::factory()->create();
+    $other = Device::factory()->create();
+    $current = (string) Str::uuid();
+    $outside = (string) Str::uuid();
+    $withoutStages = (string) Str::uuid();
+    foreach ([[$current, $device->id], [$outside, $other->id], [$withoutStages, $device->id]] as [$id, $deviceId]) {
+        DB::table('screenshot_captures')->insert([
+            'id' => $id, 'device_id' => $deviceId, 'user_id' => null,
+            'created_at' => now(), 'detected_at' => now(),
+        ]);
+    }
+    foreach ([$current, $outside] as $id) {
+        foreach (['detected', 'overlay_shown', 'share_tapped', 'share_completed'] as $stage) {
+            DB::table('screenshot_capture_stages')->insert([
+                'capture_id' => $id, 'stage' => $stage, 'occurred_at' => now(),
+            ]);
+        }
+    }
+    $report = app(CaptureReport::class);
+    $totals = $report->aggregates($report->captures('anonymous', (string) $device->id))->first();
+    expect((int) $totals->detected)->toBe(1)
+        ->and((int) $totals->overlay_shown)->toBe(1)
+        ->and((int) $totals->share_tapped)->toBe(1)
+        ->and((int) $totals->share_converted)->toBe(1)
+        ->and((int) $totals->unfinished)->toBe(0);
+    $empty = $report->aggregates($report->captures()->where('c.id', (string) Str::uuid()))->first();
+    expect((int) $empty->detected)->toBe(0)->and((int) $empty->unfinished)->toBe(0);
+});
+
+it('renders the dashboard with a fixed number of analytics queries as rows grow', function (): void {
+    $admin = User::factory()->create();
+    $device = Device::factory()->create();
+    foreach (range(1, 30) as $index) {
+        $id = (string) Str::uuid();
+        DB::table('screenshot_captures')->insert([
+            'id' => $id,
+            'device_id' => $device->id,
+            'user_id' => null,
+            'created_at' => now(),
+            'detected_at' => now(),
+        ]);
+        foreach (['detected', 'overlay_shown', 'share_tapped'] as $stage) {
+            DB::table('screenshot_capture_stages')->insert([
+                'capture_id' => $id,
+                'stage' => $stage,
+                'occurred_at' => now(),
+            ]);
+        }
+    }
+
+    Gate::define('viewTelemetry', fn (): bool => true);
+    $analyticsQueries = [];
+    DB::listen(function (QueryExecuted $query) use (&$analyticsQueries): void {
+        if (str_contains($query->sql, 'screenshot_captures') || str_contains($query->sql, 'screenshot_library_snapshots')) {
+            $analyticsQueries[] = $query->sql;
+        }
+    });
+
+    Livewire::actingAs($admin)->test(ScreenshotAnalytics::class)->assertSee('Screenshot Analytics');
+
+    expect(count($analyticsQueries))->toBe(6);
 });

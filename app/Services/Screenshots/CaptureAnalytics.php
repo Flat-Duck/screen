@@ -16,7 +16,7 @@ final class CaptureAnalytics
         'detected', 'overlay_shown', 'ignored_timeout', 'ignored_dismissed',
         'overlay_replaced', 'overlay_unavailable', 'overlay_interrupted',
         'share_tapped', 'private_save_tapped', 'share_cancelled', 'private_save_cancelled',
-        'share_failed', 'private_save_failed',
+        'share_failed', 'private_save_failed', 'share_started', 'private_save_started',
     ];
 
     /** May precede detection because the telemetry queue uploads asynchronously. */
@@ -92,6 +92,13 @@ final class CaptureAnalytics
     {
         DB::table('screenshot_capture_stages')->insertOrIgnore([
             'capture_id' => $id, 'stage' => $stage, 'user_id' => $userId, 'occurred_at' => $at,
+            'last_occurred_at' => $at->format('Y-m-d H:i:s.u'),
         ]);
+        // Presence remains one count per capture/action; retries update only the latest status.
+        // The conditional update is monotonic under concurrent and out-of-order ingestion.
+        DB::table('screenshot_capture_stages')->where('capture_id', $id)->where('stage', $stage)
+            ->where(function ($query) use ($at): void {
+                $query->whereNull('last_occurred_at')->orWhere('last_occurred_at', '<', $at->format('Y-m-d H:i:s.u'));
+            })->update(['last_occurred_at' => $at->format('Y-m-d H:i:s.u')]);
     }
 }
