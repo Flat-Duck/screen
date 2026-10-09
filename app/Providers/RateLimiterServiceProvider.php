@@ -48,6 +48,8 @@ class RateLimiterServiceProvider extends ServiceProvider
 
         RateLimiter::for('email-verification', fn (Request $request) => $this->byUser($request, 3));
 
+        RateLimiter::for('email-verification-code', fn (Request $request) => $this->byUser($request, 8));
+
         RateLimiter::for('reads', fn (Request $request) => $this->byUser($request, 60));
 
         // Signed media routes have no authenticated principal. The signature protects `viewer`,

@@ -78,6 +78,7 @@ Route::middleware(['auth:sanctum', 'auth.user', 'session.touch'])->group(functio
     Route::post('auth/password', [AuthController::class, 'setPassword'])->middleware('throttle:auth-password');
     Route::get('auth/email-verification', [EmailVerificationController::class, 'show'])->middleware('throttle:reads');
     Route::post('auth/email-verification/notification', [EmailVerificationController::class, 'store'])->middleware('throttle:email-verification');
+    Route::post('auth/email-verification/code', [EmailVerificationController::class, 'verifyCode'])->middleware('throttle:email-verification-code');
 
     Route::delete('account', [AccountController::class, 'destroy'])->middleware('throttle:account-manage');
     Route::post('account/email', [AccountController::class, 'changeEmail'])->middleware('throttle:account-manage');

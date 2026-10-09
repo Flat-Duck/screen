@@ -34,7 +34,13 @@ class EmailOwnershipApiTest extends TestCase
 
         $user = User::query()->where('email', 'ada@example.com')->firstOrFail();
         $this->assertFalse($user->hasVerifiedEmail());
-        Notification::assertSentTo($user, VerifyEmailNotification::class);
+        Notification::assertSentTo($user, VerifyEmailNotification::class, function (VerifyEmailNotification $notification) use ($user): bool {
+            $message = $notification->toMail($user);
+            $this->assertNotEmpty($message->actionUrl);
+            $this->assertTrue(collect([...$message->introLines, ...$message->outroLines])->contains(fn (string $line): bool => preg_match('/^[0-9]{6}$/', $line) === 1));
+
+            return true;
+        });
     }
 
     public function test_unverified_user_is_limited_to_verification_and_account_routes(): void
@@ -73,6 +79,83 @@ class EmailOwnershipApiTest extends TestCase
         });
 
         $this->assertTrue($user->fresh()->hasVerifiedEmail());
+    }
+
+    public function test_six_digit_email_code_verifies_the_user_and_is_single_use(): void
+    {
+        Notification::fake();
+        $user = User::factory()->unverified()->create();
+        $token = $user->createToken('mobile')->plainTextToken;
+        $code = null;
+
+        $client = $this->withHeader('Authorization', "Bearer {$token}");
+        $client->postJson('/api/v1/auth/email-verification/notification')->assertStatus(202);
+
+        Notification::assertSentTo($user, VerifyEmailNotification::class, function (VerifyEmailNotification $notification) use ($user, &$code): bool {
+            $message = $notification->toMail($user);
+            foreach ([...$message->introLines, ...$message->outroLines] as $line) {
+                if (preg_match('/^([0-9]{6})$/', $line, $matches) === 1) {
+                    $code = $matches[1];
+                    break;
+                }
+            }
+
+            return $code !== null;
+        });
+
+        $this->assertNotNull($code);
+        $client->postJson('/api/v1/auth/email-verification/code', ['code' => $code])
+            ->assertOk()
+            ->assertJson(['verified' => true]);
+        $this->assertTrue($user->fresh()->hasVerifiedEmail());
+
+        $client->postJson('/api/v1/auth/email-verification/code', ['code' => '000000'])
+            ->assertOk()
+            ->assertJson(['verified' => true]);
+    }
+
+    public function test_invalid_verification_codes_are_rejected_and_limited_to_five_attempts(): void
+    {
+        Notification::fake();
+        $user = User::factory()->unverified()->create();
+        $token = $user->createToken('mobile')->plainTextToken;
+        $client = $this->withHeader('Authorization', "Bearer {$token}");
+        $client->postJson('/api/v1/auth/email-verification/notification')->assertStatus(202);
+
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            $client->postJson('/api/v1/auth/email-verification/code', ['code' => '000000'])
+                ->assertUnprocessable()
+                ->assertJsonValidationErrors('code');
+        }
+
+        $this->assertFalse($user->fresh()->hasVerifiedEmail());
+    }
+
+    public function test_verification_code_requires_exactly_six_ascii_digits(): void
+    {
+        $user = User::factory()->unverified()->create();
+        $token = $user->createToken('mobile')->plainTextToken;
+
+        $this->withHeader('Authorization', "Bearer {$token}")
+            ->postJson('/api/v1/auth/email-verification/code', ['code' => '12ab56'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('code');
+    }
+
+    public function test_expired_verification_code_is_rejected(): void
+    {
+        Notification::fake();
+        $user = User::factory()->unverified()->create();
+        $token = $user->createToken('mobile')->plainTextToken;
+        $client = $this->withHeader('Authorization', "Bearer {$token}");
+        $client->postJson('/api/v1/auth/email-verification/notification')->assertStatus(202);
+
+        $this->travel(11)->minutes();
+
+        $client->postJson('/api/v1/auth/email-verification/code', ['code' => '123456'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('code');
+        $this->assertFalse($user->fresh()->hasVerifiedEmail());
     }
 
     public function test_forgot_password_response_does_not_enumerate_accounts_or_social_only_users(): void

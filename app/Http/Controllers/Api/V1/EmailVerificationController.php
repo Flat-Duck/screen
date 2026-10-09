@@ -3,13 +3,17 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Models\User;
+use App\Services\EmailVerificationCodeService;
 use App\Services\InterestPreferenceService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 final class EmailVerificationController extends Controller
 {
-    public function __construct(private readonly InterestPreferenceService $interests) {}
+    public function __construct(
+        private readonly InterestPreferenceService $interests,
+        private readonly EmailVerificationCodeService $codes,
+    ) {}
 
     public function show(Request $request): JsonResponse
     {
@@ -35,11 +39,24 @@ final class EmailVerificationController extends Controller
         $user = $request->user();
 
         if (! $user->hasVerifiedEmail()) {
-            $user->sendEmailVerificationNotification();
+            $this->codes->send($user);
         }
 
         return response()->json([
             'message' => __('If verification is still required, a new email has been sent.'),
         ], 202);
+    }
+
+    public function verifyCode(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'code' => ['required', 'string', 'regex:/^[0-9]{6}$/'],
+        ]);
+
+        /** @var User $user */
+        $user = $request->user();
+        $this->codes->verify($user, $validated['code']);
+
+        return response()->json(['verified' => true]);
     }
 }

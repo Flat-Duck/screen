@@ -8,6 +8,7 @@ use App\Enums\LoginMethod;
 use App\Models\Device;
 use App\Models\User;
 use App\Services\Auth\IssuedAccessToken;
+use App\Services\EmailVerificationCodeService;
 use App\Services\InviteCodeService;
 use Illuminate\Support\Facades\DB;
 
@@ -16,6 +17,7 @@ class RegisterUser
     public function __construct(
         private readonly StartDeviceSession $startSession,
         private readonly InviteCodeService $inviteCodes,
+        private readonly EmailVerificationCodeService $emailVerificationCodes,
     ) {}
 
     public function __invoke(Device $device, RegisterUserData $data, DeviceSessionContext $context): IssuedAccessToken
@@ -39,7 +41,7 @@ class RegisterUser
             return $user;
         });
 
-        $user->sendEmailVerificationNotification();
+        $this->emailVerificationCodes->send($user);
 
         return ($this->startSession)($user, $device, LoginMethod::Registration, $context, isNewAccount: true);
     }
