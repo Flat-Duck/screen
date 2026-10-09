@@ -52,6 +52,7 @@ class AuthController extends Controller
         return $this->responses->make(
             $registerUser($this->device($request), $data, $this->context($request)),
             successStatus: 201,
+            includeIsNewAccount: true,
         );
     }
 

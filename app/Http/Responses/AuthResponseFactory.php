@@ -29,6 +29,9 @@ final class AuthResponseFactory
 
         return response()->json([
             'user' => new UserResource($result->user->loadCount(['posts', 'followers', 'following'])),
+            // Auth responses always describe the newly authenticated caller, including the
+            // device-token registration response where Request::user() is still a Device.
+            'invite_code' => $result->user->invite_code,
             'token' => $result->token,
             'session_id' => $result->session->uuid,
             ...($includeIsNewAccount ? ['is_new_account' => $result->isNewAccount] : []),

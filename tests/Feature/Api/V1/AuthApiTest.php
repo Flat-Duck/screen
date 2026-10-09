@@ -44,9 +44,11 @@ class AuthApiTest extends TestCase
 
         $response->assertCreated();
         $response->assertJsonStructure(['user' => ['id', 'username'], 'token', 'session_id']);
+        $response->assertJsonPath('is_new_account', true);
         $this->assertDatabaseHas('device_sessions', ['login_method' => 'registration']);
         $this->assertDatabaseCount('users', 1);
         $this->assertDatabaseHas('users', ['username' => 'ada']);
+        $this->assertSame(User::query()->where('username', 'ada')->value('invite_code'), $response->json('invite_code'));
     }
 
     public function test_registering_with_a_duplicate_username_fails_validation(): void
