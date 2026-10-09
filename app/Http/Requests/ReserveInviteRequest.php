@@ -18,7 +18,8 @@ class ReserveInviteRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'invite_code' => ['required', 'string', 'max:32'],
+            'invite_code' => ['nullable', 'required_without:invite_token', 'prohibits:invite_token', 'string', 'max:32'],
+            'invite_token' => ['nullable', 'required_without:invite_code', 'prohibits:invite_code', 'regex:/\A[a-f0-9]{64}\z/'],
         ];
     }
 }

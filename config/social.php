@@ -174,12 +174,17 @@ return [
     // short enough that `invites:prune-reservations` doesn't need to keep much around.
     'invite_reservation_ttl_minutes' => (int) env('INVITE_RESERVATION_TTL_MINUTES', 15),
 
-    // Used only by the `/invite/{code}` web fallback page (resources/views/invite/show.blade.php)
-    // for whoever opens an invite link without the app installed — the verified Android App Link
-    // intercepts the same URL client-side first when it *is* installed, so this never renders for
-    // that case. The `referrer` query param carries the code through the Play Store install via
-    // the Play Install Referrer API, so a fresh install still lands pre-filled.
+    // Canonical public link origin. It is deployment configuration, never derived from Host.
+    'canonical_url' => rtrim((string) env('AKUKAS_CANONICAL_URL', 'https://akukas.ly'), '/'),
+
+    // `/invite/{token-or-code}` is the no-app fallback. The `referrer` value is recovered on first
+    // launch through Play Install Referrer; only invitation data is deferred, not arbitrary URLs.
     'android_package_name' => env('ANDROID_PACKAGE_NAME', 'ly.akukas.akukasapp'),
+    'android_play_store_url' => env('APP_PLAY_URL', 'https://play.google.com/store/apps/details?id='.env('ANDROID_PACKAGE_NAME', 'ly.akukas.akukasapp')),
+    'assetlinks_sha256_fingerprints' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', (string) env('ANDROID_APP_LINK_SHA256_FINGERPRINTS', 'D6:08:52:A2:D4:9C:F8:A2:B5:E8:9C:B7:C7:7E:04:A0:49:05:9D:AE:0C:93:9B:42:EB:C7:9D:CD:E7:6B:44:3D')),
+    ))),
 
     'analytics' => [
         // Raw event rows are intentionally short-lived. Milestone 4.2 aggregates will

@@ -236,6 +236,7 @@ Route::middleware(['auth:sanctum', 'auth.user', 'session.touch', 'verified.email
     Route::post('group-invites/{groupInvite}/decline', [GroupInviteController::class, 'decline'])->middleware('throttle:writes-moderate');
 
     Route::get('me/invites', [InviteController::class, 'index'])->middleware('throttle:reads');
+    Route::post('me/invite-link', [InviteController::class, 'shareLink'])->middleware('throttle:writes-moderate');
 
     Route::get('posts/{post}/comments', [CommentController::class, 'index'])->middleware('throttle:reads');
     Route::post('posts/{post}/comments', [CommentController::class, 'store'])->middleware('throttle:writes-moderate');

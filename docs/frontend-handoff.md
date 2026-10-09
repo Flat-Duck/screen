@@ -1421,12 +1421,17 @@ user already filled out the whole signup form (or came back through Google's con
 
 ### 4. Deep-linked invites
 
-`GET /invite/{code}` (web, not `/api/v1`) is the fallback landing page for anyone who taps an
-invite link without the app installed — shows the code and a Play Store link carrying
-`&referrer=invite_code%3D{code}`, meant to be read via the Play Install Referrer API on first
-cold start so a fresh install still lands pre-filled on the invite-gate screen. An installed app
-should intercept the same URL client-side via a verified Android App Link before this ever
-renders.
+The end-to-end URL patterns, validation rules, Android paths, fallback behavior, and deployment
+requirements are documented in [DEEP_LINK_CONTRACT.md](DEEP_LINK_CONTRACT.md). New share URLs use
+opaque 256-bit invite tokens. `POST /v1/me/invite-link` returns one canonical share URL for the
+authenticated verified user; tokens are stored only as SHA-256 hashes. Existing raw invite-code
+entry and URLs continue to work. Both input forms go through the same reservation and redemption
+rules described above.
+
+`GET /invite/{token-or-code}` is the no-app fallback. It sends the supported invitation value
+through the configured Play Store listing's `referrer` parameter, for retrieval on first launch by
+Play Install Referrer. Post/profile browser routes show the Play listing without disclosing entity
+details; those destinations are not claimed to survive installation.
 
 ### What's not here yet
 

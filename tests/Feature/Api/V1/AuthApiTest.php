@@ -5,6 +5,7 @@ namespace Tests\Feature\Api\V1;
 use App\Models\Device;
 use App\Models\FeatureFlag;
 use App\Models\User;
+use App\Services\InviteCodeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Laravel\Sanctum\Sanctum;
@@ -250,6 +251,45 @@ class AuthApiTest extends TestCase
         $response->assertUnprocessable();
         $response->assertJsonValidationErrors(['invite_code']);
         $this->assertDatabaseCount('invite_reservations', 0);
+    }
+
+    public function test_opaque_share_token_reserves_the_existing_invite_code_without_storing_the_token(): void
+    {
+        $inviter = User::factory()->create();
+        $this->authenticateDevice();
+        $url = app(InviteCodeService::class)->createShareLink($inviter);
+        $token = basename($url);
+
+        $reservation = $this->postJson('/api/v1/auth/invites/reserve', ['invite_token' => $token]);
+        $reservation->assertCreated();
+        $this->postJson('/api/v1/auth/register', $this->registerPayload([
+            'invite_ticket' => $reservation->json('data.ticket'),
+        ]))->assertCreated();
+
+        $this->assertDatabaseHas('invite_reservations', ['code' => $inviter->invite_code]);
+        $this->assertDatabaseHas('user_invites', [
+            'inviter_user_id' => $inviter->id,
+            'code_used' => $inviter->invite_code,
+        ]);
+        $this->assertDatabaseHas('user_invite_links', [
+            'inviter_user_id' => $inviter->id,
+            'token_hash' => hash('sha256', $token),
+        ]);
+        $this->assertDatabaseMissing('user_invite_links', ['token_hash' => $token]);
+    }
+
+    public function test_malformed_or_unknown_opaque_tokens_are_rejected_generically(): void
+    {
+        $this->authenticateDevice();
+
+        $this->postJson('/api/v1/auth/invites/reserve', ['invite_token' => str_repeat('a', 64)])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['invite_token']);
+        $this->postJson('/api/v1/auth/invites/reserve', ['invite_token' => 'bad-token'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['invite_token']);
+        $this->postJson('/api/v1/auth/invites/reserve', ['invite_code' => 'ABC123', 'invite_token' => str_repeat('a', 64)])
+            ->assertUnprocessable();
     }
 
     public function test_registering_with_a_valid_ticket_succeeds_without_resending_the_raw_code(): void

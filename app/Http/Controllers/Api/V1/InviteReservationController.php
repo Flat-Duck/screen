@@ -26,7 +26,12 @@ class InviteReservationController extends Controller
      * why this never introduces scarcity the underlying code didn't already have. */
     public function reserve(ReserveInviteRequest $request): JsonResponse
     {
-        $reservation = $this->inviteCodes->reserve($request->string('invite_code')->toString());
+        $code = $request->input('invite_code');
+        $token = $request->input('invite_token');
+        $reservation = $this->inviteCodes->reserve(
+            is_string($code) ? $code : null,
+            is_string($token) ? $token : null,
+        );
 
         return response()->json(['data' => [
             'ticket' => $reservation->ticket,

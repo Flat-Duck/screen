@@ -21,6 +21,7 @@ use App\Http\Controllers\OcrDashboardController;
 use App\Http\Controllers\OperationsDashboardController;
 use App\Http\Controllers\PostMediaDeliveryController;
 use App\Http\Controllers\PrivateSaveMediaDeliveryController;
+use App\Http\Controllers\PublicLinkLandingController;
 use App\Http\Controllers\RecommendationAdminController;
 use App\Http\Controllers\RegistrationAdminController;
 use App\Http\Controllers\UserAvatarDeliveryController;
@@ -48,6 +49,10 @@ Route::get('/mobile/password/reset/{token}', MobilePasswordResetController::clas
 Route::get('/invite/{code}', InviteLandingController::class)
     ->middleware('throttle:30,1')
     ->name('invite.show');
+Route::get('/posts/{id}', [PublicLinkLandingController::class, 'post'])
+    ->whereNumber('id')->middleware('throttle:30,1')->name('deep-link.post');
+Route::get('/profile/{id}', [PublicLinkLandingController::class, 'user'])
+    ->whereNumber('id')->middleware('throttle:30,1')->name('deep-link.user');
 
 // Image clients cannot reliably attach a Sanctum bearer token, so API resources issue these
 // short-lived signed capability URLs. The controllers still recheck the encoded viewer's current

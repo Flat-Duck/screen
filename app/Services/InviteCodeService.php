@@ -6,6 +6,7 @@ use App\Models\FeatureFlag;
 use App\Models\InviteReservation;
 use App\Models\User;
 use App\Models\UserInvite;
+use App\Models\UserInviteLink;
 use Illuminate\Contracts\Pagination\CursorPaginator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -80,9 +81,9 @@ class InviteCodeService
      * stays unlimited-use. This is purely "the invite-gate screen already confirmed this code, so
      * the signup screen a minute later doesn't have to ask again."
      */
-    public function reserve(string $code): InviteReservation
+    public function reserve(?string $code, ?string $token = null): InviteReservation
     {
-        $normalized = strtoupper(trim($code));
+        $normalized = $token !== null ? $this->resolveTokenToCode($token) : strtoupper(trim((string) $code));
         $inviter = User::query()->where('invite_code', $normalized)->first();
 
         if ($inviter === null) {
@@ -96,6 +97,40 @@ class InviteCodeService
             'ticket' => Str::random(40),
             'expires_at' => now()->addMinutes((int) config('social.invite_reservation_ttl_minutes')),
         ]);
+    }
+
+    /** Creates a share URL while retaining only a SHA-256 hash of its bearer-like token. */
+    public function createShareLink(User $inviter): string
+    {
+        do {
+            $token = bin2hex(random_bytes(32));
+            $hash = hash('sha256', $token);
+        } while (UserInviteLink::query()->where('token_hash', $hash)->exists());
+
+        UserInviteLink::query()->create([
+            'inviter_user_id' => $inviter->id,
+            'token_hash' => $hash,
+        ]);
+
+        return rtrim((string) config('social.canonical_url'), '/').'/invite/'.$token;
+    }
+
+    /** Resolves an opaque invite token to the inviter's current legacy code. */
+    public function resolveTokenToCode(string $token): string
+    {
+        $validShape = preg_match('/\A[a-f0-9]{64}\z/', $token) === 1;
+        $link = $validShape
+            ? UserInviteLink::query()->where('token_hash', hash('sha256', $token))->first()
+            : null;
+        $code = $link?->inviter?->invite_code;
+
+        if ($code === null) {
+            throw ValidationException::withMessages([
+                'invite_token' => [__('That invite is not valid.')],
+            ]);
+        }
+
+        return $code;
     }
 
     /**

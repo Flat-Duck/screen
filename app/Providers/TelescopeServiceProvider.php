@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
+use Laravel\Telescope\EntryType;
 use Laravel\Telescope\IncomingEntry;
 use Laravel\Telescope\Telescope;
 use Laravel\Telescope\TelescopeApplicationServiceProvider;
@@ -26,7 +27,14 @@ class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
         //
         // telescope_entries still grows continuously locally, so it relies on the daily
         // `telescope:prune` schedule (routes/console.php) to bound storage.
-        Telescope::filter(fn (IncomingEntry $entry): bool => true);
+        Telescope::filter(function (IncomingEntry $entry): bool {
+            $uri = $entry->content['uri'] ?? '';
+
+            // A 256-bit invitation token is a bearer-like secret in this one public path.
+            return ! ($entry->type === EntryType::REQUEST
+                && is_string($uri)
+                && preg_match('#/invite/[a-f0-9]{64}(?:\?|$)#', $uri) === 1);
+        });
     }
 
     /**
@@ -34,11 +42,7 @@ class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
      */
     protected function hideSensitiveRequestDetails(): void
     {
-        if ($this->app->environment('local')) {
-            return;
-        }
-
-        Telescope::hideRequestParameters(['_token']);
+        Telescope::hideRequestParameters(['_token', 'invite_token', 'invite_code', 'invite_ticket']);
 
         Telescope::hideRequestHeaders([
             'cookie',

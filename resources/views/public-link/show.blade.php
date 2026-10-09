@@ -3,23 +3,18 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ config('app.name') }} invite</title>
+    <title>{{ config('app.name') }}</title>
     <style>
         body { font-family: system-ui, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #f8f9fa; color: #1a1a1a; }
         .card { text-align: center; padding: 2rem; max-width: 24rem; }
-        h1 { font-size: 1.25rem; }
-        .code { font-family: ui-monospace, monospace; background: #eee; padding: 0.15rem 0.5rem; border-radius: 0.25rem; }
         .btn { display: inline-block; margin-top: 1.5rem; padding: 0.75rem 1.5rem; background: #1a1a1a; color: #fff; text-decoration: none; border-radius: 0.5rem; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h1>You've been invited to {{ config('app.name') }}</h1>
-        <p>Open this invitation on your phone with Akukas installed, or install the app first.</p>
-        @if ($invitation)
-            <p>Invite code: <span class="code">{{ $invitation }}</span></p>
-        @endif
+    <main class="card">
+        <h1>Open this {{ $destination }} in Akukas</h1>
+        <p>Install Akukas to continue. Access to this content is checked by the app.</p>
         <a class="btn" href="{{ $playStoreUrl }}">Get the app</a>
-    </div>
+    </main>
 </body>
 </html>

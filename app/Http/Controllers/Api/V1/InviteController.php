@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Resources\UserInviteResource;
 use App\Models\User;
 use App\Services\InviteCodeService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
@@ -21,5 +22,16 @@ class InviteController extends Controller
         $user = $request->user();
 
         return UserInviteResource::collection($this->invites->myInvites($user));
+    }
+
+    /** Mints an opaque invitation URL for the authenticated caller. */
+    public function shareLink(Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        return response()->json(['data' => [
+            'url' => $this->invites->createShareLink($user),
+        ]], 201);
     }
 }

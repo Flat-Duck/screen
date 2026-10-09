@@ -4,6 +4,7 @@ test('assetlinks.json authorizes the Android app to handle akukas.ly links', fun
     $response = $this->getJson('/.well-known/assetlinks.json');
 
     $response->assertOk();
+    $response->assertHeader('content-type', 'application/json');
     $response->assertJsonPath('0.relation', ['delegate_permission/common.handle_all_urls']);
     $response->assertJsonPath('0.target.namespace', 'android_app');
     $response->assertJsonPath('0.target.package_name', 'ly.akukas.akukasapp');
