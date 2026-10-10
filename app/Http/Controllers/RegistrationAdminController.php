@@ -7,6 +7,7 @@ use App\Models\FeatureFlag;
 use App\Models\PointTransaction;
 use App\Models\User;
 use App\Models\UserInvite;
+use App\Services\PointRewardService;
 use App\Services\RegistrationAdministrationService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -14,14 +15,18 @@ use Illuminate\Http\Request;
 
 class RegistrationAdminController extends Controller
 {
-    public function index(): View
+    public function index(PointRewardService $rewards): View
     {
         $flag = FeatureFlag::query()->where('key', 'registration.invite_only')->first();
+        $rewardSettings = [];
+        foreach (PointRewardService::catalog() as $action => $details) {
+            $rewardSettings[$action] = [...$details, ...$rewards->configuration($action)];
+        }
 
         return view('registration.index', [
             'inviteOnlyEnabled' => $flag?->isActive() ?? false,
-            'pointsPerInvite' => (int) ($flag?->payload['points_per_invite'] ?? 50),
             'maturityDays' => (int) ($flag?->payload['maturity_days'] ?? 7),
+            'rewardSettings' => $rewardSettings,
             'totalInvites' => UserInvite::query()->count(),
             'maturedInvites' => UserInvite::query()->whereNotNull('points_awarded_at')->count(),
             'totalPointsAwarded' => (int) PointTransaction::query()->sum('amount'),
@@ -40,9 +45,13 @@ class RegistrationAdminController extends Controller
         $admin->setInviteOnly(
             $this->user($request),
             (bool) $data['enabled'],
-            (int) $data['points_per_invite'],
+            (int) ($data['points_per_invite'] ?? $data['rewards'][PointRewardService::INVITER_REFERRAL]['points'] ?? 50),
             (int) $data['maturity_days'],
             $data['reason'],
+            collect($data['rewards'] ?? [])->map(fn (array $value): array => [
+                'enabled' => (bool) ($value['enabled'] ?? false),
+                'points' => (int) $value['points'],
+            ])->all(),
         );
 
         return back()->with('status', 'Registration settings updated.');

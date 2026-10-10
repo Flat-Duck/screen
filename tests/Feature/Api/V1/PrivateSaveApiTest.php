@@ -29,6 +29,7 @@ class PrivateSaveApiTest extends TestCase
         $save = PrivateSave::firstOrFail();
         $this->assertSame($user->id, $save->user_id);
         $this->assertSame('local', $save->source_disk);
+        $this->assertSame(30, (int) $user->fresh()->points_balance);
         Storage::disk('local')->assertExists($save->path);
     }
 

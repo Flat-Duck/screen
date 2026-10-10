@@ -10,12 +10,19 @@ use App\Models\PointTransaction;
 use App\Models\User;
 use App\Models\UserInvite;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class InviteAndPointsTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Cache::flush();
+    }
 
     public function test_points_maturity_job_credits_a_redemption_past_the_default_window(): void
     {

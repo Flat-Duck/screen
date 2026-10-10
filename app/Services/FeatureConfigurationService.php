@@ -15,7 +15,11 @@ class FeatureConfigurationService
 
     private const PROTECTED_PREFIXES = ['privacy.', 'moderation.', 'safety.', 'auth.', 'visibility.'];
 
-    public function __construct(private readonly AdminAuditLogger $audit) {}
+    public function __construct(
+        private readonly AdminAuditLogger $audit,
+        private readonly InviteCodeService $inviteCodes,
+        private readonly PointRewardService $pointRewards,
+    ) {}
 
     /** @param array<string, mixed> $data */
     public function configureFlag(User $actor, string $key, array $data, string $reason): FeatureFlag
@@ -36,6 +40,16 @@ class FeatureConfigurationService
                 'version' => $flag->exists ? $flag->version + 1 : 1,
             ])->save();
             $this->audit->record($actor, 'feature_flag.configured', $flag, $reason, $before, $this->snapshot($flag));
+
+            if ($key === 'registration.invite_only') {
+                DB::afterCommit(fn () => $this->inviteCodes->refreshRequiredCache($flag));
+                DB::afterCommit(fn () => $this->pointRewards->invalidate(PointRewardService::INVITEE_REGISTRATION));
+                DB::afterCommit(fn () => $this->pointRewards->invalidate(PointRewardService::INVITER_REFERRAL));
+            }
+            if (str_starts_with($key, 'points.reward.')) {
+                $action = substr($key, strlen('points.reward.'));
+                DB::afterCommit(fn () => $this->pointRewards->invalidate($action));
+            }
 
             return $flag;
         });

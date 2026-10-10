@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Models\User;
 use App\Services\EmailVerificationCodeService;
 use App\Services\InterestPreferenceService;
+use App\Services\InvitationRewardPresenter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -13,6 +14,7 @@ final class EmailVerificationController extends Controller
     public function __construct(
         private readonly InterestPreferenceService $interests,
         private readonly EmailVerificationCodeService $codes,
+        private readonly InvitationRewardPresenter $invitationRewards,
     ) {}
 
     public function show(Request $request): JsonResponse
@@ -21,6 +23,7 @@ final class EmailVerificationController extends Controller
         $user = $request->user();
 
         $onboarding = $this->interests->status($user);
+        $invitationReward = $user->hasVerifiedEmail() ? $this->invitationRewards->forInvitee($user) : null;
 
         return response()->json([
             'verified' => $user->hasVerifiedEmail(),
@@ -30,6 +33,7 @@ final class EmailVerificationController extends Controller
                 $onboarding['needs_selection'] => 'select_interests',
                 default => 'for_you',
             },
+            'invitation_reward' => $invitationReward,
         ]);
     }
 

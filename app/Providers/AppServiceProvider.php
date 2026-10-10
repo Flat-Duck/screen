@@ -6,6 +6,7 @@ use App\Contracts\MediaFileStore;
 use App\Contracts\PerceptualHasher;
 use App\Contracts\ScreenshotSafetyAnalyzer;
 use App\Contracts\ScreenshotTextExtractor;
+use App\Listeners\CreditInviteeWelcomeBonusAfterEmailVerified;
 use App\Models\ScheduledTaskRun;
 use App\Models\User;
 use App\Services\Screenshots\DifferenceHashService;
@@ -13,6 +14,7 @@ use App\Services\Screenshots\SensitiveInformationAnalyzer;
 use App\Services\Screenshots\TesseractScreenshotTextExtractor;
 use App\Services\Storage\LaravelMediaFileStore;
 use Carbon\CarbonImmutable;
+use Illuminate\Auth\Events\Verified;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Console\Events\ScheduledTaskFailed;
@@ -80,6 +82,7 @@ class AppServiceProvider extends ServiceProvider
         $this->configureGates();
         $this->configureOperationsMonitoring();
         URL::forceScheme('https');
+        Event::listen(Verified::class, CreditInviteeWelcomeBonusAfterEmailVerified::class);
     }
 
     /** Email links land on HTTPS first, then offer the native custom-scheme handoff. */

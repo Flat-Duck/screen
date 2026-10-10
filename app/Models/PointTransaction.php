@@ -21,7 +21,9 @@ class PointTransaction extends Model
 {
     public const REASON_REFERRAL_BONUS = 'referral_bonus';
 
-    protected $fillable = ['user_id', 'amount', 'reason', 'user_invite_id'];
+    public const REASON_INVITEE_WELCOME_BONUS = 'invitee_welcome_bonus';
+
+    protected $fillable = ['user_id', 'amount', 'reason', 'user_invite_id', 'idempotency_key'];
 
     protected function casts(): array
     {

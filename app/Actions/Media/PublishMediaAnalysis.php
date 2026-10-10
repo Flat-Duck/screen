@@ -15,6 +15,7 @@ use App\Models\PostMedia;
 use App\Models\Upload;
 use App\Models\User;
 use App\Services\GroupService;
+use App\Services\PointRewardService;
 use App\Services\Screenshots\CategoryMatcher;
 use App\Services\Screenshots\OcrTextSimilarity;
 use App\Services\Screenshots\OcrTrustSampler;
@@ -38,6 +39,7 @@ class PublishMediaAnalysis
         private readonly GroupService $groups,
         private readonly OcrTrustSampler $sampler,
         private readonly OcrTextSimilarity $similarity,
+        private readonly PointRewardService $pointRewards,
     ) {}
 
     /** @param array<string, mixed> $data */
@@ -58,6 +60,7 @@ class PublishMediaAnalysis
             $hasWarnings = $locked->items->contains(
                 fn ($item): bool => $item->safety_status === PostMedia::SAFETY_WARNING,
             );
+            $isFirstPost = ! Post::withTrashed()->where('user_id', $user->id)->exists();
             if ($hasWarnings && ($data['acknowledge_sensitive'] ?? false) !== true) {
                 throw ValidationException::withMessages([
                     'acknowledge_sensitive' => ['You must acknowledge sensitive-information warnings before publishing.'],
@@ -156,6 +159,10 @@ class PublishMediaAnalysis
                 DB::table('media_cleanup_tasks')->where('id', $locked->cleanup_task_id)->delete();
             }
             $locked->delete();
+
+            if ($isFirstPost) {
+                $this->pointRewards->awardOnce($user, PointRewardService::FIRST_POST, 'first-post:'.$user->getKey());
+            }
 
             return $post->load(['media', 'user', 'category']);
         });

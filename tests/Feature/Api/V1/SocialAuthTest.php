@@ -6,6 +6,7 @@ use App\Models\FeatureFlag;
 use App\Models\SocialAccount;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
 use Laravel\Socialite\Facades\Socialite;
@@ -23,6 +24,7 @@ class SocialAuthTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        Cache::flush();
         $this->authenticateDevice();
 
         config([

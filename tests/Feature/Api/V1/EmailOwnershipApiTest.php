@@ -2,12 +2,14 @@
 
 namespace Tests\Feature\Api\V1;
 
+use App\Models\PointTransaction;
 use App\Models\User;
 use App\Notifications\ResetPasswordNotification;
 use App\Notifications\VerifyEmailNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class EmailOwnershipApiTest extends TestCase
@@ -112,6 +114,56 @@ class EmailOwnershipApiTest extends TestCase
         $client->postJson('/api/v1/auth/email-verification/code', ['code' => '000000'])
             ->assertOk()
             ->assertJson(['verified' => true]);
+    }
+
+    public function test_verifying_an_invited_registration_credits_the_invitee_once_and_returns_the_inviter(): void
+    {
+        Notification::fake();
+        $inviter = User::factory()->create(['name' => 'Inviting Friend', 'username' => 'friend']);
+        $this->authenticateDevice();
+
+        $registration = $this->postJson('/api/v1/auth/register', [
+            'name' => 'Ada Lovelace',
+            'username' => 'ada',
+            'email' => 'ada@example.com',
+            'password' => 'password123!',
+            'password_confirmation' => 'password123!',
+            'invite_code' => $inviter->invite_code,
+        ])->assertCreated();
+
+        $invitee = User::query()->where('email', 'ada@example.com')->firstOrFail();
+        Sanctum::actingAs($invitee);
+        $client = $this;
+        $client->postJson('/api/v1/auth/email-verification/notification')->assertStatus(202);
+        $code = null;
+        Notification::assertSentTo($invitee, VerifyEmailNotification::class, function (VerifyEmailNotification $notification) use ($invitee, &$code): bool {
+            foreach ([...$notification->toMail($invitee)->introLines, ...$notification->toMail($invitee)->outroLines] as $line) {
+                if (preg_match('/^([0-9]{6})$/', $line, $matches) === 1) {
+                    $code = $matches[1];
+                    break;
+                }
+            }
+
+            return $code !== null;
+        });
+
+        $client->postJson('/api/v1/auth/email-verification/code', ['code' => $code])
+            ->assertOk()->assertJson(['verified' => true]);
+        $client->getJson('/api/v1/auth/email-verification')
+            ->assertOk()
+            ->assertJsonPath('invitation_reward.credited', true)
+            ->assertJsonPath('invitation_reward.points', 50)
+            ->assertJsonPath('invitation_reward.inviter.name', 'Inviting Friend')
+            ->assertJsonPath('invitation_reward.inviter.username', 'friend');
+
+        $client->getJson('/api/v1/auth/email-verification');
+        $this->assertSame(50, $invitee->fresh()->points_balance);
+        $this->assertDatabaseCount('point_transactions', 1);
+        $this->assertDatabaseHas('point_transactions', [
+            'user_id' => $invitee->id,
+            'reason' => PointTransaction::REASON_INVITEE_WELCOME_BONUS,
+            'amount' => 50,
+        ]);
     }
 
     public function test_invalid_verification_codes_are_rejected_and_limited_to_five_attempts(): void

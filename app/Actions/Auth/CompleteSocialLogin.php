@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\Auth\IssuedAccessToken;
 use App\Services\Auth\TwoFactorRequired;
 use App\Services\InviteCodeService;
+use App\Services\PointRewardService;
 use App\Services\SocialAuth\SocialUserPayload;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
@@ -24,6 +25,8 @@ final class CompleteSocialLogin
         private readonly StartDeviceSession $startSession,
         private readonly BeginTwoFactorChallenge $beginTwoFactor,
         private readonly InviteCodeService $inviteCodes,
+        private readonly CreditInviteeWelcomeBonus $creditInviteeWelcomeBonus,
+        private readonly PointRewardService $pointRewards,
     ) {}
 
     /** [$inviteCode] is only ever consulted when this turns out to be a brand-new account — an
@@ -113,6 +116,11 @@ final class CompleteSocialLogin
             } else {
                 throw $exception;
             }
+        }
+
+        if ($isNewAccount && $user->hasVerifiedEmail()) {
+            $this->pointRewards->awardOnce($user, PointRewardService::ACCOUNT_REGISTRATION, 'account-registration:'.$user->getKey());
+            ($this->creditInviteeWelcomeBonus)($user);
         }
 
         if ($isNewAccount && $payload->avatarUrl !== null) {

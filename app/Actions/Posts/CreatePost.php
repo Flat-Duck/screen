@@ -10,6 +10,7 @@ use App\Jobs\GeneratePostMediaThumbnail;
 use App\Models\Post;
 use App\Models\PostMedia;
 use App\Models\User;
+use App\Services\PointRewardService;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -24,6 +25,7 @@ class CreatePost
         private readonly StagePostMedia $stageMedia,
         private readonly SyncPostHashtags $syncHashtags,
         private readonly SyncPostMentions $syncMentions,
+        private readonly PointRewardService $pointRewards,
     ) {}
 
     public function __invoke(User $user, CreatePostData $data): Post
@@ -32,6 +34,7 @@ class CreatePost
 
         try {
             $post = DB::transaction(function () use ($user, $data, $batch): Post {
+                $isFirstPost = ! Post::withTrashed()->where('user_id', $user->id)->exists();
                 $post = Post::create([
                     'user_id' => $user->id,
                     'caption' => $data->caption,
@@ -52,6 +55,10 @@ class CreatePost
                 }
 
                 DB::table('media_cleanup_tasks')->where('id', $batch->cleanupTaskId)->delete();
+
+                if ($isFirstPost) {
+                    $this->pointRewards->awardOnce($user, PointRewardService::FIRST_POST, 'first-post:'.$user->getKey());
+                }
 
                 return $post->load('media');
             });

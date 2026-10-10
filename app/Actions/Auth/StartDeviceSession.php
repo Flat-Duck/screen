@@ -10,6 +10,7 @@ use App\Models\Device;
 use App\Models\DeviceSession;
 use App\Models\User;
 use App\Services\Auth\IssuedAccessToken;
+use App\Services\PointRewardService;
 use App\Services\UserRestrictionService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -19,7 +20,11 @@ use RuntimeException;
 
 final class StartDeviceSession
 {
-    public function __construct(private readonly CloseDeviceSession $closeSession, private readonly UserRestrictionService $restrictions) {}
+    public function __construct(
+        private readonly CloseDeviceSession $closeSession,
+        private readonly UserRestrictionService $restrictions,
+        private readonly PointRewardService $pointRewards,
+    ) {}
 
     /**
      * The single choke point every login path (password, social, completed 2FA
@@ -61,7 +66,7 @@ final class StartDeviceSession
         }
 
         try {
-            return DB::transaction(function () use ($user, $device, $method, $context, $isNewAccount, $twoFactorVerified): IssuedAccessToken {
+            $issued = DB::transaction(function () use ($user, $device, $method, $context, $isNewAccount, $twoFactorVerified): IssuedAccessToken {
                 $device = Device::query()->lockForUpdate()->findOrFail($device->id);
                 $active = $device->sessions()->whereNull('ended_at')->first();
 
@@ -94,6 +99,16 @@ final class StartDeviceSession
 
                 return new IssuedAccessToken($user, $issued->plainTextToken, $session, $isNewAccount);
             });
+
+            if ($method !== LoginMethod::Registration) {
+                $this->pointRewards->awardOnce(
+                    $user,
+                    PointRewardService::DAILY_LOGIN,
+                    'daily-login:'.$user->getKey().':'.now()->toDateString(),
+                );
+            }
+
+            return $issued;
         } finally {
             $lock->release();
         }

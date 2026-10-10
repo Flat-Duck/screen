@@ -19,6 +19,7 @@ use App\Models\Post;
 use App\Models\PostMedia;
 use App\Models\User;
 use App\Services\ImageProcessingService;
+use App\Services\PointRewardService;
 use App\Services\Storage\LaravelMediaFileStore;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -46,14 +47,17 @@ class PostLifecycleActionsTest extends TestCase
             new StagePostMedia($images, app(MediaFileStore::class)),
             app(SyncPostHashtags::class),
             app(SyncPostMentions::class),
+            app(PointRewardService::class),
         );
 
-        $post = $action(User::factory()->create(), new CreatePostData(null, [UploadedFile::fake()->image('shot.jpg')]));
+        $user = User::factory()->create();
+        $post = $action($user, new CreatePostData(null, [UploadedFile::fake()->image('shot.jpg')]));
 
         Queue::assertPushed(GeneratePostMediaThumbnail::class, fn (GeneratePostMediaThumbnail $job): bool => $job->afterCommit === true);
         Queue::assertPushed(ExtractPostMediaText::class, fn (ExtractPostMediaText $job): bool => $job->afterCommit === true);
         Queue::assertPushed(ComputePostMediaPerceptualHash::class, fn (ComputePostMediaPerceptualHash $job): bool => $job->afterCommit === true);
         $this->assertSame($post->id, PostMedia::firstOrFail()->post_id);
+        $this->assertSame(30, (int) $user->fresh()->points_balance);
     }
 
     public function test_transaction_failure_cleans_staged_originals(): void
@@ -62,7 +66,7 @@ class PostLifecycleActionsTest extends TestCase
         Queue::fake();
         $hashtags = Mockery::mock(SyncPostHashtags::class);
         $hashtags->shouldReceive('__invoke')->once()->andThrow(new RuntimeException('database workflow failed'));
-        $action = new CreatePost(app(StagePostMedia::class), $hashtags, app(SyncPostMentions::class));
+        $action = new CreatePost(app(StagePostMedia::class), $hashtags, app(SyncPostMentions::class), app(PointRewardService::class));
 
         try {
             $action(User::factory()->create(), new CreatePostData('#tag', [UploadedFile::fake()->image('shot.jpg', 800, 800)]));
@@ -83,7 +87,7 @@ class PostLifecycleActionsTest extends TestCase
         $hashtags->shouldReceive('__invoke')->once()->andThrow(new RuntimeException('workflow failed'));
         $files = Mockery::mock(MediaFileStore::class);
         $files->shouldReceive('deleteDirectory')->once()->andThrow(new RuntimeException('storage unavailable'));
-        $action = new CreatePost(new StagePostMedia(app(ImageProcessingService::class), $files), $hashtags, app(SyncPostMentions::class));
+        $action = new CreatePost(new StagePostMedia(app(ImageProcessingService::class), $files), $hashtags, app(SyncPostMentions::class), app(PointRewardService::class));
 
         try {
             $action(User::factory()->create(), new CreatePostData(null, [UploadedFile::fake()->image('shot.jpg')]));

@@ -10,9 +10,8 @@ class InviteReservationController extends Controller
 {
     public function __construct(private readonly InviteCodeService $inviteCodes) {}
 
-    /** `GET /v1/auth/invite-config` — device-token authenticated, called before the invite-gate
-     * screen decides whether to show itself at all (see AndroidClient's Landing screen, which
-     * fires this the instant it's created rather than waiting for a "Sign up" tap). */
+    /** `GET /v1/auth/invite-config` — device-token authenticated; the gate uses the cached
+     * requirement for rendering and rechecks it when the user requests Skip. */
     public function config(): JsonResponse
     {
         return response()->json(['data' => [

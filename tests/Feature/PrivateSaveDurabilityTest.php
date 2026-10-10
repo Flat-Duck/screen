@@ -8,6 +8,7 @@ use App\Models\MediaCleanupTask;
 use App\Models\PrivateSave;
 use App\Models\User;
 use App\Services\ImageProcessingService;
+use App\Services\PointRewardService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -29,7 +30,7 @@ it('reserves cleanup before writing and retains it after an analytics rollback',
 
         return ['path' => $path, 'width' => 20, 'height' => 20, 'mime' => 'image/png', 'size' => 5];
     });
-    $action = new CreatePrivateSave($images);
+    $action = new CreatePrivateSave($images, app(PointRewardService::class));
     expect(fn () => $action(User::factory()->create(), UploadedFile::fake()->image('shot.png'), afterPersist: function (): void {
         throw new RuntimeException('analytics failed');
     }))->toThrow(RuntimeException::class, 'analytics failed');

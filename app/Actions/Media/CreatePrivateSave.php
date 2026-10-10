@@ -8,6 +8,7 @@ use App\Models\PrivateSave;
 use App\Models\PrivateSaveFolder;
 use App\Models\User;
 use App\Services\ImageProcessingService;
+use App\Services\PointRewardService;
 use Closure;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +16,10 @@ use Illuminate\Support\Str;
 
 class CreatePrivateSave
 {
-    public function __construct(private readonly ImageProcessingService $images) {}
+    public function __construct(
+        private readonly ImageProcessingService $images,
+        private readonly PointRewardService $pointRewards,
+    ) {}
 
     /**
      * Call outside the request transaction so the cleanup reservation survives rollback.
@@ -37,6 +41,7 @@ class CreatePrivateSave
         $stored = $this->images->storeOriginal($image, $directory, diskName: $disk);
 
         return DB::transaction(function () use ($user, $folder, $stored, $disk, $cleanup, $afterPersist): PrivateSave {
+            $isFirstSave = ! PrivateSave::query()->where('user_id', $user->id)->exists();
             $save = PrivateSave::create([
                 'user_id' => $user->id,
                 'folder_id' => $folder?->getKey(),
@@ -48,6 +53,9 @@ class CreatePrivateSave
                 'size_bytes' => $stored['size'],
             ]);
             $afterPersist?->__invoke($save);
+            if ($isFirstSave) {
+                $this->pointRewards->awardOnce($user, PointRewardService::FIRST_PRIVATE_SAVE, 'first-private-save:'.$user->getKey());
+            }
             // Deletion rolls back with the save on any failure, including commit failure.
             $cleanup->delete();
 

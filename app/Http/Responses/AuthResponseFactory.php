@@ -6,11 +6,15 @@ use App\Http\Resources\UserResource;
 use App\Services\Auth\IssuedAccessToken;
 use App\Services\Auth\TwoFactorRequired;
 use App\Services\InterestPreferenceService;
+use App\Services\InvitationRewardPresenter;
 use Illuminate\Http\JsonResponse;
 
 final class AuthResponseFactory
 {
-    public function __construct(private readonly InterestPreferenceService $interests) {}
+    public function __construct(
+        private readonly InterestPreferenceService $interests,
+        private readonly InvitationRewardPresenter $invitationRewards,
+    ) {}
 
     public function make(
         IssuedAccessToken|TwoFactorRequired $result,
@@ -32,6 +36,9 @@ final class AuthResponseFactory
             // Auth responses always describe the newly authenticated caller, including the
             // device-token registration response where Request::user() is still a Device.
             'invite_code' => $result->user->invite_code,
+            'invitation_reward' => $result->user->hasVerifiedEmail()
+                ? $this->invitationRewards->forInvitee($result->user)
+                : null,
             'token' => $result->token,
             'session_id' => $result->session->uuid,
             ...($includeIsNewAccount ? ['is_new_account' => $result->isNewAccount] : []),

@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\UserInvite;
 use App\Models\UserInviteLink;
 use Illuminate\Contracts\Pagination\CursorPaginator;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -21,16 +22,52 @@ class InviteCodeService
 {
     private const FLAG_KEY = 'registration.invite_only';
 
+    private const REQUIRED_CACHE_KEY = 'registration.invite_only.required';
+
     private const DEFAULT_POINTS_PER_INVITE = 50;
 
     private const DEFAULT_MATURITY_DAYS = 7;
 
     public function isRequired(): bool
     {
-        // Absent flag row (never configured by an admin) defaults to NOT required — gating
-        // registration by default with no explicit admin action would be a dangerous surprise
-        // for anyone who hasn't set this up yet, not a safe default.
-        return $this->flag()?->isActive() ?? false;
+        $cached = Cache::get(self::REQUIRED_CACHE_KEY);
+        if ($cached !== null) {
+            return (bool) $cached;
+        }
+
+        // An absent flag row defaults to not required; requiring invites without explicit
+        // admin action would be a dangerous surprise.
+        return $this->cacheRequiredState($this->flag());
+    }
+
+    public function refreshRequiredCache(FeatureFlag $flag): void
+    {
+        if ($flag->key === self::FLAG_KEY) {
+            $this->cacheRequiredState($flag);
+        }
+    }
+
+    /**
+     * Store only the decision the API needs. Expire at a scheduled activation/deactivation
+     * boundary so a flag with starts_at/ends_at remains authoritative without a SQL read per
+     * request. Stable flags stay cached indefinitely and admin writes refresh them after commit.
+     */
+    private function cacheRequiredState(?FeatureFlag $flag): bool
+    {
+        $required = $flag?->isActive() ?? false;
+        $now = now();
+        $nextTransition = collect([$flag?->starts_at, $flag?->ends_at])
+            ->filter(fn ($date): bool => $date !== null && $date->isAfter($now))
+            ->sortBy(fn ($date): int => $date->getTimestamp())
+            ->first();
+
+        if ($nextTransition === null) {
+            Cache::forever(self::REQUIRED_CACHE_KEY, $required);
+        } else {
+            Cache::put(self::REQUIRED_CACHE_KEY, $required, $nextTransition);
+        }
+
+        return $required;
     }
 
     public function pointsPerInvite(): int

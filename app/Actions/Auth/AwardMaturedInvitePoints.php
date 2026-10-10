@@ -6,6 +6,7 @@ use App\Models\PointTransaction;
 use App\Models\User;
 use App\Models\UserInvite;
 use App\Services\InviteCodeService;
+use App\Services\PointRewardService;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -18,12 +19,16 @@ use Illuminate\Support\Facades\DB;
  */
 final class AwardMaturedInvitePoints
 {
-    public function __construct(private readonly InviteCodeService $inviteCodes) {}
+    public function __construct(private readonly InviteCodeService $inviteCodes, private readonly PointRewardService $rewards) {}
 
     public function __invoke(): int
     {
         $cutoff = now()->subDays($this->inviteCodes->maturityDays());
-        $pointsPerInvite = $this->inviteCodes->pointsPerInvite();
+        $reward = $this->rewards->configuration(PointRewardService::INVITER_REFERRAL);
+        if (! $reward['enabled'] || $reward['points'] < 1) {
+            return 0;
+        }
+        $pointsPerInvite = $reward['points'];
         $matured = 0;
 
         UserInvite::query()
@@ -44,7 +49,22 @@ final class AwardMaturedInvitePoints
                         continue;
                     }
 
-                    DB::transaction(function () use ($invite, $pointsPerInvite): void {
+                    $awarded = DB::transaction(function () use ($invite, $pointsPerInvite): bool {
+                        $lockedInvite = UserInvite::query()->lockForUpdate()->find($invite->id);
+                        if ($lockedInvite === null || $lockedInvite->points_awarded_at !== null) {
+                            return false;
+                        }
+
+                        $existing = PointTransaction::query()
+                            ->where('user_invite_id', $lockedInvite->id)
+                            ->where('reason', PointTransaction::REASON_REFERRAL_BONUS)
+                            ->exists();
+                        if ($existing) {
+                            $lockedInvite->forceFill(['points_awarded_at' => now(), 'points_awarded' => $pointsPerInvite])->save();
+
+                            return false;
+                        }
+
                         PointTransaction::create([
                             'user_id' => $invite->inviter_user_id,
                             'amount' => $pointsPerInvite,
@@ -52,12 +72,16 @@ final class AwardMaturedInvitePoints
                             'user_invite_id' => $invite->id,
                         ]);
                         User::query()->whereKey($invite->inviter_user_id)->increment('points_balance', $pointsPerInvite);
-                        $invite->forceFill([
+                        $lockedInvite->forceFill([
                             'points_awarded_at' => now(),
                             'points_awarded' => $pointsPerInvite,
                         ])->save();
+
+                        return true;
                     });
-                    $matured++;
+                    if ($awarded) {
+                        $matured++;
+                    }
                 }
             });
 

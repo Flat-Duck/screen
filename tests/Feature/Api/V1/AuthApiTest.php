@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\InviteCodeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -230,6 +231,16 @@ class AuthApiTest extends TestCase
         $this->enableInviteOnly();
 
         $this->getJson('/api/v1/auth/invite-config')->assertOk()->assertJson(['data' => ['required' => true]]);
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $this->getJson('/api/v1/auth/invite-config')->assertOk()->assertJson(['data' => ['required' => true]]);
+        $queries = DB::getQueryLog();
+        DB::disableQueryLog();
+
+        $this->assertFalse(collect($queries)->contains(
+            fn (array $query): bool => str_contains(strtolower($query['query']), 'feature_flags'),
+        ), 'A warm invite-config request must not query the feature_flags table.');
     }
 
     public function test_reserving_a_valid_code_returns_a_ticket(): void
@@ -355,7 +366,7 @@ class AuthApiTest extends TestCase
 
     private function enableInviteOnly(): void
     {
-        FeatureFlag::create([
+        $flag = FeatureFlag::create([
             'key' => 'registration.invite_only',
             'name' => 'Invite-only registration',
             'scope' => 'product',
@@ -363,5 +374,6 @@ class AuthApiTest extends TestCase
             'kill_switch' => false,
             'rollout_basis_points' => 10000,
         ]);
+        app(InviteCodeService::class)->refreshRequiredCache($flag);
     }
 }
